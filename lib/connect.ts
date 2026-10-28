@@ -52,6 +52,14 @@ export function requiredKeyNames(s: Pick<Settings, 'transcription' | 'summary'>)
   return [...new Set(names)];
 }
 
+/**
+ * Keys that unlock extra features but are never required to connect (e.g. DEEPGRAM_API_KEY for speaker names).
+ * penv keeps every key it sends; offer these as optional fields when pasting.
+ */
+export function optionalKeyNames(s: Pick<Settings, 'diarization'>): string[] {
+  return [s.diarization.keyName];
+}
+
 /** Plain-words message for a failed connect. Never includes a token or key. */
 export function connectErrorMessage(err: unknown): string {
   if (err instanceof PenvError) {

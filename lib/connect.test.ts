@@ -10,6 +10,7 @@ import {
   loadTokenTarget,
   parseEnvPath,
   reconnect,
+  optionalKeyNames,
   requiredKeyNames,
   verifyOrForget,
   verifyTranscriptionKey,
@@ -115,5 +116,17 @@ describe('connect', () => {
     expect(connectErrorMessage(new PenvError('not-found', 'x', 404))).toMatch(/couldn’t find that environment/);
     expect(connectErrorMessage(new PenvError('write-only', 'x'))).toMatch(/write-only/);
     expect(connectErrorMessage(new TypeError('fetch failed'))).toMatch(/Couldn’t reach/);
+  });
+
+  it('keeps the optional DEEPGRAM_API_KEY but never requires it', async () => {
+    expect(optionalKeyNames(DEFAULT_SETTINGS)).toEqual(['DEEPGRAM_API_KEY']);
+    expect(requiredKeyNames(DEFAULT_SETTINGS)).not.toContain('DEEPGRAM_API_KEY');
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
+      keys: [{ name: 'GROQ_API_KEY', value: 'gsk_test' }, { name: 'DEEPGRAM_API_KEY', value: 'dg_test' }],
+    }), { status: 200 }));
+    expect(await connectPenv('pck_test', TARGET, fetchImpl)).toEqual(['DEEPGRAM_API_KEY', 'GROQ_API_KEY']);
+    expect((await loadKeys()).DEEPGRAM_API_KEY).toBe('dg_test');
+    expect(await connectPaste({ GROQ_API_KEY: 'gsk_test', DEEPGRAM_API_KEY: ' dg_test ' })).toEqual(['DEEPGRAM_API_KEY', 'GROQ_API_KEY']);
+    expect((await loadKeys()).DEEPGRAM_API_KEY).toBe('dg_test');
   });
 });

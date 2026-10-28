@@ -12,6 +12,7 @@ export default defineConfig({
       'https://api.openai.com/*',
       'https://openrouter.ai/*',
       'https://api.anthropic.com/*',
+      'https://api.deepgram.com/*',
       'http://localhost:11434/*',
     ],
     action: { default_title: 'Open Rekord' },

@@ -9,6 +9,9 @@ export const DEFAULT_SETTINGS: Settings = {
   penv: { org: 'penvhq', project: 'meeting-notes-taker', env: 'testing' },
   language: 'en',
   onboarded: false,
+  features: { ask: true, liveSuggestions: true, speakerNames: true },
+  diarization: { provider: 'deepgram', model: 'nova-3', keyName: 'DEEPGRAM_API_KEY' },
+  keepAudio: false,
 };
 
 export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
@@ -27,6 +30,8 @@ function merge(stored: Partial<Settings> | undefined): Settings {
     transcription: { ...DEFAULT_SETTINGS.transcription, ...s.transcription },
     summary: { ...DEFAULT_SETTINGS.summary, ...s.summary },
     penv: { ...DEFAULT_SETTINGS.penv, ...s.penv },
+    features: { ...DEFAULT_SETTINGS.features, ...s.features },
+    diarization: { ...DEFAULT_SETTINGS.diarization, ...s.diarization },
   };
 }
 

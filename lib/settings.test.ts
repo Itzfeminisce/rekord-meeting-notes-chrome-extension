@@ -34,4 +34,22 @@ describe('settings', () => {
     expect(PROVIDERS.groq.baseUrl).toBe('https://api.groq.com/openai/v1');
     expect(PROVIDERS.ollama.keyName).toBeUndefined();
   });
+
+  it('has v2 defaults and merges them into old saved settings', async () => {
+    const d = await getSettings();
+    expect(d.features).toEqual({ ask: true, liveSuggestions: true, speakerNames: true });
+    expect(d.diarization).toEqual({ provider: 'deepgram', model: 'nova-3', keyName: 'DEEPGRAM_API_KEY' });
+    expect(d.keepAudio).toBe(false);
+
+    const { features: _f, diarization: _d, keepAudio: _k, ...v1 } = DEFAULT_SETTINGS;
+    await fakeBrowser.storage.local.set({ settings: { ...v1, onboarded: true } });
+    const s = await getSettings();
+    expect(s.onboarded).toBe(true);
+    expect(s.features.ask).toBe(true);
+    expect(s.diarization.model).toBe('nova-3');
+    expect(s.keepAudio).toBe(false);
+
+    await fakeBrowser.storage.local.set({ settings: { ...v1, features: { ask: false } } });
+    expect((await getSettings()).features).toEqual({ ask: false, liveSuggestions: true, speakerNames: true });
+  });
 });
