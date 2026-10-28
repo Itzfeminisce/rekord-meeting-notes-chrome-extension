@@ -9,6 +9,7 @@ import type { ProviderId, Settings } from './types';
 
 const TOKEN_KEY = 'penvToken';
 const TARGET_KEY = 'penvTarget';
+const STATUS_KEY = 'keyStatus';
 
 export async function saveToken(token: string): Promise<void> {
   await browser.storage.session.set({ [TOKEN_KEY]: token });
@@ -29,7 +30,7 @@ export async function loadTokenTarget(): Promise<PenvTarget | undefined> {
 
 /** Forgets the token, its environment and every key held in memory. */
 export async function forgetAll(): Promise<void> {
-  await browser.storage.session.remove([TOKEN_KEY, TARGET_KEY]);
+  await browser.storage.session.remove([TOKEN_KEY, TARGET_KEY, STATUS_KEY]);
   await clearKeys();
 }
 
@@ -142,20 +143,147 @@ export async function reconnect(fetchImpl: typeof fetch = fetch): Promise<string
   return connectPenv(token, target, fetchImpl);
 }
 
-/**
- * Checks the transcription key now in memory. If it fails, forgets the token and keys so nothing is
- * left half-connected, then rethrows (show it with `connectErrorMessage`).
- */
-export async function verifyOrForget(
-  settings: Pick<Settings, 'transcription'>,
-  fetchImpl: typeof fetch = fetch,
-): Promise<void> {
-  try {
-    await verifyTranscriptionKey(settings, await loadKeys(), fetchImpl);
-  } catch (err) {
-    await forgetAll();
-    throw err;
+export type KeyStatus = 'ok' | 'rejected' | 'unreachable';
+/** Status per key name. Never holds a key value. */
+export type KeyResults = Record<string, KeyStatus>;
+
+export const TRANSCRIPTION_ORDER: Settings['transcription']['provider'][] = ['groq', 'openai'];
+export const SUMMARY_ORDER: ProviderId[] = ['groq', 'openai', 'openrouter', 'anthropic'];
+const TRANSCRIPTION_MODEL: Record<Settings['transcription']['provider'], string> = {
+  groq: 'whisper-large-v3-turbo',
+  openai: 'whisper-1',
+};
+const SUMMARY_MODEL: Record<ProviderId, string> = {
+  groq: 'llama-3.3-70b-versatile',
+  openrouter: 'openai/gpt-oss-120b',
+  ollama: 'llama3.2',
+  openai: 'gpt-4.1-mini',
+  anthropic: 'claude-haiku-4-5',
+};
+const DEEPGRAM_KEY = 'DEEPGRAM_API_KEY';
+
+/** The cheap "who am I" request for a key name, or null when Rekord doesn't know that key. */
+function checkRequest(name: string, key: string): { url: string; headers: Record<string, string> } | null {
+  if (name === DEEPGRAM_KEY) return { url: 'https://api.deepgram.com/v1/projects', headers: { Authorization: `Token ${key}` } };
+  const provider = Object.values(PROVIDERS).find((p) => p.keyName === name);
+  if (!provider) return null;
+  if (provider.id === 'anthropic') {
+    return {
+      url: 'https://api.anthropic.com/v1/models',
+      headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    };
   }
+  return { url: `${provider.baseUrl}/models`, headers: { Authorization: `Bearer ${key}` } };
+}
+
+async function checkOne(
+  req: { url: string; headers: Record<string, string> },
+  fetchImpl: typeof fetch,
+  timeoutMs: number,
+): Promise<KeyStatus> {
+  const ctrl = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<'unreachable'>((resolve) => {
+    timer = setTimeout(() => {
+      ctrl.abort();
+      resolve('unreachable');
+    }, timeoutMs);
+  });
+  const call = fetchImpl(req.url, { headers: req.headers, signal: ctrl.signal }).then(
+    (res): KeyStatus => (res.status === 401 || res.status === 403 ? 'rejected' : res.ok ? 'ok' : 'unreachable'),
+    (): KeyStatus => 'unreachable',
+  );
+  try {
+    return await Promise.race([call, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Checks every loaded key against its own provider, in parallel. Keys Rekord doesn't know are skipped.
+ * 'rejected' = 401/403; 'unreachable' = network error, other failure or no answer within ~8 s.
+ */
+export async function checkKeys(
+  keys: Record<string, string>,
+  fetchImpl: typeof fetch = fetch,
+  timeoutMs = 8000,
+): Promise<KeyResults> {
+  const entries = await Promise.all(
+    Object.entries(keys).map(async ([name, value]) => {
+      const req = value?.trim() ? checkRequest(name, value.trim()) : null;
+      return req ? ([name, await checkOne(req, fetchImpl, timeoutMs)] as const) : null;
+    }),
+  );
+  return Object.fromEntries(entries.filter((e): e is readonly [string, KeyStatus] => !!e));
+}
+
+/** True when the provider can be used with these results (Ollama needs no key). */
+export function providerWorks(id: ProviderId, results: KeyResults): boolean {
+  const name = PROVIDERS[id].keyName;
+  return !name || results[name] === 'ok';
+}
+
+export function transcriptionFor(
+  id: Settings['transcription']['provider'],
+  current: Settings['transcription'],
+): Settings['transcription'] {
+  return id === current.provider ? current : { provider: id, model: TRANSCRIPTION_MODEL[id] };
+}
+
+export function summaryFor(id: ProviderId, current: Settings['summary']): Settings['summary'] {
+  return id === current.provider ? current : { provider: id, model: SUMMARY_MODEL[id] };
+}
+
+/**
+ * Picks providers whose keys work: the current one if its key is ok, else the first ok in order.
+ * Keeps the current one when nothing works. Speaker names stay on only if the Deepgram key is ok.
+ * Returns full nested objects (updateSettings replaces them whole).
+ */
+export function pickProviders(
+  results: KeyResults,
+  settings: Pick<Settings, 'transcription' | 'summary' | 'features'>,
+): Pick<Settings, 'transcription' | 'summary' | 'features'> {
+  const t = providerWorks(settings.transcription.provider, results)
+    ? settings.transcription.provider
+    : TRANSCRIPTION_ORDER.find((id) => providerWorks(id, results)) ?? settings.transcription.provider;
+  const s = providerWorks(settings.summary.provider, results)
+    ? settings.summary.provider
+    : SUMMARY_ORDER.find((id) => providerWorks(id, results)) ?? settings.summary.provider;
+  return {
+    transcription: transcriptionFor(t, settings.transcription),
+    summary: summaryFor(s, settings.summary),
+    features: { ...settings.features, speakerNames: settings.features.speakerNames && results[DEEPGRAM_KEY] === 'ok' },
+  };
+}
+
+/** Remembers the last check (names and statuses only) for this browser session. */
+export async function saveKeyStatus(results: KeyResults): Promise<void> {
+  await browser.storage.session.set({ [STATUS_KEY]: results });
+}
+
+export async function loadKeyStatus(): Promise<KeyResults> {
+  const stored = await browser.storage.session.get(STATUS_KEY);
+  return (stored[STATUS_KEY] as KeyResults | undefined) ?? {};
+}
+
+/**
+ * True when the chosen transcription key was rejected. Only re-checks (one cheap call) when the last check
+ * rejected it, so a key fixed in Settings since then clears the warning.
+ */
+export async function transcriptionKeyRejected(
+  settings?: Pick<Settings, 'transcription'>,
+  fetchImpl: typeof fetch = fetch,
+): Promise<boolean> {
+  const s = settings ?? (await getSettings());
+  const name = PROVIDERS[s.transcription.provider].keyName;
+  const status = await loadKeyStatus();
+  if (!name || status[name] !== 'rejected') return false;
+  const key = (await loadKeys())[name];
+  if (!key) return false;
+  const now = (await checkKeys({ [name]: key }, fetchImpl))[name] ?? 'unreachable';
+  await saveKeyStatus({ ...(await loadKeyStatus()), [name]: now });
+  return now === 'rejected';
 }
 
 /**

@@ -2,19 +2,41 @@ import { useEffect, useState, type KeyboardEvent } from 'react';
 import { Button, Spinner } from '../components';
 import { useRouter } from '../router';
 import {
+  checkKeys,
   connectErrorMessage,
   connectPaste,
   connectPenv,
   formatEnvPath,
   optionalKeyNames,
   parseEnvPath,
+  pickProviders,
+  providerWorks,
   requiredKeyNames,
-  verifyOrForget,
+  saveKeyStatus,
+  summaryFor,
+  transcriptionFor,
+  SUMMARY_ORDER,
+  TRANSCRIPTION_ORDER,
+  type KeyResults,
+  type KeyStatus,
 } from '@/lib/connect';
+import { loadKeys } from '@/lib/keys';
 import { getSettings, updateSettings } from '@/lib/settings';
-import type { Settings } from '@/lib/types';
+import type { ProviderId, Settings } from '@/lib/types';
 
 type Source = Settings['keySource'];
+type TranscriptionId = Settings['transcription']['provider'];
+type Choice = Pick<Settings, 'transcription' | 'summary' | 'features'>;
+
+const PROVIDER_NAME: Record<ProviderId, string> = {
+  groq: 'Groq',
+  openai: 'OpenAI',
+  openrouter: 'OpenRouter',
+  anthropic: 'Anthropic',
+  ollama: 'Ollama',
+};
+const ASSISTANT_IDS: ProviderId[] = [...SUMMARY_ORDER, 'ollama'];
+const STATUS_TEXT: Record<KeyStatus, string> = { ok: 'Works', rejected: 'Rejected', unreachable: 'Couldn’t check' };
 
 const PROVIDER_LABEL: Record<string, string> = {
   GROQ_API_KEY: 'Groq API key',
@@ -35,6 +57,9 @@ export default function Connect() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [found, setFound] = useState<string[]>([]);
+  const [draft, setDraft] = useState<Pick<Settings, 'transcription' | 'summary'> | null>(null);
+  const [results, setResults] = useState<KeyResults | null>(null);
+  const [choice, setChoice] = useState<Choice | null>(null);
 
   useEffect(() => {
     getSettings()
@@ -42,6 +67,7 @@ export default function Connect() {
         setSettings(s);
         setSource(s.keySource);
         setEnvPath(formatEnvPath(s.penv));
+        setDraft({ transcription: s.transcription, summary: s.summary });
       })
       .catch(() => setLoadFailed(true));
   }, []);
@@ -53,7 +79,7 @@ export default function Connect() {
       </main>
     );
   }
-  if (!settings) {
+  if (!settings || !draft) {
     return (
       <main className="screen screen-center">
         <Spinner label="Loading" />
@@ -61,14 +87,20 @@ export default function Connect() {
     );
   }
 
-  const needed = requiredKeyNames(settings);
+  const needed = requiredKeyNames(draft);
   const optional = optionalKeyNames(settings);
   const onboarding = !settings.onboarded;
 
-  function pick(next: Source) {
-    setSource(next);
+  function resetCheck() {
     setError('');
     setFound([]);
+    setResults(null);
+    setChoice(null);
+  }
+
+  function pick(next: Source) {
+    setSource(next);
+    resetCheck();
   }
 
   function onRadioKey(e: KeyboardEvent) {
@@ -82,15 +114,14 @@ export default function Connect() {
   }
 
   async function connect() {
-    if (!settings) return;
-    setError('');
-    setFound([]);
+    if (!settings || !draft) return;
+    resetCheck();
     const target = parseEnvPath(envPath);
     if (source === 'penv') {
       if (!target) return setError('Enter the environment as org/project/environment.');
       if (!token.trim()) return setError('Enter your read-only machine token.');
-    } else if (needed.some((n) => !pasted[n]?.trim())) {
-      return setError('Paste a key for each service, then try again.');
+    } else if (![...needed, ...optional].some((n) => pasted[n]?.trim())) {
+      return setError('Paste at least one key, then try again.');
     }
 
     setBusy(true);
@@ -101,16 +132,52 @@ export default function Connect() {
           : await connectPaste(Object.fromEntries([...needed, ...optional].map((n) => [n, pasted[n] ?? ''])));
       setFound(names);
       if (source === 'penv' && target) await updateSettings({ penv: target });
-      await verifyOrForget(settings);
-      await updateSettings({ keySource: source, onboarded: true });
       setToken('');
-      replace('start');
+      await check();
     } catch (err) {
       setError(connectErrorMessage(err));
     } finally {
       setBusy(false);
     }
   }
+
+  /** Checks the keys now in memory and picks providers whose keys work. Keys are never dropped. */
+  async function check() {
+    if (!settings || !draft) return;
+    const checked = await checkKeys(await loadKeys());
+    await saveKeyStatus(checked);
+    setResults(checked);
+    setChoice(pickProviders(checked, { ...settings, ...draft }));
+  }
+
+  async function checkAgain() {
+    setBusy(true);
+    setError('');
+    try {
+      await check();
+    } catch (err) {
+      setError(connectErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function finish() {
+    if (!choice) return;
+    setBusy(true);
+    setError('');
+    try {
+      await updateSettings({ ...choice, keySource: source, onboarded: true });
+      replace('start');
+    } catch {
+      setError('Rekord couldn’t save your choices. Try again.');
+      setBusy(false);
+    }
+  }
+
+  const transcriptionOk = TRANSCRIPTION_ORDER.filter((id) => results && providerWorks(id, results));
+  const assistantOk = ASSISTANT_IDS.filter((id) => results && providerWorks(id, results));
+  const rows = results ? Object.entries(results).sort(([a], [b]) => a.localeCompare(b)) : [];
 
   return (
     <main className="screen">
@@ -160,11 +227,11 @@ export default function Connect() {
             <>
               <div className="conn-field">
                 <label htmlFor="env">Environment</label>
-                <input id="env" type="text" placeholder="org/project/environment" value={envPath} onChange={(e) => setEnvPath(e.target.value)} autoComplete="off" spellCheck={false} />
+                <input id="env" type="text" placeholder="org/project/environment" value={envPath} onChange={(e) => { setEnvPath(e.target.value); if (results) resetCheck(); }} autoComplete="off" spellCheck={false} />
               </div>
               <div className="conn-field">
                 <label htmlFor="tok">Read-only machine token</label>
-                <input id="tok" type="password" placeholder="pck_…" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" spellCheck={false} />
+                <input id="tok" type="password" placeholder="pck_…" value={token} onChange={(e) => { setToken(e.target.value); if (results) resetCheck(); }} autoComplete="off" spellCheck={false} />
               </div>
             </>
           )}
@@ -184,6 +251,36 @@ export default function Connect() {
             <span className="conn-title">Paste keys here</span>
           </div>
           <span className="conn-desc">Groq, OpenAI, OpenRouter or Anthropic. Kept in memory only. Nothing is saved to disk.</span>
+          {source === 'paste' && (
+            <>
+              <div className="conn-field">
+                <label htmlFor="pick-tr">Transcription</label>
+                <select
+                  id="pick-tr"
+                  value={draft.transcription.provider}
+                  onChange={(e) => {
+                    setDraft({ ...draft, transcription: transcriptionFor(e.target.value as TranscriptionId, settings.transcription) });
+                    resetCheck();
+                  }}
+                >
+                  {TRANSCRIPTION_ORDER.map((id) => <option key={id} value={id}>{PROVIDER_NAME[id]}</option>)}
+                </select>
+              </div>
+              <div className="conn-field">
+                <label htmlFor="pick-as">Assistant</label>
+                <select
+                  id="pick-as"
+                  value={draft.summary.provider}
+                  onChange={(e) => {
+                    setDraft({ ...draft, summary: summaryFor(e.target.value as ProviderId, settings.summary) });
+                    resetCheck();
+                  }}
+                >
+                  {ASSISTANT_IDS.map((id) => <option key={id} value={id}>{PROVIDER_NAME[id]}</option>)}
+                </select>
+              </div>
+            </>
+          )}
           {source === 'paste' &&
             [...needed, ...optional].map((name) => (
               <div className="conn-field" key={name}>
@@ -192,7 +289,10 @@ export default function Connect() {
                   id={`key-${name}`}
                   type="password"
                   value={pasted[name] ?? ''}
-                  onChange={(e) => setPasted((p) => ({ ...p, [name]: e.target.value }))}
+                  onChange={(e) => {
+                    setPasted((p) => ({ ...p, [name]: e.target.value }));
+                    if (results) resetCheck();
+                  }}
                   autoComplete="off"
                   spellCheck={false}
                 />
@@ -201,8 +301,49 @@ export default function Connect() {
         </div>
       </div>
 
-      {found.length > 0 && !error && (
+      {busy && !results && found.length > 0 && !error && (
         <p className="conn-found" role="status">Found {found.join(', ')}. Checking…</p>
+      )}
+      {results && choice && (
+        <section className="conn-results" aria-label="Your keys">
+          {rows.length === 0 ? (
+            <p className="conn-desc conn-empty">Rekord didn’t find any keys it can use.</p>
+          ) : (
+            <ul className="conn-keys">
+              {rows.map(([name, status]) => (
+                <li key={name} className="conn-key">
+                  <span className="conn-key-name">{name}</span>
+                  <span className={`conn-status conn-status-${status}`}>{STATUS_TEXT[status]}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {transcriptionOk.length > 0 && (
+            <div className="conn-field">
+              <label htmlFor="use-tr">Transcription</label>
+              <select
+                id="use-tr"
+                value={choice.transcription.provider}
+                onChange={(e) => setChoice({ ...choice, transcription: transcriptionFor(e.target.value as TranscriptionId, settings.transcription) })}
+              >
+                {transcriptionOk.map((id) => <option key={id} value={id}>{PROVIDER_NAME[id]}</option>)}
+              </select>
+            </div>
+          )}
+          <div className="conn-field">
+            <label htmlFor="use-as">Assistant</label>
+            <select
+              id="use-as"
+              value={choice.summary.provider}
+              onChange={(e) => setChoice({ ...choice, summary: summaryFor(e.target.value as ProviderId, settings.summary) })}
+            >
+              {assistantOk.map((id) => <option key={id} value={id}>{PROVIDER_NAME[id]}</option>)}
+            </select>
+          </div>
+          {transcriptionOk.length === 0 && (
+            <p className="conn-desc conn-empty" role="status">Rekord will record, and transcribe once a working key is added.</p>
+          )}
+        </section>
       )}
       {error && (
         <div className="perm-error" role="alert">
@@ -212,10 +353,22 @@ export default function Connect() {
       )}
 
       <footer className="footer">
-        <Button block onClick={connect} disabled={busy}>
-          {busy ? <Spinner label="Connecting" size={16} /> : null}
-          Connect and finish
-        </Button>
+        {results && choice && transcriptionOk.length > 0 ? (
+          <Button block onClick={finish} disabled={busy}>
+            {busy ? <Spinner label="Saving" size={16} /> : null}
+            Continue
+          </Button>
+        ) : (
+          <>
+            <Button block onClick={results ? checkAgain : connect} disabled={busy}>
+              {busy ? <Spinner label="Connecting" size={16} /> : null}
+              {results ? 'Check again' : 'Connect'}
+            </Button>
+            {results && choice && (
+              <Button block variant="secondary" onClick={finish} disabled={busy}>Continue anyway</Button>
+            )}
+          </>
+        )}
       </footer>
     </main>
   );

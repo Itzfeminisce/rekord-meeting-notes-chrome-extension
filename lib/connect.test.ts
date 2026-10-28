@@ -12,8 +12,12 @@ import {
   reconnect,
   optionalKeyNames,
   requiredKeyNames,
-  verifyOrForget,
   verifyTranscriptionKey,
+  checkKeys,
+  pickProviders,
+  saveKeyStatus,
+  transcriptionKeyRejected,
+  type KeyResults,
 } from './connect';
 import { loadKeys, saveKeys } from './keys';
 import { PenvError } from './penv';
@@ -86,14 +90,85 @@ describe('connect', () => {
     expect(String((fetchImpl.mock.calls[0] as unknown[])[0])).not.toContain('old');
   });
 
-  it('verifyOrForget forgets token and keys when the provider rejects the key', async () => {
+  it('checkKeys checks each key against its own provider', async () => {
+    const statusFor: Record<string, number> = {
+      'https://api.groq.com/openai/v1/models': 200,
+      'https://api.openai.com/v1/models': 401,
+      'https://api.anthropic.com/v1/models': 403,
+      'https://openrouter.ai/api/v1/models': 503,
+    };
+    const fetchImpl = vi.fn(async (url: RequestInfo | URL) => {
+      if (String(url).includes('deepgram')) throw new TypeError('offline');
+      return new Response('{}', { status: statusFor[String(url)] ?? 500 });
+    });
+    const results = await checkKeys(
+      {
+        GROQ_API_KEY: 'gsk_test',
+        OPENAI_API_KEY: 'sk_test',
+        ANTHROPIC_API_KEY: 'sk_test',
+        OPENROUTER_API_KEY: 'sk_test',
+        DEEPGRAM_API_KEY: 'dg_test',
+        OTHER_THING: 'x_test',
+      },
+      fetchImpl as typeof fetch,
+    );
+    expect(results).toEqual({
+      GROQ_API_KEY: 'ok',
+      OPENAI_API_KEY: 'rejected',
+      ANTHROPIC_API_KEY: 'rejected',
+      OPENROUTER_API_KEY: 'unreachable',
+      DEEPGRAM_API_KEY: 'unreachable',
+    });
+    const calls = fetchImpl.mock.calls as unknown as [string, RequestInit][];
+    const headersOf = (part: string) => calls.find(([u]) => u.includes(part))?.[1].headers;
+    expect(headersOf('groq')).toEqual({ Authorization: 'Bearer gsk_test' });
+    expect(headersOf('anthropic')).toMatchObject({ 'x-api-key': 'sk_test', 'anthropic-version': '2023-06-01' });
+    expect(headersOf('deepgram')).toEqual({ Authorization: 'Token dg_test' });
+    expect(JSON.stringify(results)).not.toMatch(/_test/);
+  });
+
+  it('checkKeys marks a key unreachable when the provider never answers', async () => {
+    const hang = vi.fn(() => new Promise<Response>(() => {}));
+    expect(await checkKeys({ GROQ_API_KEY: 'gsk_test' }, hang as typeof fetch, 20)).toEqual({ GROQ_API_KEY: 'unreachable' });
+  });
+
+  it('pickProviders keeps working providers and falls back in order', () => {
+    const base = { ...DEFAULT_SETTINGS, features: { ...DEFAULT_SETTINGS.features } };
+    const all: KeyResults = { GROQ_API_KEY: 'ok', DEEPGRAM_API_KEY: 'ok' };
+    expect(pickProviders(all, base)).toEqual({
+      transcription: base.transcription,
+      summary: base.summary,
+      features: base.features,
+    });
+    const groqBad = pickProviders(
+      { GROQ_API_KEY: 'rejected', OPENAI_API_KEY: 'ok', ANTHROPIC_API_KEY: 'ok', DEEPGRAM_API_KEY: 'unreachable' },
+      base,
+    );
+    expect(groqBad.transcription).toEqual({ provider: 'openai', model: 'whisper-1' });
+    expect(groqBad.summary.provider).toBe('openai');
+    expect(groqBad.features).toEqual({ ...base.features, speakerNames: false });
+    const onlyAnthropic = pickProviders({ GROQ_API_KEY: 'rejected', ANTHROPIC_API_KEY: 'ok' }, base);
+    expect(onlyAnthropic.transcription).toEqual(base.transcription);
+    expect(onlyAnthropic.summary.provider).toBe('anthropic');
+    const ollama = pickProviders({}, { ...base, summary: { provider: 'ollama', model: 'llama3.2' } });
+    expect(ollama.summary).toEqual({ provider: 'ollama', model: 'llama3.2' });
+  });
+
+  it('keeps a rejected key and reports it to Start', async () => {
     await connectPenv('pck_test', TARGET, penvOk());
     const rejected = vi.fn(async () => new Response('', { status: 401 }));
-    await expect(verifyOrForget(DEFAULT_SETTINGS, rejected)).rejects.toThrow(/rejected GROQ_API_KEY/);
-    expect(await loadKeys()).toEqual({});
-    expect(await loadToken()).toBeUndefined();
-    expect(await loadTokenTarget()).toBeUndefined();
-    expect(await ensureKeys(penvOk())).toBe('reconnect');
+    const results = await checkKeys(await loadKeys(), rejected);
+    await saveKeyStatus(results);
+    expect(await loadKeys()).toEqual({ GROQ_API_KEY: 'gsk_test' });
+    expect(await loadToken()).toBe('pck_test');
+    expect(await ensureKeys(penvOk())).toBe('ready');
+    expect(await transcriptionKeyRejected(DEFAULT_SETTINGS, rejected)).toBe(true);
+    const fixed = vi.fn(async () => new Response('{}', { status: 200 }));
+    expect(await transcriptionKeyRejected(DEFAULT_SETTINGS, fixed)).toBe(false);
+    expect(await transcriptionKeyRejected(DEFAULT_SETTINGS, rejected)).toBe(false);
+    await saveKeyStatus(results);
+    await forgetAll();
+    expect(await transcriptionKeyRejected(DEFAULT_SETTINGS)).toBe(false);
   });
 
   it('forgetAll clears token and keys', async () => {
