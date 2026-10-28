@@ -15,7 +15,7 @@ body{margin:0}
 a{color:#4F46E5}a:hover{color:#3730A3}
 </style>
 </helmet>
-<div style="width: 400px; height: 1500px; box-sizing: border-box; padding: 20px 12px; display: flex; flex-direction: column; gap: 22px; background: #F6F6F7; color: #111114; font-family: Geist, system-ui, sans-serif;">
+<div style="width: 400px; height: 1900px; box-sizing: border-box; padding: 20px 12px; display: flex; flex-direction: column; gap: 22px; background: #F6F6F7; color: #111114; font-family: Geist, system-ui, sans-serif;">
 
   <section style="display: flex; flex-direction: column; gap: 8px;">
     <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Setup · key not recognized</h2>
@@ -37,6 +37,30 @@ a{color:#4F46E5}a:hover{color:#3730A3}
     <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FDECEC; border: 1px solid #F2C9C7; display: flex; flex-direction: column; gap: 4px;">
       <span style="font-size: 14px; font-weight: 600; color: #8A1C14;">Groq didn’t accept this key</span>
       <span style="font-size: 13px; line-height: 1.45; color: #8A1C14;">Make sure you copied all of it, or <a href="#" style="color: #8A1C14; font-weight: 600;">create a new key</a>.</span>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Setup · Penv Cloud not connected</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FFF8EC; border: 1px solid #F5DDB0; display: flex; align-items: center; gap: 10px;">
+      <span style="flex-grow: 1; font-size: 13px; line-height: 1.45; color: #5C3200;">Penv Cloud wasn’t connected. The window was closed before you chose Allow.</span>
+      <button type="button" style="height: 32px; padding: 0 12px; border: none; border-radius: 9px; background: #111114; color: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600;">Try again</button>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Setup · Penv Cloud shared no usable keys</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FFF8EC; border: 1px solid #F5DDB0; display: flex; flex-direction: column; gap: 10px;">
+      <span style="font-size: 13px; line-height: 1.45; color: #5C3200;">Connected, but Rekord can’t read a Groq key yet. Add one to this environment on Penv Cloud, or choose it when you connect.</span>
+      <a href="#" style="align-self: flex-start; height: 32px; padding: 0 12px; border-radius: 9px; background: #FFFFFF; border: 1px solid #F5DDB0; color: #5C3200; font-size: 12px; font-weight: 600; text-decoration: none; display: flex; align-items: center;">Change which keys</a>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Start or Settings · Penv Cloud disconnected</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FDECEC; border: 1px solid #F2C9C7; display: flex; align-items: center; gap: 10px;">
+      <span style="flex-grow: 1; font-size: 13px; line-height: 1.45; color: #8A1C14;">Rekord was disconnected from Penv Cloud. Connect again to load your keys.</span>
+      <a href="V3PenvConnect.dc.html" style="height: 32px; padding: 0 12px; border-radius: 9px; background: #FFFFFF; border: 1px solid #F2C9C7; color: #8A1C14; font-size: 12px; font-weight: 600; text-decoration: none; display: flex; align-items: center;">Connect again</a>
     </div>
   </section>
 
@@ -102,7 +126,7 @@ a{color:#4F46E5}a:hover{color:#3730A3}
   </section>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":1500}}'>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":1900}}'>
 class Component extends DCLogic {
 renderVals() {
 return {};

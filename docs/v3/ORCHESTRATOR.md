@@ -2,7 +2,7 @@
 
 Scope: smart AI setup, desktop-app audio, real-time transcription (Deepgram streaming), Ask all meetings,
 sharing (Google Docs, view-only link, Notion), Google Calendar, Chrome Web Store (unlisted) with What's new.
-Design: the 17 `V3*.dc.html` frames in `design/frames/` (canvas row 4 and 5). `FRAMES.md` maps every frame,
+Design: the 19 `V3*.dc.html` frames in `design/frames/` (canvas row 4 and 5). `FRAMES.md` maps every frame,
 control and link to a task. Nothing in it may be skipped.
 
 Must not change: penv client behaviour (`lib/penv.ts`); keys in `chrome.storage.session` only; meetings local only
@@ -10,7 +10,8 @@ Must not change: penv client behaviour (`lib/penv.ts`); keys in `chrome.storage.
 
 ## Order
 T1 first. Then T2, T3, T5, T6, T10 in parallel. T4 after T3 (both change the offscreen recorder).
-T7 and T9 after T6. T8 any time after T1. Then the final gate.
+T7 and T9 after T6. T8 any time after T1. T11 after T2, and only once Penv Cloud app connections are live
+(until then T2 ships the Connect button hidden behind `WXT_PENV_APP_CONNECT`; the token path works). Then the final gate.
 Every task runs in a fresh subagent at the model in `HANDOFF.md`; never resume a finished agent.
 
 ## Decisions
@@ -34,6 +35,7 @@ Every task runs in a fresh subagent at the model in `HANDOFF.md`; never resume a
 - T6/T7: a Google Cloud project with the Calendar and Drive APIs on, an OAuth client of type "Chrome extension"
   for the fixed extension ID, and the owner added as a test user. T6 writes the steps into `docs/v3/GOOGLE.md`.
 - T8: a Notion internal integration secret (`NOTION_TOKEN`) for testing.
+- T11: Penv Cloud app connections live, with Rekord registered for the fixed extension ID's redirect URI.
 - T10: a Chrome Web Store developer account (one-off fee) to upload the zip; T10 prepares everything else.
 
 ## Final gate

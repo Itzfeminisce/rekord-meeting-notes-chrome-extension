@@ -25,5 +25,6 @@
 - [ ] T8 Notion connect, page choice, share — sonnet — specs/T8.md (after T1)
 - [ ] T9 Name speakers from the invite — sonnet — specs/T9.md (after T6)
 - [ ] T10 What's new and Chrome Web Store packaging — sonnet — specs/T10.md (after T1)
+- [ ] T11 Connect Penv Cloud with one click — opus — specs/T11.md (after T2 and Penv Cloud app connections)
 
 ## Log

@@ -8,6 +8,8 @@ export type MeetingSource = 'tab' | 'app';      // 'app' = desktop app via syste
 export interface Settings {
   /* v2 fields; transcription.provider widens to TranscriptionProvider */
   setup: SetupPreset;                              // default 'free'
+  keySource: 'penv' | 'penv-app' | 'paste';         // 'penv-app' = one-click Penv Cloud connection (T11)
+  penvApp?: { connectionId: string; org: string; project: string; env: string; keys: string[] }; // grant itself in session storage
   realtimeBackup: boolean;                         // "Switch to Groq if Deepgram stops working", default true
   google: { calendar: boolean; docs: boolean; calendarId?: string; email?: string }; // connected scopes
   notion: { pageId?: string; pageTitle?: string };

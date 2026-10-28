@@ -7,11 +7,19 @@ Notion "Allow more pages" → Notion help on adding connections; provider "creat
 ## V3Setup.dc.html (T2) — replaces Connect and ConnectPaste
 - Back → Permissions. "How Rekord handles your meetings" → V3HowItWorks.
 - Presets: Free to start (default) / Real time / Choose my own → V3SetupCustom.
-- "Use Penv Cloud" / "Paste a key" switch; "Penv Cloud" links to `https://penv.cloud` (every mention, all frames). Penv Cloud shows the v1 environment + token fields (Connect.tsx behaviour, this frame's style).
+- "Use Penv Cloud" → V3PenvConnect / "Paste a key" switch; "Penv Cloud" links to `https://penv.cloud` (every mention, all frames). Penv Cloud shows the v1 environment + token fields (Connect.tsx behaviour, this frame's style).
 - "Paste your API key": detect the service on input; row "This is a <Service> key", jobs it covers, status Ready/
   checking; several keys may be pasted one after another (one row each). "Get a free Groq key" → Groq keys page.
 - Preset needs a key it doesn't have → the missing service's key row asks for it. "Start using Rekord" → V3Start.
 - States (V3States): key not recognized (service chips → check as that service), key rejected (+ "create a new key").
+
+## V3PenvConnect.dc.html / V3PenvConnected.dc.html (T2 layout, T11 behaviour)
+- Shown when "Use Penv Cloud" is chosen in V3Setup. Chosen-setup row + Change → V3Setup.
+- "Connect Penv Cloud" → Penv Cloud approval window → V3PenvConnected (T11; button hidden until `WXT_PENV_APP_CONNECT`).
+- "See how it works" → `https://penv.cloud`. "Use a token instead" → environment + token fields (v1 penv path).
+- "Start using Rekord" disabled until a key source works, with its hint line.
+- Connected: account path, one row per shared key with its job and status, "Change which keys" → reconnect.
+- States (V3States): not connected (Try again), shared no usable keys (Change which keys), disconnected (Connect again).
 
 ## V3SetupCustom.dc.html (T2)
 - Back → V3Setup. Transcription: Groq / OpenAI / Deepgram, description per choice, that service's key + status,
@@ -28,7 +36,8 @@ Notion "Allow more pages" → Notion help on adding connections; provider "creat
   Rejected / Couldn't check from the existing key check.
 - "Keep transcribing if Deepgram stops" switch (shown only with Deepgram) = `realtimeBackup`.
 - Your keys: source line, Refresh (penv reload), one row per loaded key with its job or "not in use · Saved for later".
-- "Change how Rekord works" → V3Setup. "Remove keys" → clear keys (existing behaviour, with confirm).
+- "Change how Rekord works" → V3Setup. "Manage on Penv Cloud" → `https://penv.cloud` (Penv Cloud source only).
+  "Disconnect" → revoke (T11) or clear pasted keys (existing behaviour, with confirm).
 - "Connected apps" → V3Connections. "Recording, language and data" → existing Settings screen (minus the moved AI/key parts).
 
 ## V3Start.dc.html (T3, calendar card T6)
@@ -88,4 +97,4 @@ Notion "Allow more pages" → Notion help on adding connections; provider "creat
 - Once after an update to a newer version. "Connect your calendar" → V3Connections. "Maybe later" → V3Start.
 
 ## V3States.dc.html
-Each section belongs to the task of its screen above; all ten must exist.
+Each section belongs to the task of its screen above; all thirteen must exist.
