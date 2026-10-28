@@ -450,3 +450,4 @@ a:hover { color: var(--accent-hover); }
 .sum-decision > span { flex-grow: 1; }
 .sum-chip { flex-shrink: 0; height: 22px; padding: 0 6px; border: 0; border-radius: 6px; background: #eef0ff; color: var(--accent); font-family: var(--mono); font-size: 11px; cursor: pointer; }
 .sum-chip:hover { color: var(--accent-hover); }
+.start-grant { margin: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); font-size: 12px; line-height: 1.45; }

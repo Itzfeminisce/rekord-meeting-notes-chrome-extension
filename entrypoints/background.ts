@@ -1,3 +1,4 @@
+import { tabRefusedReply } from '@/lib/capture';
 import { resolveSources, type Sources } from '@/lib/sources';
 import { getMeeting, pendingChunks, putMeeting } from '@/lib/db';
 import { loadKeys } from '@/lib/keys';
@@ -59,10 +60,18 @@ function setCloseAfterDrain(meetingId: string | null): void {
 }
 
 export default defineBackground(() => {
-  // Clicking the toolbar icon opens the side panel (and grants tab capture for that tab).
+  // We open the panel ourselves from action.onClicked: with openPanelOnActionClick the click never reaches
+  // the extension, so the meeting tab is not granted (activeTab) and tab capture is refused.
   browser.sidePanel
-    .setPanelBehavior({ openPanelOnActionClick: true })
+    .setPanelBehavior({ openPanelOnActionClick: false })
     .catch((error) => console.error('Rekord: could not set side panel behaviour', error));
+  browser.action.onClicked.addListener((tab) => {
+    // Must run synchronously inside the click (user gesture): no awaits before open().
+    const opening = tab.id != null
+      ? browser.sidePanel.open({ tabId: tab.id })
+      : browser.sidePanel.open({ windowId: tab.windowId });
+    opening.catch((error) => console.error('Rekord: could not open the side panel', error));
+  });
 
   // After a browser restart, finish transcribing chunks left pending by an earlier meeting.
   browser.runtime.onStartup.addListener(() => void openForCatchUp());
@@ -121,9 +130,9 @@ async function startRecording(tabId: number, sources: Sources): Promise<Recordin
   try {
     if (sources.tab) streamId = await browser.tabCapture.getMediaStreamId({ targetTabId: tabId });
   } catch (error) {
-    console.error('Rekord: tab capture refused', error);
+    console.error('Rekord: tab capture refused', error instanceof Error ? error.message : error);
     setState({ status: 'idle' });
-    return { ok: false, error: START_ERROR };
+    return tabRefusedReply();
   }
 
   let meeting: Meeting | undefined;

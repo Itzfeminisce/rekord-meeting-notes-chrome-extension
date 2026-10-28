@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BrandMark, Button, Spinner } from '../components';
 import { useRouter } from '../router';
 import type { RecordingReply } from '../../background';
 import { ensureKeys, reconnect, transcriptionKeyRejected } from '@/lib/connect';
 import { getMeeting, listMeetings, putMeeting } from '@/lib/db';
 import { dateTile, hostOf } from '@/lib/live';
+import { needsTabGrant, TAB_GRANT_HINT } from '@/lib/capture';
 import { send } from '@/lib/messages';
 import { DEFAULT_SOURCES, isLastSource, toggleSource } from '@/lib/sources';
 import { formatDuration } from '@/lib/time';
@@ -32,6 +33,7 @@ export default function Start() {
   const [reconnecting, setReconnecting] = useState(false);
   const [keyRejected, setKeyRejected] = useState(false);
   const [stateChecked, setStateChecked] = useState(false);
+  const autoName = useRef(''); // the tab title we filled in; replaced when the active tab changes, unless edited
 
   useEffect(() => {
     let alive = true;
@@ -42,21 +44,40 @@ export default function Start() {
         else setStateChecked(true);
       })
       .catch(() => alive && setStateChecked(true));
-    browser.tabs
+    // tabs.get/query only expose a tab's url once Rekord was invoked on it (activeTab), which is how we
+    // detect a missing tab-capture grant. Re-check when the active tab changes and when the panel regains focus.
+    const loadTab = () => browser.tabs
       .query({ active: true, currentWindow: true })
-      .then(([t]) => {
+      .then(([t]) => (t?.id != null ? browser.tabs.get(t.id) : undefined))
+      .then((t) => {
+        if (!alive) return;
         if (t?.id != null) {
-          setTab({ id: t.id, title: t.title ?? '', url: t.url, favIconUrl: t.favIconUrl });
-          setName(t.title ?? '');
+          const title = t.title ?? '';
+          setTab({ id: t.id, title, url: t.url, favIconUrl: t.favIconUrl });
+          setName((n) => (n === autoName.current ? title : n));
+          autoName.current = title;
         } else setTab(null);
       })
-      .catch(() => setTab(null));
+      .catch(() => alive && setTab(null));
+    void loadTab();
+    const onActivated = () => void loadTab();
+    const onUpdated = (_id: number, info: { status?: string; url?: string; title?: string }) => {
+      if (info.status === 'complete' || info.url || info.title) void loadTab();
+    };
+    window.addEventListener('focus', onActivated);
+    browser.tabs.onActivated.addListener(onActivated);
+    browser.tabs.onUpdated.addListener(onUpdated);
     ensureKeys().then(setKeys, () => setKeys('reconnect'));
     transcriptionKeyRejected().then((r) => alive && setKeyRejected(r), () => {});
     listMeetings()
       .then((all) => setRecent(all.filter((m) => m.status !== 'recording').sort((a, b) => b.startedAt - a.startedAt).slice(0, 3)))
       .catch(() => setRecent([]));
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+      window.removeEventListener('focus', onActivated);
+      browser.tabs.onActivated.removeListener(onActivated);
+      browser.tabs.onUpdated.removeListener(onUpdated);
+    };
   }, []);
 
   async function tryReconnect() {
@@ -155,6 +176,9 @@ export default function Start() {
             <span>Your transcription key was rejected. Fix it in Settings.</span>
             <Button variant="secondary" onClick={() => navigate('settings')}>Settings</Button>
           </div>
+        )}
+        {!error && tab && needsTabGrant({ tabOn: sources.tab, tabUrl: tab.url }) && (
+          <p className="start-grant" role="status">{TAB_GRANT_HINT}</p>
         )}
         {error && <p className="start-warn" role="alert">{error}</p>}
 
