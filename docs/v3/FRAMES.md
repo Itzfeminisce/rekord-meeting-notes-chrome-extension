@@ -7,7 +7,7 @@ Notion "Allow more pages" → Notion help on adding connections; provider "creat
 ## V3Setup.dc.html (T2) — replaces Connect and ConnectPaste
 - Back → Permissions. "How Rekord handles your meetings" → V3HowItWorks.
 - Presets: Free to start (default) / Real time / Choose my own → V3SetupCustom.
-- "Use Penv Cloud" → V3PenvConnect / "Paste a key" switch; "Penv Cloud" links to `https://penv.cloud` (every mention, all frames). Penv Cloud shows the v1 environment + token fields (Connect.tsx behaviour, this frame's style).
+- "Use Penv Cloud" → V3PenvConnect / "Paste a key" switch; "Penv Cloud" links to `https://penv.cloud` (every mention, all frames). The v1 environment + token fields appear only behind "Use a token instead" on V3PenvConnect.
 - "Paste your API key": detect the service on input; row "This is a <Service> key", jobs it covers, status Ready/
   checking; several keys may be pasted one after another (one row each). "Get a free Groq key" → Groq keys page.
 - Preset needs a key it doesn't have → the missing service's key row asks for it. "Start using Rekord" → V3Start.
