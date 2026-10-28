@@ -89,11 +89,11 @@ export type RecordingState =
 
 // runtime messages (chrome.runtime.sendMessage); all plain JSON, never Blobs
 export type Message =
-  | { type: 'recording/start'; tabId: number }          // side panel → background
+  | { type: 'recording/start'; tabId: number; sources?: { mic: boolean; tab: boolean } } // side panel → background
   | { type: 'recording/stop' }                          // side panel → background
   | { type: 'recording/state'; state: RecordingState }  // background → all (also on request)
   | { type: 'recording/get-state' }
-  | { type: 'offscreen/start'; streamId: string; meetingId: string; startedAt: number } // background → offscreen
+  | { type: 'offscreen/start'; streamId: string; meetingId: string; startedAt: number; sources?: { mic: boolean; tab: boolean } } // background → offscreen
   | { type: 'offscreen/stop' }
   | { type: 'offscreen/levels'; micLevel: number; tabLevel: number }              // offscreen → background, ~4/s
   | { type: 'segment/added'; segment: Segment }         // offscreen/transcriber → all

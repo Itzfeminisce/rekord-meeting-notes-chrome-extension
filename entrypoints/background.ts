@@ -1,3 +1,4 @@
+import { resolveSources, type Sources } from '@/lib/sources';
 import { getMeeting, pendingChunks, putMeeting } from '@/lib/db';
 import { loadKeys } from '@/lib/keys';
 import { onMessage, send } from '@/lib/messages';
@@ -73,7 +74,7 @@ export default defineBackground(() => {
       case 'recording/start':
         return ready.then(() => {
           if (state.status !== 'idle') return { ok: false, error: 'Rekord is already recording.' } as RecordingReply;
-          const run = startRecording(msg.tabId);
+          const run = startRecording(msg.tabId, resolveSources(msg.sources));
           starting = run.finally(() => (starting = null));
           return run;
         });
@@ -111,14 +112,14 @@ export default defineBackground(() => {
   });
 });
 
-async function startRecording(tabId: number): Promise<RecordingReply> {
+async function startRecording(tabId: number, sources: Sources): Promise<RecordingReply> {
   const startedAt = Date.now();
   const meetingId = crypto.randomUUID();
   setState({ status: 'starting', meetingId, startedAt, micLevel: 0, tabLevel: 0 });
 
-  let streamId: string;
+  let streamId = '';
   try {
-    streamId = await browser.tabCapture.getMediaStreamId({ targetTabId: tabId });
+    if (sources.tab) streamId = await browser.tabCapture.getMediaStreamId({ targetTabId: tabId });
   } catch (error) {
     console.error('Rekord: tab capture refused', error);
     setState({ status: 'idle' });
@@ -142,7 +143,7 @@ async function startRecording(tabId: number): Promise<RecordingReply> {
     };
     await putMeeting(meeting);
     await ensureOffscreen();
-    const reply = await send<OffscreenReply>({ type: 'offscreen/start', streamId, meetingId, startedAt });
+    const reply = await send<OffscreenReply>({ type: 'offscreen/start', streamId, meetingId, startedAt, sources });
     if (!reply?.ok) throw new Error(reply?.error ?? START_ERROR);
     micUnavailable = reply.micUnavailable === true;
   } catch (error) {

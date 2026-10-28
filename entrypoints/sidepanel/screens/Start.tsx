@@ -6,6 +6,7 @@ import { ensureKeys, reconnect, transcriptionKeyRejected } from '@/lib/connect';
 import { getMeeting, listMeetings, putMeeting } from '@/lib/db';
 import { dateTile, hostOf } from '@/lib/live';
 import { send } from '@/lib/messages';
+import { DEFAULT_SOURCES, isLastSource, toggleSource } from '@/lib/sources';
 import { formatDuration } from '@/lib/time';
 import type { Meeting, RecordingState } from '@/lib/types';
 
@@ -23,6 +24,7 @@ export default function Start() {
   const { navigate, replace } = useRouter();
   const [tab, setTab] = useState<TabInfo | null | undefined>(undefined);
   const [name, setName] = useState('');
+  const [sources, setSources] = useState(DEFAULT_SOURCES);
   const [keys, setKeys] = useState<'checking' | 'ready' | 'reconnect'>('checking');
   const [recent, setRecent] = useState<Meeting[] | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -75,7 +77,7 @@ export default function Start() {
     if (!tab || busy) return;
     setBusy(true);
     setError('');
-    const reply = await send<RecordingReply>({ type: 'recording/start', tabId: tab.id });
+    const reply = await send<RecordingReply>({ type: 'recording/start', tabId: tab.id, sources });
     if (reply && reply.ok && reply.meetingId) {
       const title = name.trim();
       if (title) {
@@ -127,8 +129,18 @@ export default function Start() {
         </div>
 
         <ul className="start-sources">
-          <li><span>You<small>Microphone</small></span></li>
-          <li><span>Others<small>This tab</small></span></li>
+          <li>
+            <label>
+              <input type="checkbox" checked={sources.mic} disabled={isLastSource(sources, 'mic')} onChange={() => setSources((s) => toggleSource(s, 'mic'))} />
+              <span>You<small>Microphone</small></span>
+            </label>
+          </li>
+          <li>
+            <label>
+              <input type="checkbox" checked={sources.tab} disabled={isLastSource(sources, 'tab')} onChange={() => setSources((s) => toggleSource(s, 'tab'))} />
+              <span>Others<small>This tab</small></span>
+            </label>
+          </li>
         </ul>
 
         {keys === 'reconnect' && (
