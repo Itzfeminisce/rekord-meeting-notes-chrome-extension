@@ -16,6 +16,7 @@ import Transcript from './screens/Transcript';
 import Export from './screens/Export';
 import Settings from './screens/Settings';
 import ErrorScreen from './screens/Error';
+import NoSound, { AppAudioWatch } from './screens/NoSound';
 
 export const SCREENS: Record<ScreenName, ComponentType> = {
   welcome: Welcome,
@@ -32,6 +33,7 @@ export const SCREENS: Record<ScreenName, ComponentType> = {
   export: Export,
   settings: Settings,
   error: ErrorScreen,
+  nosound: NoSound,
 };
 
 /** First screen: onboarding until the user has finished it, then Start. */
@@ -47,7 +49,12 @@ export async function initialRoute(): Promise<Route> {
 function CurrentScreen() {
   const { route } = useRouter();
   const Screen = SCREENS[route.screen];
-  return <Screen key={`${route.screen}:${route.params.meetingId ?? ''}`} />;
+  return (
+    <>
+      <Screen key={`${route.screen}:${route.params.meetingId ?? ''}`} />
+      {route.screen === 'live' && <AppAudioWatch meetingId={route.params.meetingId} />}
+    </>
+  );
 }
 
 export default function App() {

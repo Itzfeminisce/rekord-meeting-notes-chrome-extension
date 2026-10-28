@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 
 export type ScreenName =
   | 'welcome' | 'permissions' | 'connect' | 'start' | 'live' | 'processing'
-  | 'summary' | 'speakers' | 'ask' | 'library' | 'transcript' | 'export' | 'settings' | 'error';
+  | 'summary' | 'speakers' | 'ask' | 'library' | 'transcript' | 'export' | 'settings' | 'error'
+  | 'nosound'; // v3: desktop-app capture hears nothing
 
 /** Route params. `meetingId` for meeting screens; `message` for the error screen. */
 export interface RouteParams { meetingId?: string; message?: string; atMs?: number }

@@ -5,6 +5,8 @@ import { rms, toLevel } from '@/lib/audio/levels';
 import { mediaRecorder, pickMimeType } from '@/lib/audio/recorder';
 import { ContinuousRecording, shouldRecord, sliceRecorder } from '@/lib/audio/recording';
 import { resolveSources, type Sources } from '@/lib/sources';
+import { appSources, type AppFlag } from '@/lib/capture';
+import { APP_AUDIO_PORT, receiveAppAudio, SilenceWatch } from '@/lib/audio/appAudio';
 import { drain, drainAll, enqueue, startTranscriber } from '@/lib/transcribe';
 import type { Speaker, TranscriberConfig } from '@/lib/types';
 
@@ -24,6 +26,18 @@ interface Session {
   timer: ReturnType<typeof setInterval>;
   /** v2: continuous tab recording for diarization, or null when not wanted (resolves once decided). */
   recording: Promise<ContinuousRecording | null>;
+  /** v3 "In an app": the shared screen audio arrives later over the side panel's link and becomes 'others'. */
+  app?: AppSession;
+}
+
+interface AppSession {
+  /** Adds the received stream as the meeting ("others") track. */
+  attach: (stream: MediaStream) => void;
+  others?: Track;
+  watch: SilenceWatch;
+  closeLink?: () => void;
+  /** Chrome only feeds a remote WebRTC track into Web Audio while a media element plays it (muted). */
+  playback?: HTMLAudioElement;
 }
 
 let session: Session | null = null;
@@ -42,16 +56,35 @@ void drainAll().then(() => {
 });
 
 onMessage((msg) => {
-  if (msg.type === 'offscreen/start') return (busy = busy.then(() => start(msg.streamId, msg.meetingId, msg.startedAt, resolveSources(msg.sources))));
+  if (msg.type === 'offscreen/start') {
+    const app = appSources(msg as typeof msg & AppFlag);
+    return (busy = busy.then(() => start(msg.streamId, msg.meetingId, msg.startedAt, app ?? resolveSources(msg.sources), app !== null)));
+  }
   if (msg.type === 'offscreen/stop') return (busy = busy.then(() => stop()));
   return undefined;
 });
 
-async function start(streamId: string, meetingId: string, startedAt: number, sources: Sources): Promise<OffscreenReply> {
+// v3: the side panel links the shared screen audio once the recording has started.
+browser.runtime.onConnect.addListener((port) => {
+  if (port.name !== APP_AUDIO_PORT) return;
+  const app = session?.app;
+  if (!app) {
+    port.disconnect();
+    return;
+  }
+  app.closeLink?.();
+  app.closeLink = receiveAppAudio(port, {
+    onStream: (stream) => app.attach(stream),
+    onReset: () => app.watch.reset(),
+    onClose: () => undefined,
+  });
+});
+
+async function start(streamId: string, meetingId: string, startedAt: number, sources: Sources, app = false): Promise<OffscreenReply> {
   if (session) await stop();
   let tab: MediaStream | undefined;
   let mic: MediaStream | undefined;
-  if (sources.tab) {
+  if (sources.tab && !app) {
     try {
       tab = await navigator.mediaDevices.getUserMedia({
         audio: { mandatory: { chromeMediaSource: 'tab', chromeMediaSourceId: streamId } } as MediaTrackConstraints,
@@ -69,7 +102,7 @@ async function start(streamId: string, meetingId: string, startedAt: number, sou
     console.warn('Rekord: microphone unavailable, recording the tab only', error);
   }
 
-  if (!tab && !mic) return { ok: false, error: "Rekord can’t reach your microphone. Allow it in your browser, or also record this tab." };
+  if (!tab && !mic && !app) return { ok: false, error: "Rekord can’t reach your microphone. Allow it in your browser, or also record this tab." };
 
   const ctx = new AudioContext();
   const tabSource = tab && ctx.createMediaStreamSource(tab);
@@ -97,6 +130,31 @@ async function start(streamId: string, meetingId: string, startedAt: number, sou
   // If the meeting tab closes or stops sharing, end the recording properly.
   tab?.getAudioTracks()[0]?.addEventListener('ended', () => void send({ type: 'recording/stop' }));
 
+  // v3 "In an app": same chunking, silence skip and continuous recording as tab audio, once the stream arrives.
+  // Not played back: the app is already audible on the computer.
+  const appSession: AppSession | undefined = app ? {
+    watch: new SilenceWatch(() => void send({ type: 'app-audio/silent' })),
+    attach: (stream) => {
+      const a = session?.app;
+      if (!a || session?.meetingId !== meetingId) return stopStream(stream);
+      const first = !a.others;
+      if (a.others) {
+        void a.others.chunker.stop();
+        tracks.splice(tracks.indexOf(a.others), 1);
+      }
+      a.playback?.pause();
+      a.playback = new Audio();
+      a.playback.muted = true;
+      a.playback.srcObject = stream;
+      void a.playback.play().catch(() => undefined);
+      a.others = track(stream, 'others', ctx.createMediaStreamSource(stream));
+      tracks.push(a.others);
+      a.others.chunker.start();
+      a.watch.reset();
+      if (first && session) session.recording = startContinuous(stream, meetingId, startedAt, mimeType);
+    },
+  } : undefined;
+
   let n = 0;
   const timer = setInterval(() => {
     const level = (t: Track | undefined) => {
@@ -106,13 +164,14 @@ async function start(streamId: string, meetingId: string, startedAt: number, sou
       void t.chunker.tick(value);
       return toLevel(value);
     };
-    const tabLevel = level(tabTrack);
+    const tabLevel = level(tabTrack ?? appSession?.others);
     const micLevel = level(micTrack);
+    if (appSession?.others) appSession.watch.update(tabLevel, micLevel);
     if (++n % 2 === 0) void send({ type: 'offscreen/levels', tabLevel, micLevel });
   }, TICK_MS);
 
   const recording = tab ? startContinuous(tab, meetingId, startedAt, mimeType) : Promise.resolve(null);
-  session = { meetingId, ctx, tracks, timer, recording };
+  session = { meetingId, ctx, tracks, timer, recording, ...(appSession && { app: appSession }) };
   return mic || !sources.mic ? { ok: true } : { ok: true, micUnavailable: true };
 }
 
@@ -121,6 +180,8 @@ async function stop(): Promise<OffscreenReply> {
   if (!s) return { ok: true };
   session = null;
   clearInterval(s.timer);
+  s.app?.closeLink?.();
+  s.app?.playback?.pause();
   const recording = await s.recording;
   const [recorded] = await Promise.all([
     recording ? recording.stop() : Promise.resolve(false),
