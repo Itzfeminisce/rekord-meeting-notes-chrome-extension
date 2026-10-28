@@ -11,6 +11,7 @@ import Processing from './screens/Processing';
 import Speakers from './screens/Speakers';
 import Summary from './screens/Summary';
 import Ask from './screens/Ask';
+import AskAll from './screens/AskAll';
 import Library from './screens/Library';
 import Transcript from './screens/Transcript';
 import Export from './screens/Export';
@@ -27,6 +28,7 @@ export const SCREENS: Record<ScreenName, ComponentType> = {
   summary: Summary,
   speakers: Speakers,
   ask: Ask,
+  askall: AskAll,
   library: Library,
   transcript: Transcript,
   export: Export,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { deleteMeeting, listMeetings, listSegments } from '@/lib/db';
 import { dateLabel, groupMeetings, joinTranscript, matchesQuery, openActions } from '@/lib/library';
+import { attendeeLine } from '@/lib/askAll';
 import { formatDuration } from '@/lib/time';
 import type { Meeting } from '@/lib/types';
 import { Button, EmptyState, Spinner } from '../components';
@@ -63,6 +64,20 @@ export default function Library() {
         {meetings && <span className="lib-count">{meetings.length} saved</span>}
       </header>
 
+      <button
+        type="button" onClick={() => navigate('askall')}
+        style={{ margin: '14px 16px 0', padding: 14, border: 0, borderRadius: 16, background: '#111114', color: '#fff', font: 'inherit', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+      >
+        <span style={{ width: 36, height: 36, borderRadius: 11, background: '#26262E', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C7C4FF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l2.5 5.5L20 11l-5.5 2.5L12 19l-2.5-5.5L4 11l5.5-2.5z" /></svg>
+        </span>
+        <span style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>Ask all your meetings</span>
+          <span style={{ fontSize: 12, color: '#A3A3B2' }}>“What did we decide about pricing?”</span>
+        </span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A3A3B2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+      </button>
+
       <div className="lib-tools">
         <div className="lib-search">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6E7079" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
@@ -103,7 +118,7 @@ export default function Library() {
                         <span className="lib-title">{m.title || 'Untitled meeting'}</span>
                         <span className="lib-date">{dateLabel(m.startedAt)}</span>
                       </span>
-                      {m.summary?.overview && <span className="lib-sum">{m.summary.overview}</span>}
+                      {(attendeeLine(m) ?? m.summary?.overview) && <span className="lib-sum">{attendeeLine(m) ?? m.summary?.overview}</span>}
                       <span className="lib-pills">
                         {m.status === 'recording' && <span className="pill pill-live">Recording</span>}
                         {m.status === 'processing' && <span className="pill pill-live">Processing</span>}
@@ -111,6 +126,8 @@ export default function Library() {
                         {m.summary && (n > 0
                           ? <span className="pill pill-warn">{n} open {n === 1 ? 'action' : 'actions'}</span>
                           : <span className="pill pill-ok">All done</span>)}
+                        {m.shares?.some((x) => x.kind === 'gdocs') && <span className="pill pill-ok">In Google Docs</span>}
+                        {m.shares?.some((x) => x.kind === 'notion') && <span className="pill">In Notion</span>}
                         {!live && m.endedAt !== undefined && <span className="pill">{formatDuration(m.endedAt - m.startedAt)}</span>}
                       </span>
                     </button>
