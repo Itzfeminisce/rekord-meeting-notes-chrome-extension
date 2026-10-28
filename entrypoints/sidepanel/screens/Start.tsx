@@ -5,6 +5,9 @@ import { attachEvent } from '@/lib/calendar';
 import { useRouter } from '../router';
 import type { RecordingReply } from '../../background';
 import { ensureKeys, reconnect, transcriptionKeyRejected } from '@/lib/connect';
+import { getSettings } from '@/lib/settings';
+import { wasDisconnected } from '@/lib/penvApp';
+import { DisconnectedPanel } from './PenvConnect';
 import { getMeeting, listMeetings, putMeeting } from '@/lib/db';
 import { dateTile, hostOf } from '@/lib/live';
 import { captureSources, needsTabGrant, TAB_GRANT_HINT, type AppFlag, type MeetingPlace } from '@/lib/capture';
@@ -36,6 +39,7 @@ export default function Start() {
   const [error, setError] = useState('');
   const [reconnecting, setReconnecting] = useState(false);
   const [keyRejected, setKeyRejected] = useState(false);
+  const [penvGone, setPenvGone] = useState(false);
   const [stateChecked, setStateChecked] = useState(false);
   const autoName = useRef(''); // the tab title we filled in; replaced when the active tab changes, unless edited
   const calEvent = useRef<CalendarEvent | undefined>(undefined); // T6: event happening now, attached on start
@@ -76,7 +80,13 @@ export default function Start() {
       if (m.type === 'tab/granted') void loadTab();
       return undefined;
     });
-    ensureKeys().then(setKeys, () => setKeys('reconnect'));
+    const needReconnect = () => {
+      setKeys('reconnect');
+      Promise.all([getSettings(), wasDisconnected()])
+        .then(([st, gone]) => alive && setPenvGone(gone && st.keySource === 'penv-app'))
+        .catch(() => {});
+    };
+    ensureKeys().then((k) => (k === 'reconnect' ? needReconnect() : setKeys(k)), needReconnect);
     transcriptionKeyRejected().then((r) => alive && setKeyRejected(r), () => {});
     listMeetings()
       .then((all) => setRecent(all.filter((m) => m.status !== 'recording').sort((a, b) => b.startedAt - a.startedAt).slice(0, 3)))
@@ -208,7 +218,8 @@ export default function Start() {
           </label>
         </div>
 
-        {keys === 'reconnect' && (
+        {keys === 'reconnect' && penvGone && <DisconnectedPanel onConnect={() => navigate('penvConnect')} />}
+        {keys === 'reconnect' && !penvGone && (
           <div className="start-warn" role="alert">
             <span>Reconnect to your AI service to start recording.</span>
             <Button variant="secondary" onClick={tryReconnect} disabled={reconnecting}>{reconnecting ? 'Reconnecting…' : 'Reconnect'}</Button>
