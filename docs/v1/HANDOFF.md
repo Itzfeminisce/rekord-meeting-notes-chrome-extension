@@ -25,7 +25,7 @@
 - [x] T3 transcription: provider client, rate-limit queue, catch-up — opus — specs/T3.md
 - [x] T4 onboarding: Mic access screen + permission tab — sonnet — specs/T4.md
 - [x] T5 Connect AI + Settings screens, key loading (penv / paste) — opus — specs/T5.md
-- [ ] T6 Start + Live screens: transcript, notes, markers — sonnet — specs/T6.md
+- [x] T6 Start + Live screens: transcript, notes, markers — sonnet — specs/T6.md
 - [ ] T7 Wrapping up + Summary: LLM summary — sonnet — specs/T7.md
 - [ ] T8 Library + Transcript screens — sonnet — specs/T8.md
 - [ ] T9 Export: Markdown, PDF, email draft — sonnet — specs/T9.md
@@ -37,3 +37,4 @@
 - T2 done: offscreen rec (tab+mic), 10 s chunks, silence skip; start→{ok,meetingId|error}; activeTab added; 6 tests.
 - T5 done: Connect (penv/paste, verify /models) + Settings; lib/connect reconnect/ensureKeys; 9 tests.
 - T3 done: Groq/OpenAI client, 1-at-a-time queue ≤20/min, 429/auth/offline/5xx handling, catch-up; 8 tests.
+- T6 done: Start (tab, keys check, recent) + Live (clock, meters, transcript, notes, markers, banner slot); lib/live +7 tests.
