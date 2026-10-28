@@ -16,11 +16,11 @@
 
 ## Tasks
 - [x] T1 v3 core: types, settings, key detection, manifest (identity, hosts, fixed key) — opus — specs/T1.md
-- [ ] T2 Smart setup, How it works, Settings AI — sonnet — specs/T2.md (after T1)
+- [x] T2 Smart setup, How it works, Settings AI — sonnet — specs/T2.md (after T1)
 - [ ] T3 Desktop-app audio and its states — opus — specs/T3.md (after T1)
 - [ ] T4 Real-time transcription with Deepgram, backup to Groq — opus — specs/T4.md (after T3)
 - [x] T5 Ask all meetings and the Library entry — sonnet — specs/T5.md (after T1)
-- [ ] T6 Google connect and Calendar — opus — specs/T6.md (after T1)
+- [x] T6 Google connect and Calendar — opus — specs/T6.md (after T1)
 - [ ] T7 Share to Google Docs and view-only link — sonnet — specs/T7.md (after T6)
 - [ ] T8 Notion connect, page choice, share — sonnet — specs/T8.md (after T1)
 - [ ] T9 Name speakers from the invite — sonnet — specs/T9.md (after T6)
@@ -31,3 +31,5 @@
 - T1 done: v3 types, settings merge, keyDetect, manifest identity/oauth2/key; deepgram chunk fallback to Groq.
 - T10 done: What's new + onInstalled, STORE.md, privacy.md. Blocked: store upload (owner account), icons missing.
 - T5 done: Ask all + Library entry/pills. Suggested 'What’s pending with…' fills input (incomplete question).
+- T6 done: Google connect, Connections, Calendar card + Coming up. Blocked: real sign-in needs owner's OAuth client.
+- T2 done: Setup, SetupCustom, HowItWorks, SettingsAI, PenvConnect; Connect button behind WXT_PENV_APP_CONNECT.
