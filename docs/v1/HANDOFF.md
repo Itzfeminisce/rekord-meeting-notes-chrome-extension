@@ -12,10 +12,15 @@
 - Tick your task, add one log line (≤120 chars). Report in ≤10 lines.
 
 ## Conventions (T1 fills this, ≤6 lines)
-- (pending)
+- Import types from `@/lib/types`; data via `@/lib/db` (put/get/list<X>/delete<X>, listMeetings, deleteMeeting, pendingChunks).
+- Settings: `getSettings`/`updateSettings(partial)` (nested objects replaced whole), `PROVIDERS` in `@/lib/settings`.
+- Messages: `send(msg)` (resolves undefined if no listener) / `onMessage(h)` (return a value or promise to reply; returns off()).
+- Screens: default-export a no-prop component in `entrypoints/sidepanel/screens/`; use `useRouter()` → route.params, navigate/replace/back.
+- UI: `TopBar, Button(variant, block), Card, Tag(kind, onDark), Spinner(label), EmptyState` from `../components`; CSS vars in style.css.
+- Tests: vitest + `fakeBrowser.reset()`; IndexedDB tests import `fake-indexeddb/auto`, then `closeDB()` + new `IDBFactory()` per test.
 
 ## Tasks
-- [ ] T1 core: types, IndexedDB, settings, messages, router, shared UI — opus — specs/T1.md
+- [x] T1 core: types, IndexedDB, settings, messages, router, shared UI — opus — specs/T1.md
 - [ ] T2 audio capture: offscreen doc, tab + mic, 10 s chunks, silence skip — opus — specs/T2.md
 - [ ] T3 transcription: provider client, rate-limit queue, catch-up — opus — specs/T3.md
 - [ ] T4 onboarding: Mic access screen + permission tab — sonnet — specs/T4.md
@@ -27,3 +32,4 @@
 - [ ] T10 Connection-lost state — sonnet — specs/T10.md
 
 ## Log
+- T1 done: types, db (idb), settings, messages, time, router + 11 placeholder screens, shared UI; 22 tests pass.
