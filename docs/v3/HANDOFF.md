@@ -15,7 +15,7 @@
   report ≤10 lines including any FRAMES.md row you could not complete.
 
 ## Tasks
-- [ ] T1 v3 core: types, settings, key detection, manifest (identity, hosts, fixed key) — opus — specs/T1.md
+- [x] T1 v3 core: types, settings, key detection, manifest (identity, hosts, fixed key) — opus — specs/T1.md
 - [ ] T2 Smart setup, How it works, Settings AI — sonnet — specs/T2.md (after T1)
 - [ ] T3 Desktop-app audio and its states — opus — specs/T3.md (after T1)
 - [ ] T4 Real-time transcription with Deepgram, backup to Groq — opus — specs/T4.md (after T3)
@@ -28,3 +28,4 @@
 - [ ] T11 Connect Penv Cloud with one click — opus — specs/T11.md (after T2 and Penv Cloud app connections)
 
 ## Log
+- T1 done: v3 types, settings merge, keyDetect, manifest identity/oauth2/key; deepgram chunk fallback to Groq.
