@@ -22,6 +22,7 @@
 - [x] T4 Continuous tab recording for diarization — opus — specs/T4.md (after T1)
 - [x] T5 Diarize with Deepgram + suggest names — opus — specs/T5.md (after T4)
 - [x] T6 Name speakers screen, display names, Settings switches — sonnet — specs/T6.md (after T5)
+- [ ] T7 Connect never blocks on a bad key — opus — specs/T7.md
 
 ## Log
 - T1 done: types, DB v2 (asks/recordings/recordingMeta), settings v2, lib/llm chat()+transcriptLines; 102 tests pass
