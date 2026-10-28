@@ -17,7 +17,7 @@
 ## Tasks
 - [x] T1 v3 core: types, settings, key detection, manifest (identity, hosts, fixed key) — opus — specs/T1.md
 - [x] T2 Smart setup, How it works, Settings AI — sonnet — specs/T2.md (after T1)
-- [ ] T3 Desktop-app audio and its states — opus — specs/T3.md (after T1)
+- [x] T3 Desktop-app audio and its states — opus — specs/T3.md (after T1)
 - [ ] T4 Real-time transcription with Deepgram, backup to Groq — opus — specs/T4.md (after T3)
 - [x] T5 Ask all meetings and the Library entry — sonnet — specs/T5.md (after T1)
 - [x] T6 Google connect and Calendar — opus — specs/T6.md (after T1)
@@ -33,3 +33,4 @@
 - T5 done: Ask all + Library entry/pills. Suggested 'What’s pending with…' fills input (incomplete question).
 - T6 done: Google connect, Connections, Calendar card + Coming up. Blocked: real sign-in needs owner's OAuth client.
 - T2 done: Setup, SetupCustom, HowItWorks, SettingsAI, PenvConnect; Connect button behind WXT_PENV_APP_CONNECT.
+- T3 done: In an app capture (getDisplayMedia→WebRTC→offscreen), NoSound; sharing-stopped banner pending Live placement (T4).
