@@ -15,3 +15,8 @@ no key/token ever printed, logged or committed.
   `OPENAI_API_KEY` today, so OpenAI must work end to end.
 - Mic permission is requested from a small extension tab, because Chrome does not show permission prompts in a side panel.
 - Ask buttons/links in frames are omitted (Next scope).
+
+## Status
+All 10 tasks built, reviewed and fixed; final gate passed after one fix. Verified: 92 unit tests, typecheck, build,
+headless click-through of every screen, and an end-to-end run (audio chunk → OpenAI transcription → summary).
+Not verified: live tab/mic capture (needs a real Chrome with a meeting tab).

@@ -42,3 +42,4 @@
 - T8 done: Library (groups, search title+transcript, filter, delete confirm) + Transcript (find, copy, notes/markers); lib/library +6 tests.
 - T10 done: useConnection + Live ConnectionBanner (retry→catch-up) + Error connection-lost frame; 4 tests.
 - T9 done: Export sheet (copy, .md download, email draft), print.html PDF page, lib/export; 6 tests.
+- Final gate: opus review found offscreen had no storage API → config now via background (a310aa1). E2E (OpenAI) passed.
