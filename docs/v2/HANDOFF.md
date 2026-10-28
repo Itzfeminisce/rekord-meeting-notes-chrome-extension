@@ -24,7 +24,7 @@
 - [x] T6 Name speakers screen, display names, Settings switches — sonnet — specs/T6.md (after T5)
 - [x] T7 Connect never blocks on a bad key — opus — specs/T7.md
 - [x] T8 Frame parity: build what the original frames show — sonnet — specs/T8.md
-- [ ] T9 Tab capture works after clicking the Rekord icon — opus — specs/T9.md
+- [x] T9 Tab capture works after clicking the Rekord icon — opus — specs/T9.md
 
 ## Log
 - T1 done: types, DB v2 (asks/recordings/recordingMeta), settings v2, lib/llm chat()+transcriptLines; 102 tests pass
@@ -36,3 +36,4 @@
 - Final gate: 1 finding (speaker step stuck after panel close) fixed e87d4dc. E2E blocked: penv DEEPGRAM_API_KEY returns 401.
 - T7 done: checkKeys (all keys, 8s) + pickProviders fallback, Connect rows/pickers/Continue anyway, Start rejected banner
 - T8: source checkboxes, offline waiting row, decision moments + due, find placeholder, curly apostrophes; item 5 already matched.
+- T9: icon click opens panel via action.onClicked (activeTab grant); Start shows grant hint when tab url hidden.
