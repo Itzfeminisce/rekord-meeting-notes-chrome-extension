@@ -24,6 +24,8 @@ import ErrorScreen from './screens/Error';
 import WhatsNew from './screens/WhatsNew';
 import Connections from './screens/Connections';
 import Share from './screens/Share';
+import NotionConnect from './screens/NotionConnect';
+import NotionPage from './screens/NotionPage';
 import GoogleConnect from './screens/GoogleConnect';
 import { shouldShowWhatsNew } from '@/lib/whatsNew';
 import NoSound, { AppAudioWatch } from './screens/NoSound';
@@ -53,6 +55,8 @@ export const SCREENS: Record<ScreenName, ComponentType> = {
   googleConnect: GoogleConnect,
   nosound: NoSound,
   share: Share,
+  notionConnect: NotionConnect,
+  notionPage: NotionPage,
 };
 
 /** First screen: onboarding until the user has finished it, then Start. */

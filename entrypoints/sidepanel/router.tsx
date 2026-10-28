@@ -6,7 +6,8 @@ export type ScreenName =
   | 'whatsnew' | 'connections' | 'googleConnect' | 'share'
   // v3 setup: 'connect' is the Setup screen, 'settings' is the AI settings, 'settingsMore' is Recording, language and data
   | 'setupCustom' | 'penvConnect' | 'howItWorks' | 'settingsMore'
-  | 'nosound'; // v3: desktop-app capture hears nothing
+  | 'nosound' // v3: desktop-app capture hears nothing
+  | 'notionConnect' | 'notionPage';
 
 /** Route params. `meetingId` for meeting screens; `message` for the error screen. */
 export interface RouteParams { meetingId?: string; message?: string; atMs?: number; section?: 'transcription' | 'assistant' }

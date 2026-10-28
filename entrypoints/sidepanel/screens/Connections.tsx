@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { listCalendars, type CalendarInfo } from '@/lib/calendar';
 import { disconnectGoogle, GoogleError, type GoogleDeps, type GoogleSettings } from '@/lib/google';
 import { getSettings, onSettingsChanged, updateSettings } from '@/lib/settings';
+import { loadKeys } from '@/lib/keys';
 import { Spinner } from '../components';
 import { useRouter } from '../router';
 import { openGoogleConnect } from './GoogleConnect';
@@ -55,10 +56,14 @@ export default function Connections() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [lost, setLost] = useState(false);
+  const [notion, setNotion] = useState<{ pageId?: string; pageTitle?: string } | undefined>(undefined);
+  const [notionToken, setNotionToken] = useState(false);
 
   useEffect(() => {
-    void getSettings().then((st) => setGoogle(st.google));
-    return onSettingsChanged((st) => setGoogle(st.google));
+    const apply = (st: { google: GoogleSettings; notion: { pageId?: string; pageTitle?: string } }) => { setGoogle(st.google); setNotion(st.notion); };
+    void getSettings().then(apply);
+    void loadKeys().then((k) => setNotionToken(Boolean(k.NOTION_TOKEN))).catch(() => undefined);
+    return onSettingsChanged(apply);
   }, []);
 
   useEffect(() => {
@@ -159,16 +164,21 @@ export default function Connections() {
             {!google.calendar && error && <p role="alert" style={s.alert}>{error}</p>}
           </Row>
 
-          {/* Notion: layout only; T8 wires Connect → Notion connect and the connected page / Change. */}
           <Row
             gap={10}
             iconBg="#F1F1F3"
             icon={<span style={{ fontFamily: 'var(--mono)', fontSize: 13, fontWeight: 600 }}>N</span>}
             name="Notion"
             sub="Can only see pages you choose"
-            right={<ConnectButton />}
+            right={notionToken ? <Connected /> : <ConnectButton onClick={() => router.navigate('notionConnect')} />}
           >
             <span style={s.note}>Adds each shared meeting as a page under the one you choose.</span>
+            {notionToken && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ flexGrow: 1, minWidth: 0, fontSize: 13, fontWeight: 500, overflowWrap: 'anywhere' }}>{notion?.pageTitle ?? 'No page chosen yet'}</span>
+                <button type="button" style={{ ...s.disconnect, alignSelf: 'center' }} onClick={() => router.navigate('notionPage')}>{notion?.pageId ? 'Change' : 'Choose a page'}</button>
+              </div>
+            )}
           </Row>
         </div>
       )}

@@ -7,12 +7,15 @@ import { getSettings } from '@/lib/settings';
 import { GoogleError, type GoogleDeps } from '@/lib/google';
 import { gdocsShare, shareLink, shareToDocs } from '@/lib/share/gdocs';
 import { toHtml } from '@/lib/share/render';
+import { loadKeys } from '@/lib/keys';
+import { buildBlocks, NotionError, notionShare, shareToNotion } from '@/lib/share/notion';
+import { notionDeps } from './NotionConnect';
 import type { Marker, Meeting, Note, Segment } from '@/lib/types';
 
 /** Test hook: lets tests inject chrome.identity and fetch. */
 export const shareDeps: { current?: GoogleDeps } = {};
 
-type Action = 'save' | 'link';
+type Action = 'save' | 'link' | 'notion';
 /** What the user was doing when they left for Connect Google; it continues when they come back connected. */
 let pending: { meetingId: string; action: Action; opts: ExportOptions } | undefined;
 
@@ -25,6 +28,7 @@ const CHOICES: { key: keyof ExportOptions; label: string }[] = [
 ];
 
 const FAILED = 'Couldn’t save to Google Docs. Check your connection and try again.';
+const NOTION_FAILED = 'Couldn’t save to Notion. Check your connection and try again.';
 const icon = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true } as const;
 
 const s = {
@@ -77,6 +81,7 @@ export default function Share() {
     if (busy) return;
     setRetry(action); setFailed(''); setCopied(false);
     if (!Object.values(o).some(Boolean)) { setFailed('Choose at least one thing to include.'); return; }
+    if (action === 'notion') { await runNotion(m, d, o); return; }
     let connected = false;
     try { connected = (await getSettings()).google.docs; } catch { /* treated as not connected */ }
     if (!connected) {
@@ -100,6 +105,33 @@ export default function Share() {
     }
   }
 
+  async function runNotion(m: Meeting, d: typeof data, o: ExportOptions) {
+    let token: string | undefined; let pageId: string | undefined;
+    try { token = (await loadKeys()).NOTION_TOKEN; pageId = (await getSettings()).notion.pageId; } catch { /* treated as not connected */ }
+    if (!token || !pageId) {
+      pending = { meetingId: m.id, action: 'notion', opts: o };
+      navigate(token ? 'notionPage' : 'notionConnect');
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await shareToNotion(token, pageId, m, buildBlocks(m, d.segments, d.notes, d.markers, o), notionDeps.current);
+      setMeeting(result.meeting);
+    } catch (err) {
+      setFailed(err instanceof NotionError && (err.code === 'auth' || err.code === 'no-access') ? err.message : NOTION_FAILED);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Back from connecting Notion: continue only if the user finished it (secret and page both set). */
+  async function resumeNotion(m: Meeting, d: typeof data, o: ExportOptions) {
+    try {
+      const ok = Boolean((await loadKeys()).NOTION_TOKEN) && Boolean((await getSettings()).notion.pageId);
+      if (ok) await run('notion', m, d, o);
+    } catch { /* stay on the sheet */ }
+  }
+
   useEffect(() => {
     if (!meetingId) { setState('missing'); return; }
     let alive = true;
@@ -112,7 +144,7 @@ export default function Share() {
           resumed.current = true;
           const p = pending; pending = undefined;
           setOpts(p.opts);
-          void run(p.action, m, d, p.opts);
+          void (p.action === 'notion' ? resumeNotion(m, d, p.opts) : run(p.action, m, d, p.opts));
         }
       })
       .catch(() => alive && setState('missing'));
@@ -132,6 +164,7 @@ export default function Share() {
   }
 
   const doc = gdocsShare(meeting);
+  const notion = notionShare(meeting);
 
   return (
     <main className="screen" style={s.sheetWrap}>
@@ -183,11 +216,21 @@ export default function Share() {
             </span>
             <span style={s.text}><span style={s.name}>Copy view-only link</span><span style={s.sub}>Anyone with the link can read it, but not edit</span></span>
           </button>
-          {/* Notion row: layout only. Its behaviour (connect, create the page, show it) belongs to T8. */}
-          <button type="button" style={s.row} data-share="notion">
-            <span style={{ ...s.ico, background: '#F1F1F3', fontFamily: "'Geist Mono', monospace", fontSize: 13, fontWeight: 600 }}>N</span>
-            <span style={s.text}><span style={s.name}>Notion</span><span style={s.sub}>Connect Notion to add meetings as pages</span></span>
-          </button>
+          {notion ? (
+            <div style={s.saved}>
+              <span style={{ ...s.savedIco, fontFamily: "'Geist Mono', monospace", fontSize: 13, fontWeight: 600, color: '#1A6B40' }}>N</span>
+              <span style={s.text}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#134E2F' }}>Saved to Notion</span>
+                <span style={{ fontSize: 12, color: '#1A6B40' }}>{meeting.title}</span>
+              </span>
+              <a href={notion.url} target="_blank" rel="noreferrer" style={s.open}>Open</a>
+            </div>
+          ) : (
+            <button type="button" style={s.row} data-share="notion" disabled={busy} onClick={() => void run('notion', meeting, data, opts)}>
+              <span style={{ ...s.ico, background: '#F1F1F3', fontFamily: "'Geist Mono', monospace", fontSize: 13, fontWeight: 600 }}>N</span>
+              <span style={s.text}><span style={s.name}>Notion</span><span style={s.sub}>Connect Notion to add meetings as pages</span></span>
+            </button>
+          )}
           <button type="button" style={s.row} onClick={() => navigate('export', { meetingId })}>
             <span style={{ ...s.ico, background: '#F1F1F3' }}>
               <svg {...icon} stroke="#44464D"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
@@ -199,13 +242,13 @@ export default function Share() {
         {busy && (
           <div role="status" style={s.busy}>
             <span className="spinner" aria-hidden="true" style={{ width: 16, height: 16, flexShrink: 0 }} />
-            <span>Saving to Google Docs…</span>
+            <span>{retry === 'notion' ? 'Saving to Notion…' : 'Saving to Google Docs…'}</span>
           </div>
         )}
         {failed && (
           <div role="alert" style={s.fail}>
             <span style={s.failText}>{failed}</span>
-            {failed === FAILED || failed.startsWith('Rekord can') || failed.startsWith('Google sign-in') ? (
+            {failed === FAILED || failed === NOTION_FAILED || failed.startsWith('Rekord can') || failed.startsWith('Google sign-in') ? (
               <button type="button" style={s.retry} onClick={() => void run(retry, meeting, data, opts)}>Try again</button>
             ) : null}
           </div>
