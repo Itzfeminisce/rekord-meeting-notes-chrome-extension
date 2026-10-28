@@ -10,7 +10,7 @@ describe('detectKey', () => {
     expect(detectKey('sk-proj-test')).toBe('OPENAI_API_KEY');
     expect(detectKey('ntn_test')).toBe('NOTION_TOKEN');
     expect(detectKey('secret_test')).toBe('NOTION_TOKEN');
-    expect(detectKey('0123456789abcdef0123456789abcdef01234567')).toBe('DEEPGRAM_API_KEY');
+    expect(detectKey('ab'.repeat(20))).toBe('DEEPGRAM_API_KEY');
   });
 
   it('returns null for unknown values', () => {
@@ -18,7 +18,7 @@ describe('detectKey', () => {
     expect(detectKey('hello')).toBeNull();
     expect(detectKey('')).toBeNull();
     expect(detectKey('0123456789abcdef')).toBeNull();
-    expect(detectKey('0123456789abcdef0123456789abcdef012345678')).toBeNull(); // 41 chars
+    expect(detectKey('ab'.repeat(20) + 'a')).toBeNull(); // 41 chars
   });
 
   it('ignores surrounding whitespace', () => {
