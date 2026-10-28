@@ -23,7 +23,7 @@
 - [x] T1 core: types, IndexedDB, settings, messages, router, shared UI — opus — specs/T1.md
 - [ ] T2 audio capture: offscreen doc, tab + mic, 10 s chunks, silence skip — opus — specs/T2.md
 - [ ] T3 transcription: provider client, rate-limit queue, catch-up — opus — specs/T3.md
-- [ ] T4 onboarding: Mic access screen + permission tab — sonnet — specs/T4.md
+- [x] T4 onboarding: Mic access screen + permission tab — sonnet — specs/T4.md
 - [ ] T5 Connect AI + Settings screens, key loading (penv / paste) — opus — specs/T5.md
 - [ ] T6 Start + Live screens: transcript, notes, markers — sonnet — specs/T6.md
 - [ ] T7 Wrapping up + Summary: LLM summary — sonnet — specs/T7.md
@@ -33,3 +33,4 @@
 
 ## Log
 - T1 done: types, db (idb), settings, messages, time, router + 11 placeholder screens, shared UI; 22 tests pass.
+- T4 done: Permissions screen, permission.html tab, lib/mic.ts (+3 tests); no component test (no jsdom/testing-library).
