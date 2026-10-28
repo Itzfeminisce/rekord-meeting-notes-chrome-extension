@@ -24,8 +24,9 @@
 - [ ] T7 Share to Google Docs and view-only link — sonnet — specs/T7.md (after T6)
 - [ ] T8 Notion connect, page choice, share — sonnet — specs/T8.md (after T1)
 - [ ] T9 Name speakers from the invite — sonnet — specs/T9.md (after T6)
-- [ ] T10 What's new and Chrome Web Store packaging — sonnet — specs/T10.md (after T1)
+- [x] T10 What's new and Chrome Web Store packaging — sonnet — specs/T10.md (after T1)
 - [ ] T11 Connect Penv Cloud with one click — opus — specs/T11.md (after T2 and Penv Cloud app connections)
 
 ## Log
 - T1 done: v3 types, settings merge, keyDetect, manifest identity/oauth2/key; deepgram chunk fallback to Groq.
+- T10 done: What's new + onInstalled, STORE.md, privacy.md. Blocked: store upload (owner account), icons missing.
