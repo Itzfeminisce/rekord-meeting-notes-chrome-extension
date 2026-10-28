@@ -22,7 +22,7 @@
 - [x] T4 Continuous tab recording for diarization — opus — specs/T4.md (after T1)
 - [x] T5 Diarize with Deepgram + suggest names — opus — specs/T5.md (after T4)
 - [x] T6 Name speakers screen, display names, Settings switches — sonnet — specs/T6.md (after T5)
-- [ ] T7 Connect never blocks on a bad key — opus — specs/T7.md
+- [x] T7 Connect never blocks on a bad key — opus — specs/T7.md
 
 ## Log
 - T1 done: types, DB v2 (asks/recordings/recordingMeta), settings v2, lib/llm chat()+transcriptLines; 102 tests pass
@@ -32,3 +32,4 @@
 - T5 done: lib/diarize (Deepgram, overlap≥30%, A/B by first use), lib/speakers suggestNames+runSpeakerStep; 9 tests
 - T6 done: Speakers screen (names/merge/sample), displayName, Settings switches, Deepgram paste field, keys merge; export/summarize still say Others
 - Final gate: 1 finding (speaker step stuck after panel close) fixed e87d4dc. E2E blocked: penv DEEPGRAM_API_KEY returns 401.
+- T7 done: checkKeys (all keys, 8s) + pickProviders fallback, Connect rows/pickers/Continue anyway, Start rejected banner
