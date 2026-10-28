@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Share to Docs, Notion or a link</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4F46E5}a:hover{color:#3730A3}
+</style>
+</helmet>
+<div style="width: 400px; height: 820px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; background: #6B6C73; color: #111114; font-family: Geist, system-ui, sans-serif;">
+  <div role="dialog" aria-modal="true" aria-labelledby="sh-title" style="padding: 10px 16px 20px; border-radius: 24px 24px 0 0; background: #FFFFFF; display: flex; flex-direction: column; gap: 16px;">
+    <span style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: #DCDCE0;" aria-hidden="true"></span>
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <h1 id="sh-title" style="margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em;">Share this meeting</h1>
+      <a href="Summary.dc.html" aria-label="Close" style="width: 36px; height: 36px; border-radius: 50%; background: #F1F1F3; display: flex; align-items: center; justify-content: center; color: #111114;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </a>
+    </div>
+
+    <fieldset style="margin: 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 8px;">
+      <legend style="padding: 0 0 8px; font-size: 12px; font-weight: 600; color: #6E7079;">Include</legend>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <label style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 999px; background: #F6F6F7; font-size: 13px; font-weight: 500;"><input type="checkbox" checked style="width: 16px; height: 16px; margin: 0; accent-color: #4F46E5;">Summary</label>
+        <label style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 999px; background: #F6F6F7; font-size: 13px; font-weight: 500;"><input type="checkbox" checked style="width: 16px; height: 16px; margin: 0; accent-color: #4F46E5;">Action items</label>
+        <label style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 999px; background: #F6F6F7; font-size: 13px; font-weight: 500;"><input type="checkbox" checked style="width: 16px; height: 16px; margin: 0; accent-color: #4F46E5;">Decisions</label>
+        <label style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 999px; background: #F6F6F7; font-size: 13px; font-weight: 500;"><input type="checkbox" style="width: 16px; height: 16px; margin: 0; accent-color: #4F46E5;">Transcript</label>
+        <label style="display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 999px; background: #F6F6F7; font-size: 13px; font-weight: 500;"><input type="checkbox" style="width: 16px; height: 16px; margin: 0; accent-color: #4F46E5;">My notes</label>
+      </div>
+    </fieldset>
+
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <span style="padding: 0 0 6px; font-size: 12px; font-weight: 600; color: #6E7079;">Send to</span>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: #EAF6EF;">
+        <span style="width: 36px; height: 36px; border-radius: 10px; background: #FFFFFF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A6B40" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><path d="M14 3v6h6M8 13h8M8 17h5"></path></svg></span>
+        <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 600; color: #134E2F;">Saved to Google Docs</span><span style="font-size: 12px; color: #1A6B40;">Weekly product sync · in “Rekord” folder</span></span>
+        <a href="#" style="height: 32px; padding: 0 10px; border-radius: 8px; background: #FFFFFF; color: #134E2F; font-size: 12px; font-weight: 600; text-decoration: none; display: flex; align-items: center;">Open</a>
+      </div>
+      <button type="button" style="display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 12px; border: none; border-radius: 12px; background: transparent; font: inherit; color: #111114; text-align: left;">
+        <span style="width: 36px; height: 36px; border-radius: 10px; background: #EEF0FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"></path><path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"></path></svg></span>
+        <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 500;">Copy view-only link</span><span style="font-size: 12px; color: #6E7079;">Anyone with the link can read it, but not edit</span></span>
+      </button>
+      <button type="button" style="display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 12px; border: none; border-radius: 12px; background: transparent; font: inherit; color: #111114; text-align: left;">
+        <span style="width: 36px; height: 36px; border-radius: 10px; background: #F1F1F3; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: 'Geist Mono', monospace; font-size: 13px; font-weight: 600;">N</span>
+        <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 500;">Notion</span><span style="font-size: 12px; color: #6E7079;">Connect Notion to add meetings as pages</span></span>
+      </button>
+      <button type="button" style="display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 12px; border: none; border-radius: 12px; background: transparent; font: inherit; color: #111114; text-align: left;">
+        <span style="width: 36px; height: 36px; border-radius: 10px; background: #F1F1F3; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#44464D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+        <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 500;">More: copy, download, email</span><span style="font-size: 12px; color: #6E7079;">Markdown, PDF or an email draft</span></span>
+      </button>
+    </div>
+    <p style="margin: 0; font-size: 12px; line-height: 1.45; color: #6E7079;">Only the parts you tick are shared. Everything else stays on this computer.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How Rekord handles your meetings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4F46E5}a:hover{color:#3730A3}
+</style>
+</helmet>
+<div style="width: 400px; height: 820px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; background: #6B6C73; color: #111114; font-family: Geist, system-ui, sans-serif;">
+  <div role="dialog" aria-modal="true" aria-labelledby="hw-title" style="padding: 10px 16px 20px; border-radius: 24px 24px 0 0; background: #FFFFFF; display: flex; flex-direction: column; gap: 16px;">
+    <span style="align-self: center; width: 40px; height: 5px; border-radius: 3px; background: #DCDCE0;" aria-hidden="true"></span>
+    <div style="display: flex; align-items: center; justify-content: space-between;">
+      <h1 id="hw-title" style="margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em;">How Rekord handles your meetings</h1>
+      <a href="V3Setup.dc.html" aria-label="Close" style="width: 36px; height: 36px; border-radius: 50%; background: #F1F1F3; display: flex; align-items: center; justify-content: center; color: #111114;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </a>
+    </div>
+
+    <ol aria-label="What happens in a meeting" style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px;">
+      <li style="display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; background: #F6F6F7;">
+        <span style="width: 24px; height: 24px; border-radius: 50%; background: #111114; color: #FFFFFF; font-family: 'Geist Mono', monospace; font-size: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">1</span>
+        <span style="font-size: 13px; line-height: 1.4;">While you talk, the meeting’s audio goes to your <span style="font-weight: 600;">transcription</span> service and comes back as text.</span>
+      </li>
+      <li style="display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; background: #F6F6F7;">
+        <span style="width: 24px; height: 24px; border-radius: 50%; background: #111114; color: #FFFFFF; font-family: 'Geist Mono', monospace; font-size: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">2</span>
+        <span style="font-size: 13px; line-height: 1.4;">Your transcript and notes are saved in this browser, on this computer.</span>
+      </li>
+      <li style="display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; background: #F6F6F7;">
+        <span style="width: 24px; height: 24px; border-radius: 50%; background: #111114; color: #FFFFFF; font-family: 'Geist Mono', monospace; font-size: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">3</span>
+        <span style="font-size: 13px; line-height: 1.4;">When Rekord writes your summary or answers a question, it sends the transcript to your <span style="font-weight: 600;">assistant</span> service.</span>
+      </li>
+    </ol>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <h2 style="margin: 0; font-size: 12px; font-weight: 600; color: #6E7079;">What each service can do</h2>
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+        <thead>
+          <tr style="text-align: left; color: #6E7079; font-size: 11px;">
+            <th scope="col" style="padding: 6px 0; font-weight: 500;">Service</th>
+            <th scope="col" style="padding: 6px 0; font-weight: 500;">Transcription</th>
+            <th scope="col" style="padding: 6px 0; font-weight: 500;">Assistant</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-top: 1px solid #F0F0F2;"><th scope="row" style="padding: 8px 0; text-align: left; font-weight: 600;">Groq <span style="font-weight: 400; color: #1A6B40; font-size: 11px;">free to start</span></th><td style="padding: 8px 0;">Yes</td><td style="padding: 8px 0;">Yes</td></tr>
+          <tr style="border-top: 1px solid #F0F0F2;"><th scope="row" style="padding: 8px 0; text-align: left; font-weight: 600;">OpenAI</th><td style="padding: 8px 0;">Yes</td><td style="padding: 8px 0;">Yes</td></tr>
+          <tr style="border-top: 1px solid #F0F0F2;"><th scope="row" style="padding: 8px 0; text-align: left; font-weight: 600;">Deepgram</th><td style="padding: 8px 0;">Yes, in real time</td><td style="padding: 8px 0; color: #6E7079;">No</td></tr>
+          <tr style="border-top: 1px solid #F0F0F2;"><th scope="row" style="padding: 8px 0; text-align: left; font-weight: 600;">Anthropic</th><td style="padding: 8px 0; color: #6E7079;">No</td><td style="padding: 8px 0;">Yes</td></tr>
+          <tr style="border-top: 1px solid #F0F0F2;"><th scope="row" style="padding: 8px 0; text-align: left; font-weight: 600;">OpenRouter</th><td style="padding: 8px 0; color: #6E7079;">No</td><td style="padding: 8px 0;">Yes</td></tr>
+          <tr style="border-top: 1px solid #F0F0F2;"><th scope="row" style="padding: 8px 0; text-align: left; font-weight: 600;">Ollama <span style="font-weight: 400; color: #6E7079; font-size: 11px;">no key needed</span></th><td style="padding: 8px 0; color: #6E7079;">No</td><td style="padding: 8px 0;">Yes, runs on your computer</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin: 0; padding: 12px; border-radius: 12px; background: #EEF0FF; font-size: 13px; line-height: 1.45; color: #2E2A8A;">Each key is only ever sent to its own service. Your audio and notes go nowhere else unless you share a meeting.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

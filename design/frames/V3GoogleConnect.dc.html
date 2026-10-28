@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connect Google</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4F46E5}a:hover{color:#3730A3}
+</style>
+</helmet>
+<div style="width: 400px; height: 820px; box-sizing: border-box; display: flex; flex-direction: column; background: #F6F6F7; color: #111114; font-family: Geist, system-ui, sans-serif;">
+  <header style="display: flex; align-items: center; gap: 8px; padding: 14px 16px 0;">
+    <a href="V3Connections.dc.html" aria-label="Back to connected apps" style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #111114;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </a>
+  </header>
+
+  <div style="padding: 8px 24px 0; display: flex; flex-direction: column; gap: 10px;">
+    <h1 style="margin: 0; font-size: 24px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em;">Connect your Google account</h1>
+    <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #5F6168;">Choose what Rekord can use. Google will ask you to confirm on the next screen.</p>
+  </div>
+
+  <fieldset style="margin: 20px 24px 0; padding: 0; border: none; display: flex; flex-direction: column; gap: 10px;">
+    <legend style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">What Rekord can use</legend>
+    <label style="display: flex; gap: 12px; align-items: flex-start; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB;">
+      <input type="checkbox" checked style="width: 18px; height: 18px; margin: 2px 0 0; accent-color: #4F46E5;">
+      <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 15px; font-weight: 600;">Calendar</span>
+        <span style="font-size: 13px; line-height: 1.45; color: #5F6168;">Rekord can see your events and who’s invited, to name meetings and suggest who’s speaking.</span>
+        <span style="font-size: 12px; color: #1A6B40; font-weight: 500;">Can’t change or create events</span>
+      </span>
+    </label>
+    <label style="display: flex; gap: 12px; align-items: flex-start; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB;">
+      <input type="checkbox" checked style="width: 18px; height: 18px; margin: 2px 0 0; accent-color: #4F46E5;">
+      <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 15px; font-weight: 600;">Google Docs</span>
+        <span style="font-size: 13px; line-height: 1.45; color: #5F6168;">Rekord can save meetings you share as Docs in a “Rekord” folder.</span>
+        <span style="font-size: 12px; color: #1A6B40; font-weight: 500;">Can’t see your other files</span>
+      </span>
+    </label>
+  </fieldset>
+
+  <p style="margin: 16px 24px 0; padding: 12px 14px; border-radius: 12px; background: #EDEDF0; font-size: 13px; line-height: 1.5; color: #44464D;">Your meetings stay on this computer. Rekord only sends a meeting to Google when you choose to share it.</p>
+
+  <div style="flex-grow: 1;"></div>
+  <div style="padding: 24px; display: flex; flex-direction: column; gap: 10px;">
+    <button type="button" style="height: 48px; border: none; border-radius: 12px; background: #111114; color: #FFFFFF; font: inherit; font-size: 15px; font-weight: 600;">Continue to Google</button>
+    <a href="V3Connections.dc.html" style="height: 44px; border-radius: 12px; color: #44464D; font-size: 14px; font-weight: 500; text-decoration: none; display: flex; align-items: center; justify-content: center;">Not now</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
