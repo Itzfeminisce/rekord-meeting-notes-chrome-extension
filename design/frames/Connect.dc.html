@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connect your AI</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4F46E5}a:hover{color:#3730A3}
+</style>
+</helmet>
+<div style="width: 400px; height: 820px; box-sizing: border-box; display: flex; flex-direction: column; background: #F6F6F7; color: #111114; font-family: Geist, system-ui, sans-serif;">
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 0;">
+    <a href="Permissions.dc.html" aria-label="Back" style="width: 36px; height: 36px; margin-left: -8px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #111114;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </a>
+    <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">Step 3 of 3</span>
+  </div>
+  <div role="progressbar" aria-label="Setup progress" aria-valuenow="3" aria-valuemin="1" aria-valuemax="3" style="margin: 12px 24px 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px;">
+    <span style="height: 4px; border-radius: 2px; background: #111114;"></span>
+    <span style="height: 4px; border-radius: 2px; background: #111114;"></span>
+    <span style="height: 4px; border-radius: 2px; background: #111114;"></span>
+  </div>
+
+  <div style="padding: 32px 24px 0; display: flex; flex-direction: column; gap: 10px;">
+    <h1 style="margin: 0; font-size: 26px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em;">Connect your AI</h1>
+    <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #5F6168;">Choose where Rekord gets its API keys. You can change this any time in Settings.</p>
+  </div>
+
+  <div role="radiogroup" aria-label="Key source" style="margin: 24px 24px 0; display: flex; flex-direction: column; gap: 10px;">
+    <div role="radio" aria-checked="true" tabindex="0" style="display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 2px solid #4F46E5; box-shadow: 0 6px 20px rgba(79,70,229,0.10);">
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <span style="width: 20px; height: 20px; border-radius: 50%; border: 6px solid #4F46E5; box-sizing: border-box; flex-shrink: 0;"></span>
+        <span style="flex-grow: 1; font-size: 15px; font-weight: 600;">penv cloud</span>
+        <span style="padding: 3px 8px; border-radius: 999px; background: #EEF0FF; color: #3730A3; font-size: 11px; font-weight: 600;">Recommended</span>
+      </div>
+      <span style="font-size: 13px; line-height: 1.45; color: #5F6168; margin-top: -6px;">Keys live in penv. Rotate them there and Rekord picks them up. Nothing is saved to disk.</span>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label for="env" style="font-size: 12px; font-weight: 500; color: #44464D;">Environment</label>
+        <input id="env" type="text" placeholder="org/project/environment" style="height: 42px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 10px; background: #F9F9FA; font-family: 'Geist Mono', monospace; font-size: 13px; color: #111114;">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label for="tok" style="font-size: 12px; font-weight: 500; color: #44464D;">Read-only machine token</label>
+        <input id="tok" type="password" placeholder="pck_…" style="height: 42px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 10px; background: #F9F9FA; font-family: 'Geist Mono', monospace; font-size: 13px; color: #111114;">
+      </div>
+    </div>
+
+    <div role="radio" aria-checked="false" tabindex="-1" style="display: flex; gap: 12px; align-items: flex-start; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB;">
+      <span style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #C4C4CA; box-sizing: border-box; flex-shrink: 0; margin-top: 1px;"></span>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 15px; font-weight: 600;">Paste keys here</span>
+        <span style="font-size: 13px; line-height: 1.45; color: #5F6168;">Groq, OpenAI, OpenRouter or Anthropic. Stored on this computer.</span>
+      </div>
+    </div>
+
+    <div role="radio" aria-checked="false" tabindex="-1" style="display: flex; gap: 12px; align-items: flex-start; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB;">
+      <span style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #C4C4CA; box-sizing: border-box; flex-shrink: 0; margin-top: 1px;"></span>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 15px; font-weight: 600;">Run locally with Ollama</span>
+        <span style="font-size: 13px; line-height: 1.45; color: #5F6168;">No keys. Nothing leaves this computer.</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1;"></div>
+  <div style="padding: 24px;">
+    <a href="Start.dc.html" style="height: 48px; border-radius: 12px; background: #111114; color: #FFFFFF; font-size: 15px; font-weight: 600; text-decoration: none; display: flex; align-items: center; justify-content: center;">Connect and finish</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

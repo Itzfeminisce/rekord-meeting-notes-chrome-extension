@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4F46E5}a:hover{color:#3730A3}
+</style>
+</helmet>
+<div style="width: 400px; height: 820px; box-sizing: border-box; display: flex; flex-direction: column; background: #F6F6F7; color: #111114; font-family: Geist, system-ui, sans-serif;">
+  <header style="display: flex; align-items: center; gap: 8px; padding: 14px 16px 0;">
+    <a href="Start.dc.html" aria-label="Back to home" style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #111114;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </a>
+    <h1 style="margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em;">Settings</h1>
+  </header>
+
+  <div style="flex-grow: 1; overflow: hidden; padding: 16px 12px; display: flex; flex-direction: column; gap: 18px;">
+    <section style="display: flex; flex-direction: column; gap: 8px;">
+      <h2 style="margin: 0; padding: 0 8px; font-size: 12px; font-weight: 600; color: #6E7079;">API keys</h2>
+      <div style="padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #111114; color: #FFFFFF; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center;">pv</span>
+          <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 600;">penv cloud</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">acme/meeting-notes/development</span></span>
+          <span style="display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: #1A6B40;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #1A7F4B;"></span>Connected</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-radius: 10px; background: #F6F6F7; font-size: 12px; color: #44464D;">
+          <span>2 keys in memory · token expires in 28 days</span>
+          <button type="button" style="height: 28px; padding: 0 10px; border: none; border-radius: 8px; background: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600; color: #111114;">Refresh</button>
+        </div>
+        <a href="Connect.dc.html" style="font-size: 13px; font-weight: 500; text-decoration: none;">Change key source</a>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px;">
+      <h2 style="margin: 0; padding: 0 8px; font-size: 12px; font-weight: 600; color: #6E7079;">Models</h2>
+      <div style="border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column;">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 14px; border-bottom: 1px solid #F0F0F2;">
+          <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><label for="tm" style="font-size: 14px; font-weight: 500;">Transcription</label><span style="font-size: 12px; color: #6E7079;">Groq · GROQ_API_KEY</span></span>
+          <select id="tm" style="height: 36px; padding: 0 8px; border: 1px solid #DCDCE0; border-radius: 9px; background: #F9F9FA; font: inherit; font-size: 13px; color: #111114;"><option>whisper-large-v3</option><option>whisper-large-v3-turbo</option></select>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; padding: 14px;">
+          <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><label for="am" style="font-size: 14px; font-weight: 500;">Assistant</label><span style="font-size: 12px; color: #6E7079;">Groq · GROQ_API_KEY</span></span>
+          <select id="am" style="height: 36px; padding: 0 8px; border: 1px solid #DCDCE0; border-radius: 9px; background: #F9F9FA; font: inherit; font-size: 13px; color: #111114;"><option>llama-3.3-70b</option><option>gpt-oss-120b</option></select>
+        </div>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px;">
+      <h2 style="margin: 0; padding: 0 8px; font-size: 12px; font-weight: 600; color: #6E7079;">Recording</h2>
+      <div style="border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column;">
+        <label style="display: flex; align-items: center; gap: 12px; padding: 14px; border-bottom: 1px solid #F0F0F2;">
+          <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 500;">Recording reminder</span><span style="font-size: 12px; color: #6E7079;">Prompts you to tell others before starting</span></span>
+          <input type="checkbox" role="switch" checked style="width: 18px; height: 18px; margin: 0; accent-color: #4F46E5;">
+        </label>
+        <label style="display: flex; align-items: center; gap: 12px; padding: 14px; border-bottom: 1px solid #F0F0F2;">
+          <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 500;">Suggest action items live</span><span style="font-size: 12px; color: #6E7079;">Flags likely tasks as people talk</span></span>
+          <input type="checkbox" role="switch" checked style="width: 18px; height: 18px; margin: 0; accent-color: #4F46E5;">
+        </label>
+        <label style="display: flex; align-items: center; gap: 12px; padding: 14px;">
+          <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 500;">Keep audio files</span><span style="font-size: 12px; color: #6E7079;">Off: audio is discarded once transcribed</span></span>
+          <input type="checkbox" role="switch" style="width: 18px; height: 18px; margin: 0; accent-color: #4F46E5;">
+        </label>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px;">
+      <h2 style="margin: 0; padding: 0 8px; font-size: 12px; font-weight: 600; color: #6E7079;">Your data</h2>
+      <div style="padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; align-items: center; gap: 12px;">
+        <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 500;">24 meetings on this computer</span><span style="font-size: 12px; color: #6E7079;">18 MB</span></span>
+        <button type="button" style="height: 34px; padding: 0 12px; border: 1px solid #F2C9C7; border-radius: 9px; background: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600; color: #B42318;">Delete all</button>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

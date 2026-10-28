@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wrapping up</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4F46E5}a:hover{color:#3730A3}
+</style>
+</helmet>
+<div style="width: 400px; height: 820px; box-sizing: border-box; display: flex; flex-direction: column; background: #F6F6F7; color: #111114; font-family: Geist, system-ui, sans-serif;">
+  <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 28px; gap: 28px;">
+    <div style="width: 64px; height: 64px; border-radius: 20px; background: #111114; display: flex; align-items: center; justify-content: center; box-shadow: 0 12px 32px rgba(79,70,229,0.25);">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#C7C4FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.5 5.5L20 11l-5.5 2.5L12 19l-2.5-5.5L4 11l5.5-2.5z"></path></svg>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <h1 style="margin: 0; font-size: 26px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em;">Writing your summary</h1>
+      <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #5F6168;">34 minutes of conversation and 3 of your notes. This usually takes under a minute.</p>
+    </div>
+
+    <ol style="list-style: none; margin: 0; padding: 16px; border-radius: 18px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column; gap: 14px;">
+      <li style="display: flex; align-items: center; gap: 12px; font-size: 14px;">
+        <span style="width: 22px; height: 22px; border-radius: 50%; background: #1A7F4B; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></span>
+        <span style="flex-grow: 1;">Final transcript</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">done</span>
+      </li>
+      <li style="display: flex; align-items: center; gap: 12px; font-size: 14px;">
+        <span style="width: 22px; height: 22px; border-radius: 50%; background: #1A7F4B; display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></span>
+        <span style="flex-grow: 1;">Decisions</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">2 found</span>
+      </li>
+      <li style="display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500;">
+        <span style="width: 22px; height: 22px; border-radius: 50%; border: 2px solid #4F46E5; border-right-color: #E3E2FF; box-sizing: border-box; flex-shrink: 0;"></span>
+        <span style="flex-grow: 1;">Action items and owners</span>
+      </li>
+      <li style="display: flex; align-items: center; gap: 12px; font-size: 14px; color: #6E7079;">
+        <span style="width: 22px; height: 22px; border-radius: 50%; border: 2px solid #DCDCE0; box-sizing: border-box; flex-shrink: 0;"></span>
+        <span style="flex-grow: 1;">Summary</span>
+      </li>
+    </ol>
+  </div>
+  <div style="padding: 24px; display: flex; flex-direction: column; gap: 10px;">
+    <a href="Transcript.dc.html" style="height: 44px; border-radius: 12px; background: #FFFFFF; border: 1px solid #E8E8EB; color: #111114; font-size: 14px; font-weight: 500; text-decoration: none; display: flex; align-items: center; justify-content: center;">Read the transcript meanwhile</a>
+    <span style="text-align: center; font-size: 12px; color: #6E7079;">You can close the panel. Rekord finishes in the background.</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
