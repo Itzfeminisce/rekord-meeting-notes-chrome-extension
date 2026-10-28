@@ -108,7 +108,7 @@ export default function Transcript() {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6E7079" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
         <label htmlFor="find" className="sr-only">Find in transcript</label>
         <input
-          id="find" type="search" value={query} onChange={(e) => setQuery(e.target.value)}
+          id="find" type="search" placeholder="Find in transcript" value={query} onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); step(e.shiftKey ? -1 : 1); } }}
         />
         {query.trim() && <span className="tr-count" aria-live="polite">{ids.length ? `${Math.min(current, ids.length - 1) + 1} of ${ids.length}` : 'No matches'}</span>}

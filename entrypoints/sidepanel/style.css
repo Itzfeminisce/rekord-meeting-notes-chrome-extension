@@ -438,3 +438,7 @@ a:hover { color: var(--accent-hover); }
 .conn-status-rejected { background: #fdecec; color: #a42121; }
 .conn-status-unreachable { background: #f1f1f3; color: var(--muted); }
 .conn-results .conn-empty { padding-left: 0; margin: 0; }
+
+.tl-waiting { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; border: 1px dashed var(--line); color: #5F6168; font-size: 13px; }
+.tl-waiting-text { flex-grow: 1; }
+.tl-waiting-saved { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--faint); }

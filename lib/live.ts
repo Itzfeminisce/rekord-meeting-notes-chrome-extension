@@ -66,3 +66,9 @@ export function dateTile(ts: number): { month: string; day: string } {
   const d = new Date(ts);
   return { month: d.toLocaleString('en-US', { month: 'short' }).toUpperCase(), day: String(d.getDate()) };
 }
+
+/** The span of saved audio still waiting to be transcribed, or null when nothing is pending. */
+export function waitingSpan(chunks: { startMs: number; endMs: number }[]): { from: number; to: number } | null {
+  if (!chunks.length) return null;
+  return { from: Math.min(...chunks.map((c) => c.startMs)), to: Math.max(...chunks.map((c) => c.endMs)) };
+}

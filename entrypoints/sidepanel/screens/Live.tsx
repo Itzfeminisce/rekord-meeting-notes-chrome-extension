@@ -6,8 +6,8 @@ import { Timeline } from '../components/Timeline';
 import { useRouter } from '../router';
 import { AskPanel, useAskEnabled } from './Ask';
 import { SuggestionCard } from '../components/SuggestionCard';
-import { getMeeting, listMarkers, listNotes, listSegments, putMarker, putNote } from '@/lib/db';
-import { buildTimeline, elapsedMs, mergeSegment, nearBottom, newMarker, newNote } from '@/lib/live';
+import { getMeeting, pendingChunks, listMarkers, listNotes, listSegments, putMarker, putNote } from '@/lib/db';
+import { buildTimeline, elapsedMs, waitingSpan, mergeSegment, nearBottom, newMarker, newNote } from '@/lib/live';
 import { useConnection } from '@/lib/connection';
 import { onMessage, send } from '@/lib/messages';
 import { getSettings } from '@/lib/settings';
@@ -37,6 +37,7 @@ export default function Live() {
   const [markers, setMarkers] = useState<Marker[]>([]);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
+  const [waiting, setWaiting] = useState<{ from: number; to: number } | null>(null);
   const [view, setView] = useState<'transcript' | 'notes' | 'ask'>('transcript');
   const [draft, setDraft] = useState('');
   const [now, setNow] = useState(() => Date.now());
@@ -76,6 +77,16 @@ export default function Live() {
       .catch(() => alive && setLoadFailed(true));
     return () => { alive = false; };
   }, [meetingId]);
+
+  // While transcription is paused, show the span of audio saved but not yet transcribed.
+  useEffect(() => {
+    if (!meetingId || conn.ok) { setWaiting(null); return; }
+    let alive = true;
+    const load = () => pendingChunks(meetingId).then((c) => alive && setWaiting(waitingSpan(c))).catch(() => {});
+    load();
+    const t = setInterval(load, 5000);
+    return () => { alive = false; clearInterval(t); };
+  }, [meetingId, conn.ok]);
 
   useEffect(() => {
     let alive = true;
@@ -201,7 +212,7 @@ export default function Live() {
         {loadFailed ? (
           <p className="live-empty" role="alert">Rekord couldn’t load this meeting. Try reopening the side panel.</p>
         ) : view === 'transcript' ? (
-          timeline.length === 0 ? (
+          timeline.length === 0 && !waiting ? (
             <p className="live-empty">Listening… Words appear here about 10 s behind the conversation.</p>
           ) : (
             <>
@@ -214,6 +225,13 @@ export default function Live() {
                     onDismiss={() => decide(it.marker, 'dismissed')}
                   />
                 ) : <Timeline key={it.id} items={[it]} />,
+              )}
+              {waiting && (
+                <div className="tl-waiting">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                  <span className="tl-waiting-text">{formatClock(waiting.from)} – {formatClock(waiting.to)} waiting to transcribe</span>
+                  <span className="tl-waiting-saved">saved</span>
+                </div>
               )}
               <p className="hint">about 10 s behind</p>
             </>
@@ -256,7 +274,7 @@ export default function Live() {
         </div>
         <form className="live-note" onSubmit={addNote}>
           <label htmlFor="note" className="sr-only">Add a note</label>
-          <input id="note" type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={`Add a note at ${formatClock(ms)}`} autoComplete="off" />
+          <input id="note" type="text" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={conn.ok ? `Add a note at ${formatClock(ms)}` : 'Notes still work while offline'} autoComplete="off" />
           <button type="submit" aria-label="Save note" disabled={!active || !draft.trim()}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg>
           </button>
