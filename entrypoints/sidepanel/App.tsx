@@ -16,6 +16,8 @@ import Transcript from './screens/Transcript';
 import Export from './screens/Export';
 import Settings from './screens/Settings';
 import ErrorScreen from './screens/Error';
+import WhatsNew from './screens/WhatsNew';
+import { shouldShowWhatsNew } from '@/lib/whatsNew';
 
 export const SCREENS: Record<ScreenName, ComponentType> = {
   welcome: Welcome,
@@ -32,12 +34,18 @@ export const SCREENS: Record<ScreenName, ComponentType> = {
   export: Export,
   settings: Settings,
   error: ErrorScreen,
+  whatsnew: WhatsNew,
+  // Placeholder until the Connections screen (T6) lands; it replaces this entry.
+  connections: Start,
 };
 
 /** First screen: onboarding until the user has finished it, then Start. */
 export async function initialRoute(): Promise<Route> {
   try {
     const settings = await getSettings();
+    if (settings.onboarded && (await shouldShowWhatsNew(browser.runtime.getManifest().version))) {
+      return { screen: 'whatsnew', params: {} };
+    }
     return { screen: settings.onboarded ? 'start' : 'welcome', params: {} };
   } catch {
     return { screen: 'error', params: { message: 'Rekord couldn’t load your settings. Try reopening the side panel.' } };

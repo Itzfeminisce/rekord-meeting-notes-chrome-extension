@@ -4,6 +4,7 @@ import { getMeeting, pendingChunks, putMeeting } from '@/lib/db';
 import { loadKeys } from '@/lib/keys';
 import { onMessage, send } from '@/lib/messages';
 import { getSettings } from '@/lib/settings';
+import { handleInstalled } from '@/lib/whatsNew';
 import type { Meeting, RecordingState, TranscriberConfig } from '@/lib/types';
 import type { OffscreenReply } from './offscreen/main';
 
@@ -60,6 +61,9 @@ function setCloseAfterDrain(meetingId: string | null): void {
 }
 
 export default defineBackground(() => {
+  browser.runtime.onInstalled.addListener(({ reason }) => {
+    handleInstalled(reason, browser.runtime.getManifest().version).catch((error) => console.error('Rekord: could not record the update', error));
+  });
   // We open the panel ourselves from action.onClicked: with openPanelOnActionClick the click never reaches
   // the extension, so the meeting tab is not granted (activeTab) and tab capture is refused.
   browser.sidePanel
