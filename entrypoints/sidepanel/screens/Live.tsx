@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Spinner, Tag } from '../components';
+import { ConnectionBanner } from '../components/ConnectionBanner';
 import { LevelMeter } from '../components/LevelMeter';
 import { Timeline } from '../components/Timeline';
 import { useRouter } from '../router';
@@ -139,7 +140,7 @@ export default function Live() {
         </div>
       </div>
 
-      {/* ConnectionBanner slot (T10) */}
+      <ConnectionBanner />
 
       {stopFailed && <p className="live-msg" role="alert">Rekord couldn’t end the recording. Try End again.</p>}
       {saveFailed && <p className="live-msg" role="alert">Rekord couldn’t save your last note or marker. Try again.</p>}
