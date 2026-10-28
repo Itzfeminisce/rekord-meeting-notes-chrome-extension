@@ -19,6 +19,11 @@ type Action = 'save' | 'link' | 'notion';
 /** What the user was doing when they left for Connect Google; it continues when they come back connected. */
 let pending: { meetingId: string; action: Action; opts: ExportOptions } | undefined;
 
+/** A pending share continues only if the user actually connected while away (Back / Not now must not loop). */
+export function canResumeShare(action: Action, c: { googleDocs: boolean; notionToken?: string; notionPageId?: string }): boolean {
+  return action === 'notion' ? Boolean(c.notionToken) && Boolean(c.notionPageId) : c.googleDocs;
+}
+
 const CHOICES: { key: keyof ExportOptions; label: string }[] = [
   { key: 'summary', label: 'Summary' },
   { key: 'actions', label: 'Action items' },
@@ -124,11 +129,12 @@ export default function Share() {
     }
   }
 
-  /** Back from connecting Notion: continue only if the user finished it (secret and page both set). */
-  async function resumeNotion(m: Meeting, d: typeof data, o: ExportOptions) {
+  /** Back from connecting: continue only if the user finished connecting; otherwise just show Share. */
+  async function resumePending(p: { action: Action; opts: ExportOptions }, m: Meeting, d: typeof data) {
     try {
-      const ok = Boolean((await loadKeys()).NOTION_TOKEN) && Boolean((await getSettings()).notion.pageId);
-      if (ok) await run('notion', m, d, o);
+      const st = await getSettings();
+      const notionToken = p.action === 'notion' ? (await loadKeys()).NOTION_TOKEN : undefined;
+      if (canResumeShare(p.action, { googleDocs: st.google.docs, notionToken, notionPageId: st.notion.pageId })) await run(p.action, m, d, p.opts);
     } catch { /* stay on the sheet */ }
   }
 
@@ -144,7 +150,7 @@ export default function Share() {
           resumed.current = true;
           const p = pending; pending = undefined;
           setOpts(p.opts);
-          void (p.action === 'notion' ? resumeNotion(m, d, p.opts) : run(p.action, m, d, p.opts));
+          void resumePending(p, m, d);
         }
       })
       .catch(() => alive && setState('missing'));

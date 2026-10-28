@@ -35,13 +35,18 @@ export default defineConfig({
         'http://localhost:11434/*',
       ],
       action: { default_title: 'Open Rekord' },
-      oauth2: {
-        client_id: clientId ?? '',
-        scopes: [
-          'https://www.googleapis.com/auth/calendar.readonly',
-          'https://www.googleapis.com/auth/drive.file',
-        ],
-      },
+      // Chrome rejects the whole manifest when oauth2.client_id is empty, so leave it out until one is set.
+      ...(clientId
+        ? {
+            oauth2: {
+              client_id: clientId,
+              scopes: [
+                'https://www.googleapis.com/auth/calendar.readonly',
+                'https://www.googleapis.com/auth/drive.file',
+              ],
+            },
+          }
+        : {}),
       ...(extensionKey ? { key: extensionKey } : {}),
     };
   },
