@@ -12,9 +12,14 @@ export function enqueue(chunkId: string): void {
   transcriber.enqueue(chunkId);
 }
 
-/** Resolves once no chunks of `meetingId` are waiting, or the rest are blocked (auth, long rate limit). */
+/** Resolves once no chunks of `meetingId` are waiting, or the rest are blocked (auth, offline, long rate limit). */
 export function drain(meetingId: string): Promise<void> {
   return transcriber.drain(meetingId);
+}
+
+/** Resolves once no chunks are waiting at all, or the rest are blocked (auth, offline, long rate limit). */
+export function drainAll(): Promise<void> {
+  return transcriber.drain();
 }
 
 /** Retries all pending chunks (also triggered by the `transcription/catch-up` message). */

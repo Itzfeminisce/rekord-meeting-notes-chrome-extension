@@ -17,7 +17,7 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
 
 type Step = Response | 'throw';
 const queues: ReturnType<typeof createTranscriber>[] = [];
-function setup(steps: Step[], opts: { keys?: Record<string, string>; online?: boolean } = {}) {
+function setup(steps: Step[], opts: { keys?: Record<string, string>; online?: boolean; hangSleep?: boolean } = {}) {
   let t = 1_000_000;
   const sent: Message[] = [];
   const sleeps: number[] = [];
@@ -33,7 +33,7 @@ function setup(steps: Step[], opts: { keys?: Record<string, string>; online?: bo
     fetch,
     send: async (m) => { sent.push(m); },
     now: () => t,
-    sleep: async (ms) => { sleeps.push(ms); t += ms; },
+    sleep: (ms) => { sleeps.push(ms); t += ms; return opts.hangSleep ? new Promise<void>(() => {}) : Promise.resolve(); },
     isOnline: () => opts.online ?? true,
     getSettings: async () => DEFAULT_SETTINGS,
     loadKeys: async () => opts.keys ?? { GROQ_API_KEY: KEY },
@@ -126,11 +126,25 @@ describe('transcription queue', () => {
     const { q, states } = setup(['throw', 'throw', 'throw', 'throw', 'throw', 'throw', json({}, 503)], { online: false });
     await putChunk(chunk('a', 0));
     q.enqueue('a');
-    await q.drain('m1');
+    await q.drain('m1'); // resolves early: the queue is blocked offline
+    for (let i = 0; i < 200 && (await getChunk('a'))?.status === 'pending'; i++) await new Promise((r) => setTimeout(r, 0));
     const a = await getChunk('a');
     expect(a).toMatchObject({ status: 'done', attempts: 2 });
     expect(states().some((s) => (s as { reason?: string }).reason === 'server')).toBe(true);
     expect(states().at(-1)).toEqual({ ok: true });
+  });
+
+  it('drain resolves while the browser stays offline; chunks stay pending', async () => {
+    const { q, calls, states } = setup(['throw'], { online: false, hangSleep: true });
+    await putChunk(chunk('a', 0));
+    await putChunk(chunk('b', 10_000));
+    q.enqueue('a');
+    await q.drain('m1');
+    expect(calls).toHaveLength(1);
+    expect(states()[0]).toMatchObject({ ok: false, reason: 'offline', pendingChunks: 2 });
+    expect(await getChunk('a')).toMatchObject({ status: 'pending', attempts: 0 });
+    expect((await getChunk('b'))?.status).toBe('pending');
+    await q.drain(); // a later drain resolves too
   });
 
   it('sends chunks oldest first, one at a time, ≤20 per minute', async () => {

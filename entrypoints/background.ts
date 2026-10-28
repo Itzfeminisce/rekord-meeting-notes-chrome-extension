@@ -1,4 +1,4 @@
-import { getMeeting, putMeeting } from '@/lib/db';
+import { getMeeting, pendingChunks, putMeeting } from '@/lib/db';
 import { onMessage, send } from '@/lib/messages';
 import { getSettings } from '@/lib/settings';
 import type { Meeting, RecordingState } from '@/lib/types';
@@ -60,6 +60,9 @@ export default defineBackground(() => {
     .setPanelBehavior({ openPanelOnActionClick: true })
     .catch((error) => console.error('Rekord: could not set side panel behaviour', error));
 
+  // After a browser restart, finish transcribing chunks left pending by an earlier meeting.
+  browser.runtime.onStartup.addListener(() => void openForCatchUp());
+
   onMessage((msg) => {
     switch (msg.type) {
       case 'recording/get-state':
@@ -77,6 +80,10 @@ export default defineBackground(() => {
         void ready.then(() => {
           if (state.status === 'recording') setState({ ...state, micLevel: msg.micLevel, tabLevel: msg.tabLevel });
         });
+        return undefined;
+      case 'transcription/catch-up':
+        // The offscreen transcriber handles it when open; otherwise open it so it resumes pending chunks.
+        void openForCatchUp();
         return undefined;
       case 'transcription/drained':
         void ready.then(async () => {
@@ -161,6 +168,21 @@ async function stopRecording(): Promise<RecordingReply> {
   setState({ status: 'idle' });
   if (!closeAfterDrain) await closeOffscreen();
   return { ok: true, meetingId };
+}
+
+/**
+ * Opens the offscreen document when chunks are pending and none is open; its transcriber resumes them on load
+ * and reports `transcription/drained` ('*') once empty, which closes it again while idle.
+ */
+async function openForCatchUp(): Promise<void> {
+  try {
+    await ready;
+    if (state.status !== 'idle') return; // the recording's document handles it
+    if ((await pendingChunks()).length === 0) return;
+    await ensureOffscreen();
+  } catch (error) {
+    console.error('Rekord: could not resume transcription', error);
+  }
 }
 
 async function hasOffscreen(): Promise<boolean> {

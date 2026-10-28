@@ -3,7 +3,7 @@ import { onMessage, send } from '@/lib/messages';
 import { Chunker } from '@/lib/audio/chunker';
 import { rms, toLevel } from '@/lib/audio/levels';
 import { mediaRecorder, pickMimeType } from '@/lib/audio/recorder';
-import { drain, enqueue } from '@/lib/transcribe';
+import { drain, drainAll, enqueue, startTranscriber } from '@/lib/transcribe';
 import type { Speaker } from '@/lib/types';
 
 const TICK_MS = 125; // silence sampling; levels are posted every 2nd tick (~4/s)
@@ -27,6 +27,14 @@ let busy: Promise<unknown> = Promise.resolve();
 
 /** `micUnavailable`: the microphone was refused or missing, so only the tab ('others') is recorded. */
 export type OffscreenReply = { ok: true; micUnavailable?: boolean } | { ok: false; error: string };
+
+// Resume chunks left pending (e.g. from an earlier session) and listen for catch-up / online.
+startTranscriber();
+// When this document was opened only to catch up, report once the queue is empty so the background can close it.
+// ('*' = no particular meeting; the background ignores it while recording or waiting on a meeting's drain.)
+void drainAll().then(() => {
+  if (!session) void send({ type: 'transcription/drained', meetingId: '*' });
+});
 
 onMessage((msg) => {
   if (msg.type === 'offscreen/start') return (busy = busy.then(() => start(msg.streamId, msg.meetingId, msg.startedAt)));

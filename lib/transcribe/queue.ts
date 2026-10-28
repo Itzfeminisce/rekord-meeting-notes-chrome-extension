@@ -39,6 +39,7 @@ export function createTranscriber(overrides: Partial<TranscriberDeps> = {}) {
   let running = false;
   let dirty = false;
   let authBlocked = false;
+  let offlineBlocked = false;   // last request failed while the browser was offline
   let pausedUntil = 0;          // rate limit / backoff end, for drain()
   let failing = false;          // last request failed; send {ok:true} on the next success
   let backoffStep = 0;
@@ -70,7 +71,7 @@ export function createTranscriber(overrides: Partial<TranscriberDeps> = {}) {
 
   /** Resolves drain() callers when the queue cannot make progress soon. */
   function releaseIfBlocked() {
-    if (authBlocked || pausedUntil - d.now() > DRAIN_BLOCK_MS) resolveWaiters();
+    if (authBlocked || offlineBlocked || pausedUntil - d.now() >= DRAIN_BLOCK_MS) resolveWaiters();
   }
 
   /** After a chunk leaves 'pending': resolve drain() or announce the meeting as drained. */
@@ -96,6 +97,7 @@ export function createTranscriber(overrides: Partial<TranscriberDeps> = {}) {
     const fresh = await getChunk(chunk.id);
     // While the browser is offline, a failed request says nothing about the chunk: don't count it.
     const counts = !(reason === 'offline' && !d.isOnline());
+    offlineBlocked = !counts;
     if (fresh && counts) {
       const attempts = fresh.attempts + 1;
       await putChunk({ ...fresh, attempts, lastError: err.message, status: attempts >= MAX_ATTEMPTS ? 'failed' : 'pending' });
@@ -145,6 +147,7 @@ export function createTranscriber(overrides: Partial<TranscriberDeps> = {}) {
       return;
     }
     backoffStep = 0;
+    offlineBlocked = false;
     const fresh = await getChunk(chunk.id);
     if (!fresh) return; // meeting deleted meanwhile
     if (text) {
@@ -197,13 +200,14 @@ export function createTranscriber(overrides: Partial<TranscriberDeps> = {}) {
   /** Retries every pending chunk, including after an auth error. */
   function catchUp(): void {
     authBlocked = false;
+    offlineBlocked = false;
     backoffStep = 0;
     wake();
     kick();
   }
 
   /**
-   * Resolves once `meetingId` has no pending chunks, or the queue is blocked (auth error, long rate limit);
+   * Resolves once `meetingId` has no pending chunks, or the queue is blocked (auth error, offline, long pause);
    * blocked chunks stay pending for a later catch-up.
    */
   function drain(meetingId?: string): Promise<void> {
@@ -223,7 +227,7 @@ export function createTranscriber(overrides: Partial<TranscriberDeps> = {}) {
       if (msg.type === 'transcription/catch-up') catchUp();
       return undefined;
     });
-    const online = () => { wake(); kick(); };
+    const online = () => { offlineBlocked = false; wake(); kick(); };
     globalThis.addEventListener?.('online', online);
     kick();
     return () => { off(); globalThis.removeEventListener?.('online', online); };
