@@ -35,16 +35,28 @@ export function buildPrompt(
 
 const SYSTEM = [
   'You write concise meeting summaries. Reply with ONLY a JSON object, no prose, shaped as:',
-  '{"overview": string (2-4 sentences), "decisions": string[], "actions": [{"text": string, "owner"?: string}], "questions": string[]}',
+  '{"overview": string (2-4 sentences), "decisions": [{"text": string, "atMs"?: number}], "actions": [{"text": string, "owner"?: string, "due"?: string}], "questions": string[]}',
   'Use "You" or "Others" as owner only when clear from the transcript. "questions" are issues still open.',
+  '"atMs" is the milliseconds from the start of the meeting where the decision was made (from the [m:ss] stamps); leave it out if unsure. "due" is only a deadline that was said aloud, e.g. "Thu".',
   'Use empty arrays when there is nothing. Write in the language of the meeting.',
 ].join('\n');
 
 const strings = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim() !== '').map((x) => x.trim()) : [];
 
-/** Parses a model reply into a Summary body; tolerates code fences and surrounding prose. */
-export function parseSummary(raw: string): Omit<Summary, 'generatedAt' | 'model'> {
+/** Old summaries hold plain strings; new ones hold {text, atMs?}. Every reader goes through this. */
+export function normalizeDecisions(decisions: Summary['decisions'] | undefined): { text: string; atMs?: number }[] {
+  return (decisions ?? []).flatMap((d) => {
+    if (typeof d === 'string') return d.trim() ? [{ text: d.trim() }] : [];
+    if (d && typeof d.text === 'string' && d.text.trim()) {
+      return [typeof d.atMs === 'number' && Number.isFinite(d.atMs) && d.atMs >= 0 ? { text: d.text.trim(), atMs: d.atMs } : { text: d.text.trim() }];
+    }
+    return [];
+  });
+}
+
+/** Parses a model reply into a Summary body; tolerates code fences and surrounding prose. maxMs drops decision moments past the meeting's end. */
+export function parseSummary(raw: string, maxMs = Infinity): Omit<Summary, 'generatedAt' | 'model'> {
   let text = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
   const a = text.indexOf('{');
   const b = text.lastIndexOf('}');
@@ -56,17 +68,30 @@ export function parseSummary(raw: string): Omit<Summary, 'generatedAt' | 'model'
   const actions = (Array.isArray(o.actions) ? o.actions : []).flatMap((x) => {
     if (typeof x === 'string') return x.trim() ? [{ text: x.trim() }] : [];
     if (x && typeof x === 'object' && typeof (x as { text?: unknown }).text === 'string') {
-      const { text: t, owner } = x as { text: string; owner?: unknown };
+      const { text: t, owner, due } = x as { text: string; owner?: unknown; due?: unknown };
       if (!t.trim()) return [];
-      return [typeof owner === 'string' && owner.trim() ? { text: t.trim(), owner: owner.trim() } : { text: t.trim() }];
+      return [{
+        text: t.trim(),
+        ...(typeof owner === 'string' && owner.trim() ? { owner: owner.trim() } : {}),
+        ...(typeof due === 'string' && due.trim() ? { due: due.trim() } : {}),
+      }];
+    }
+    return [];
+  });
+  const decisions = (Array.isArray(o.decisions) ? o.decisions : []).flatMap((x): Summary['decisions'] => {
+    if (typeof x === 'string') return x.trim() ? [x.trim()] : [];
+    if (x && typeof x === 'object' && typeof (x as { text?: unknown }).text === 'string') {
+      const { text: t, atMs } = x as { text: string; atMs?: unknown };
+      if (!t.trim()) return [];
+      return [typeof atMs === 'number' && Number.isFinite(atMs) && atMs >= 0 && atMs <= maxMs ? { text: t.trim(), atMs } : { text: t.trim() }];
     }
     return [];
   });
   const overview = typeof o.overview === 'string' ? o.overview.trim() : '';
-  if (!overview && !actions.length && !strings(o.decisions).length && !strings(o.questions).length) {
+  if (!overview && !actions.length && !decisions.length && !strings(o.questions).length) {
     throw new SummarizeError('The summary came back empty.');
   }
-  return { overview, decisions: strings(o.decisions), actions, questions: strings(o.questions) };
+  return { overview, decisions, actions, questions: strings(o.questions) };
 }
 
 /**
@@ -100,7 +125,7 @@ export async function summarize(meetingId: string, fetchFn: FetchLike = (u, i) =
       }
       throw e instanceof LLMError ? new SummarizeError(e.message) : e;
     }
-    done.summary = { ...parseSummary(content), generatedAt: Date.now(), model };
+    done.summary = { ...parseSummary(content, Math.max(0, ...segments.map((g) => g.endMs), ...notes.map((n) => n.atMs))), generatedAt: Date.now(), model };
     await putMeeting(done);
     return done;
   } catch (e) {

@@ -442,3 +442,8 @@ a:hover { color: var(--accent-hover); }
 .tl-waiting { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; border: 1px dashed var(--line); color: #5F6168; font-size: 13px; }
 .tl-waiting-text { flex-grow: 1; }
 .tl-waiting-saved { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--faint); }
+
+.sum-decision { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; line-height: 1.45; }
+.sum-decision > span { flex-grow: 1; }
+.sum-chip { flex-shrink: 0; height: 22px; padding: 0 6px; border: 0; border-radius: 6px; background: #eef0ff; color: var(--accent); font-family: var(--mono); font-size: 11px; cursor: pointer; }
+.sum-chip:hover { color: var(--accent-hover); }

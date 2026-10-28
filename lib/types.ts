@@ -58,8 +58,8 @@ export interface Chunk {      // audio waiting for (or done with) transcription
 
 export interface Summary {
   overview: string;
-  decisions: string[];
-  actions: { text: string; owner?: string }[];
+  decisions: Array<string | { text: string; atMs?: number }>; // old summaries hold strings; read via normalizeDecisions
+  actions: { text: string; owner?: string; due?: string }[];
   questions: string[];
   generatedAt: number; model: string;
 }
