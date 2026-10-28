@@ -15,6 +15,9 @@ export function truncateMiddle(text: string, max = MAX_TRANSCRIPT_CHARS): string
   return `${text.slice(0, half)}\n[... middle of the transcript omitted ...]\n${text.slice(text.length - half)}`;
 }
 
+const aiExtra = (m: Marker) =>
+  [m.owner && `owner: ${m.owner}`, m.due && `due: ${m.due}`].filter(Boolean).map((x) => ` (${x})`).join('');
+
 export function buildPrompt(
   title: string, segments: Segment[], notes: Note[], markers: Marker[], speakers?: Meeting['speakers'],
 ): string {
@@ -23,9 +26,9 @@ export function buildPrompt(
   if (notes.length) {
     parts.push('', "The user's own notes:", ...notes.map((n) => `[${formatClock(n.atMs)}] ${n.text}`));
   }
-  const marks = markers.filter((m) => m.kind !== 'bookmark' || m.label);
+  const marks = markers.filter((m) => (m.source !== 'ai' || m.status === 'accepted') && (m.kind !== 'bookmark' || m.label));
   if (marks.length) {
-    parts.push('', 'Moments the user marked:', ...marks.map((m) => `[${formatClock(m.atMs)}] ${m.kind}${m.label ? `: ${m.label}` : ''}`));
+    parts.push('', 'Moments the user marked:', ...marks.map((m) => `[${formatClock(m.atMs)}] ${m.kind}${m.label ? `: ${m.label}` : ''}${m.source === 'ai' ? aiExtra(m) : ''}`));
   }
   return parts.join('\n');
 }

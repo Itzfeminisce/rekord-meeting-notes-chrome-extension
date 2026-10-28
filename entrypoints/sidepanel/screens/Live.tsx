@@ -5,9 +5,13 @@ import { LevelMeter } from '../components/LevelMeter';
 import { Timeline } from '../components/Timeline';
 import { useRouter } from '../router';
 import { AskPanel, useAskEnabled } from './Ask';
+import { SuggestionCard } from '../components/SuggestionCard';
 import { getMeeting, listMarkers, listNotes, listSegments, putMarker, putNote } from '@/lib/db';
 import { buildTimeline, elapsedMs, mergeSegment, nearBottom, newMarker, newNote } from '@/lib/live';
+import { useConnection } from '@/lib/connection';
 import { onMessage, send } from '@/lib/messages';
+import { getSettings } from '@/lib/settings';
+import { resolveSuggestion, startSuggester, suggestionCounts } from '@/lib/suggest';
 import { formatClock } from '@/lib/time';
 import type { Marker, MarkerKind, Note, RecordingState, Segment } from '@/lib/types';
 
@@ -21,6 +25,10 @@ const MARKERS: { kind: MarkerKind; label: string }[] = [
 export default function Live() {
   const { route, replace, navigate } = useRouter();
   const askOn = useAskEnabled() !== false;
+  const conn = useConnection();
+  const connOk = useRef(true);
+  connOk.current = conn.ok;
+  const [sugOn, setSugOn] = useState(false);
   const [rec, setRec] = useState<RecordingState | undefined>(undefined);
   const meetingId = route.params.meetingId ?? (rec && rec.status !== 'idle' ? rec.meetingId : undefined);
   const [title, setTitle] = useState('');
@@ -70,6 +78,23 @@ export default function Live() {
   }, [meetingId]);
 
   useEffect(() => {
+    let alive = true;
+    getSettings().then((s) => alive && setSugOn(s.features.liveSuggestions)).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  // Every minute, look for action items while the recording is live.
+  const recording = rec !== undefined && rec.status === 'recording';
+  useEffect(() => {
+    if (!meetingId || !sugOn || !recording) return;
+    return startSuggester({
+      meetingId,
+      isOk: () => connOk.current,
+      onNew: (made) => setMarkers((l) => [...l, ...made]),
+    });
+  }, [meetingId, sugOn, recording]);
+
+  useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
@@ -82,7 +107,10 @@ export default function Live() {
     }
   }, [rec, stopping, meetingId, replace]);
 
-  const timeline = buildTimeline(segments, notes, markers);
+  const hidden = (m: Marker) => m.source === 'ai' && m.status === 'dismissed';
+  const shown = markers.filter((m) => !hidden(m) && (m.source !== 'ai' || m.status !== 'suggested' || sugOn));
+  const timeline = buildTimeline(segments, notes, shown);
+  const counts = suggestionCounts(markers);
   useEffect(() => {
     const el = scroller.current;
     if (el && follow.current) el.scrollTop = el.scrollHeight;
@@ -106,6 +134,11 @@ export default function Live() {
     const m = newMarker(meetingId, elapsedMs(active.startedAt), kind);
     setMarkers((l) => [...l, m]);
     try { await putMarker(m); setSaveFailed(false); } catch { setSaveFailed(true); }
+  }
+
+  async function decide(m: Marker, status: 'accepted' | 'dismissed', edits: { label?: string } = {}) {
+    setMarkers((l) => l.map((x) => (x.id === m.id ? { ...x, ...edits, status } : x)));
+    try { await resolveSuggestion(m, status, edits); setSaveFailed(false); } catch { setSaveFailed(true); }
   }
 
   async function stop() {
@@ -172,14 +205,23 @@ export default function Live() {
             <p className="live-empty">Listening… Words appear here about 10 s behind the conversation.</p>
           ) : (
             <>
-              <Timeline items={timeline} />
+              {timeline.map((it) =>
+                it.kind === 'marker' && it.marker.source === 'ai' && it.marker.status === 'suggested' ? (
+                  <SuggestionCard
+                    key={it.id}
+                    marker={it.marker}
+                    onAccept={(e) => decide(it.marker, 'accepted', e)}
+                    onDismiss={() => decide(it.marker, 'dismissed')}
+                  />
+                ) : <Timeline key={it.id} items={[it]} />,
+              )}
               <p className="hint">about 10 s behind</p>
             </>
           )
         ) : notes.length === 0 && markers.length === 0 ? (
           <p className="live-empty">No notes yet. Type one below and press Enter.</p>
         ) : (
-          buildTimeline([], notes, markers).map((it) =>
+          buildTimeline([], notes, shown.filter((m) => m.status !== 'suggested')).map((it) =>
             it.kind === 'note' ? (
               <div className="tl-inline tl-note" key={it.id}>
                 <span className="tl-meta">Note · {formatClock(it.atMs)}</span>
@@ -196,6 +238,13 @@ export default function Live() {
       </section>
 
       <footer className="live-foot">
+        {sugOn && (
+          <div className="live-sug">
+            <span>
+              {counts.added} {counts.added === 1 ? 'action' : 'actions'} added · {counts.waiting} {counts.waiting === 1 ? 'suggestion' : 'suggestions'} waiting
+            </span>
+          </div>
+        )}
         <div role="group" aria-label="Mark this moment" className="live-markers">
           {MARKERS.map((m) => (
             <button type="button" key={m.kind} onClick={() => mark(m.kind)} disabled={!active}>{m.label}</button>
