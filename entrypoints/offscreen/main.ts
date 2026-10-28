@@ -25,7 +25,8 @@ interface Session {
 let session: Session | null = null;
 let busy: Promise<unknown> = Promise.resolve();
 
-export type OffscreenReply = { ok: true } | { ok: false; error: string };
+/** `micUnavailable`: the microphone was refused or missing, so only the tab ('others') is recorded. */
+export type OffscreenReply = { ok: true; micUnavailable?: boolean } | { ok: false; error: string };
 
 onMessage((msg) => {
   if (msg.type === 'offscreen/start') return (busy = busy.then(() => start(msg.streamId, msg.meetingId, msg.startedAt)));
@@ -49,9 +50,8 @@ async function start(streamId: string, meetingId: string, startedAt: number): Pr
   try {
     mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
   } catch (error) {
-    console.error('Rekord: microphone failed', error);
-    stopStream(tab);
-    return { ok: false, error: "Rekord can't use your microphone. Allow microphone access, then try again." };
+    // No mic (NotAllowedError/NotFoundError, …): keep recording the tab on its own.
+    console.warn('Rekord: microphone unavailable, recording the tab only', error);
   }
 
   const ctx = new AudioContext();
@@ -70,7 +70,8 @@ async function start(streamId: string, meetingId: string, startedAt: number): Pr
     });
     return { stream, analyser, buffer: new Float32Array(analyser.fftSize), chunker };
   };
-  const tracks = [track(tab, 'others', tabSource), track(mic, 'you', ctx.createMediaStreamSource(mic))];
+  const tracks = [track(tab, 'others', tabSource)];
+  if (mic) tracks.push(track(mic, 'you', ctx.createMediaStreamSource(mic)));
   tracks.forEach((t) => t.chunker.start());
 
   // If the meeting tab closes or stops sharing, end the recording properly.
@@ -88,7 +89,7 @@ async function start(streamId: string, meetingId: string, startedAt: number): Pr
   }, TICK_MS);
 
   session = { meetingId, ctx, tracks, timer };
-  return { ok: true };
+  return mic ? { ok: true } : { ok: true, micUnavailable: true };
 }
 
 async function stop(): Promise<OffscreenReply> {
