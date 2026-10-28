@@ -5,7 +5,7 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { closeDB, getMeeting, putMeeting, putSegment } from './db';
 import { saveKeys } from './keys';
 import { updateSettings } from './settings';
-import { buildPrompt, parseSummary, summarize, truncateMiddle } from './summarize';
+import { buildPrompt, normalizeDecisions, parseSummary, summarize, truncateMiddle } from './summarize';
 
 const reply = (content: string, status = 200) =>
   new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status });
@@ -30,6 +30,22 @@ describe('parseSummary', () => {
   });
   it('accepts a summary where only some fields are empty', () => {
     expect(parseSummary('{"overview":"","decisions":[],"actions":[],"questions":["q"]}').questions).toEqual(['q']);
+  });
+});
+
+describe('decisions and due', () => {
+  it('parses new decision objects, old strings and due', () => {
+    const s = parseSummary('{"overview":"o","decisions":["old",{"text":"new","atMs":5000},{"text":"nomoment"}],"actions":[{"text":"a","owner":"You","due":"Thu"},{"text":"b","due":" "}],"questions":[]}');
+    expect(s.decisions).toEqual(['old', { text: 'new', atMs: 5000 }, { text: 'nomoment' }]);
+    expect(s.actions).toEqual([{ text: 'a', owner: 'You', due: 'Thu' }, { text: 'b' }]);
+  });
+  it('drops atMs that is out of range', () => {
+    const s = parseSummary('{"overview":"o","decisions":[{"text":"x","atMs":999999},{"text":"y","atMs":-1},{"text":"z","atMs":"3"}],"actions":[],"questions":[]}', 60000);
+    expect(s.decisions).toEqual([{ text: 'x' }, { text: 'y' }, { text: 'z' }]);
+  });
+  it('normalizes both shapes', () => {
+    expect(normalizeDecisions(['a', { text: 'b', atMs: 1 }, ' ', { text: ' ' }])).toEqual([{ text: 'a' }, { text: 'b', atMs: 1 }]);
+    expect(normalizeDecisions(undefined)).toEqual([]);
   });
 });
 

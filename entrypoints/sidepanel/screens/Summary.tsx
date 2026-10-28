@@ -3,7 +3,7 @@ import { Button, Spinner, Tag } from '../components';
 import { useRouter } from '../router';
 import { useAskEnabled } from './Ask';
 import { getMeeting, listMarkers, listNotes } from '@/lib/db';
-import { summarize } from '@/lib/summarize';
+import { normalizeDecisions, summarize } from '@/lib/summarize';
 import { runSpeakerStep } from '@/lib/speakers';
 import { formatClock, formatDuration } from '@/lib/time';
 import { visibleMarkers } from '@/lib/suggest';
@@ -86,6 +86,7 @@ export default function Summary() {
   }
 
   const s = meeting.summary;
+  const decisions = normalizeDecisions(s?.decisions);
   const duration = meeting.endedAt ? formatDuration(meeting.endedAt - meeting.startedAt) : undefined;
   return (
     <main className="screen sum">
@@ -143,16 +144,23 @@ export default function Summary() {
                   />
                   <span className="sum-action-text">
                     {a.text}
-                    {a.owner ? <span className="sum-sub">{a.owner}</span> : <span className="sum-sub sum-warn">No owner yet</span>}
+                    {a.owner || a.due ? <span className="sum-sub">{[a.owner, a.due && `due ${a.due}`].filter(Boolean).join(' · ')}</span> : <span className="sum-sub sum-warn">No owner yet</span>}
                   </span>
                 </label>
               ))}
             </section>
 
-            {s.decisions.length > 0 && (
+            {decisions.length > 0 && (
               <section className="sum-card">
                 <h2>Decisions</h2>
-                {s.decisions.map((d, i) => <p key={i}>{d}</p>)}
+                {decisions.map((d, i) => (
+                  <div key={i} className="sum-decision">
+                    <span>{d.text}</span>
+                    {d.atMs !== undefined && (
+                      <button type="button" className="sum-chip" aria-label={`Open transcript at ${formatClock(d.atMs)}`} onClick={() => navigate('transcript', { meetingId, atMs: d.atMs })}>{formatClock(d.atMs)}</button>
+                    )}
+                  </div>
+                ))}
               </section>
             )}
             {s.questions.length > 0 && (

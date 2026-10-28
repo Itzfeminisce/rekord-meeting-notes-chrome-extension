@@ -58,8 +58,8 @@ export interface Chunk {      // audio waiting for (or done with) transcription
 
 export interface Summary {
   overview: string;
-  decisions: string[];
-  actions: { text: string; owner?: string }[];
+  decisions: Array<string | { text: string; atMs?: number }>; // old summaries hold strings; read via normalizeDecisions
+  actions: { text: string; owner?: string; due?: string }[];
   questions: string[];
   generatedAt: number; model: string;
 }
@@ -85,15 +85,15 @@ export type ConnectionState =
 
 export type RecordingState =
   | { status: 'idle' }
-  | { status: 'starting' | 'recording' | 'stopping'; meetingId: string; startedAt: number; micLevel: number; tabLevel: number; micUnavailable?: boolean }; // micUnavailable: recording the tab only
+  | { status: 'starting' | 'recording' | 'stopping'; meetingId: string; startedAt: number; micLevel: number; tabLevel: number; micUnavailable?: boolean; sources?: { mic: boolean; tab: boolean } }; // sources: what was asked to record; micUnavailable: recording the tab only
 
 // runtime messages (chrome.runtime.sendMessage); all plain JSON, never Blobs
 export type Message =
-  | { type: 'recording/start'; tabId: number }          // side panel → background
+  | { type: 'recording/start'; tabId: number; sources?: { mic: boolean; tab: boolean } } // side panel → background
   | { type: 'recording/stop' }                          // side panel → background
   | { type: 'recording/state'; state: RecordingState }  // background → all (also on request)
   | { type: 'recording/get-state' }
-  | { type: 'offscreen/start'; streamId: string; meetingId: string; startedAt: number } // background → offscreen
+  | { type: 'offscreen/start'; streamId: string; meetingId: string; startedAt: number; sources?: { mic: boolean; tab: boolean } } // background → offscreen
   | { type: 'offscreen/stop' }
   | { type: 'offscreen/levels'; micLevel: number; tabLevel: number }              // offscreen → background, ~4/s
   | { type: 'segment/added'; segment: Segment }         // offscreen/transcriber → all

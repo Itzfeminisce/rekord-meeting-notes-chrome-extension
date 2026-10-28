@@ -4,6 +4,7 @@ import { Chunker } from '@/lib/audio/chunker';
 import { rms, toLevel } from '@/lib/audio/levels';
 import { mediaRecorder, pickMimeType } from '@/lib/audio/recorder';
 import { ContinuousRecording, shouldRecord, sliceRecorder } from '@/lib/audio/recording';
+import { resolveSources, type Sources } from '@/lib/sources';
 import { drain, drainAll, enqueue, startTranscriber } from '@/lib/transcribe';
 import type { Speaker, TranscriberConfig } from '@/lib/types';
 
@@ -41,34 +42,38 @@ void drainAll().then(() => {
 });
 
 onMessage((msg) => {
-  if (msg.type === 'offscreen/start') return (busy = busy.then(() => start(msg.streamId, msg.meetingId, msg.startedAt)));
+  if (msg.type === 'offscreen/start') return (busy = busy.then(() => start(msg.streamId, msg.meetingId, msg.startedAt, resolveSources(msg.sources))));
   if (msg.type === 'offscreen/stop') return (busy = busy.then(() => stop()));
   return undefined;
 });
 
-async function start(streamId: string, meetingId: string, startedAt: number): Promise<OffscreenReply> {
+async function start(streamId: string, meetingId: string, startedAt: number, sources: Sources): Promise<OffscreenReply> {
   if (session) await stop();
   let tab: MediaStream | undefined;
   let mic: MediaStream | undefined;
-  try {
-    tab = await navigator.mediaDevices.getUserMedia({
-      audio: { mandatory: { chromeMediaSource: 'tab', chromeMediaSourceId: streamId } } as MediaTrackConstraints,
-      video: false,
-    });
-  } catch (error) {
-    console.error('Rekord: tab capture failed', error);
-    return { ok: false, error: "Rekord can't hear this tab. Click the Rekord icon on your meeting tab, then try again." };
+  if (sources.tab) {
+    try {
+      tab = await navigator.mediaDevices.getUserMedia({
+        audio: { mandatory: { chromeMediaSource: 'tab', chromeMediaSourceId: streamId } } as MediaTrackConstraints,
+        video: false,
+      });
+    } catch (error) {
+      console.error('Rekord: tab capture failed', error);
+      return { ok: false, error: "Rekord can’t hear this tab. Click the Rekord icon on your meeting tab, then try again." };
+    }
   }
-  try {
+  if (sources.mic) try {
     mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
   } catch (error) {
     // No mic (NotAllowedError/NotFoundError, …): keep recording the tab on its own.
     console.warn('Rekord: microphone unavailable, recording the tab only', error);
   }
 
+  if (!tab && !mic) return { ok: false, error: "Rekord can’t reach your microphone. Allow it in your browser, or also record this tab." };
+
   const ctx = new AudioContext();
-  const tabSource = ctx.createMediaStreamSource(tab);
-  tabSource.connect(ctx.destination); // keep the meeting audible while it is captured
+  const tabSource = tab && ctx.createMediaStreamSource(tab);
+  tabSource?.connect(ctx.destination); // keep the meeting audible while it is captured
   const mimeType = pickMimeType();
   const track = (stream: MediaStream, speaker: Speaker, source: MediaStreamAudioSourceNode): Track => {
     const analyser = ctx.createAnalyser();
@@ -82,27 +87,33 @@ async function start(streamId: string, meetingId: string, startedAt: number): Pr
     });
     return { stream, analyser, buffer: new Float32Array(analyser.fftSize), chunker };
   };
-  const tracks = [track(tab, 'others', tabSource)];
-  if (mic) tracks.push(track(mic, 'you', ctx.createMediaStreamSource(mic)));
+  const tracks: Track[] = [];
+  const tabTrack = tab && tabSource ? track(tab, 'others', tabSource) : undefined;
+  const micTrack = mic ? track(mic, 'you', ctx.createMediaStreamSource(mic)) : undefined;
+  if (tabTrack) tracks.push(tabTrack);
+  if (micTrack) tracks.push(micTrack);
   tracks.forEach((t) => t.chunker.start());
 
   // If the meeting tab closes or stops sharing, end the recording properly.
-  tab.getAudioTracks()[0]?.addEventListener('ended', () => void send({ type: 'recording/stop' }));
+  tab?.getAudioTracks()[0]?.addEventListener('ended', () => void send({ type: 'recording/stop' }));
 
   let n = 0;
   const timer = setInterval(() => {
-    const levels = tracks.map((t) => {
+    const level = (t: Track | undefined) => {
+      if (!t) return 0;
       t.analyser.getFloatTimeDomainData(t.buffer);
       const value = rms(t.buffer);
       void t.chunker.tick(value);
       return toLevel(value);
-    });
-    if (++n % 2 === 0) void send({ type: 'offscreen/levels', tabLevel: levels[0] ?? 0, micLevel: levels[1] ?? 0 });
+    };
+    const tabLevel = level(tabTrack);
+    const micLevel = level(micTrack);
+    if (++n % 2 === 0) void send({ type: 'offscreen/levels', tabLevel, micLevel });
   }, TICK_MS);
 
-  const recording = startContinuous(tab, meetingId, startedAt, mimeType);
+  const recording = tab ? startContinuous(tab, meetingId, startedAt, mimeType) : Promise.resolve(null);
   session = { meetingId, ctx, tracks, timer, recording };
-  return mic ? { ok: true } : { ok: true, micUnavailable: true };
+  return mic || !sources.mic ? { ok: true } : { ok: true, micUnavailable: true };
 }
 
 async function stop(): Promise<OffscreenReply> {

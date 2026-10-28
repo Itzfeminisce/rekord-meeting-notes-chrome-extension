@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTimeline, elapsedMs, hostOf, levelBars, mergeSegment, nearBottom, newMarker, newNote } from './live';
+import { buildTimeline, elapsedMs, hostOf, levelBars, mergeSegment, nearBottom, newMarker, newNote, waitingSpan } from './live';
 import type { Segment } from './types';
 
 const seg = (id: string, startMs: number, text = 'hi'): Segment => ({
@@ -50,5 +50,12 @@ describe('live helpers', () => {
   it('nearBottom', () => {
     expect(nearBottom({ scrollTop: 950, clientHeight: 50, scrollHeight: 1000 })).toBe(true);
     expect(nearBottom({ scrollTop: 0, clientHeight: 50, scrollHeight: 1000 })).toBe(false);
+  });
+});
+
+describe('waitingSpan', () => {
+  it('is null when nothing is pending', () => expect(waitingSpan([])).toBeNull());
+  it('spans the earliest start to the latest end', () => {
+    expect(waitingSpan([{ startMs: 20000, endMs: 30000 }, { startMs: 10000, endMs: 20000 }])).toEqual({ from: 10000, to: 30000 });
   });
 });

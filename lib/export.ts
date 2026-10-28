@@ -1,5 +1,6 @@
 import { formatClock, formatDuration } from './time';
 import { speakerName } from './llm';
+import { normalizeDecisions } from './summarize';
 import { visibleMarkers } from './suggest';
 import type { Marker, Meeting, Note, Segment } from './types';
 
@@ -43,7 +44,7 @@ export function buildSections(
   if (s && opts.actions && s.actions.length) {
     out.push({ heading: 'Action items', list: true, lines: s.actions.map((a) => (a.owner ? `${a.text} (${a.owner})` : a.text)) });
   }
-  if (s && opts.decisions && s.decisions.length) out.push({ heading: 'Decisions', list: true, lines: s.decisions });
+  if (s && opts.decisions && s.decisions.length) out.push({ heading: 'Decisions', list: true, lines: normalizeDecisions(s.decisions).map((d) => d.text) });
   if (s && opts.summary && s.questions.length) out.push({ heading: 'Still open', list: true, lines: s.questions });
   if (opts.notes && notes.length) {
     out.push({ heading: 'Your notes', list: true, lines: [...notes].sort((a, b) => a.atMs - b.atMs).map((n) => `${formatClock(n.atMs)} ${n.text}`) });
@@ -79,7 +80,7 @@ export function toMailto(meeting: Meeting): { href: string; shortened: boolean }
   const s = meeting.summary;
   const blocks: string[] = [];
   if (s?.overview) blocks.push(s.overview);
-  if (s?.decisions.length) blocks.push(`Decisions\n${s.decisions.map((d) => `- ${d}`).join('\n')}`);
+  if (normalizeDecisions(s?.decisions).length) blocks.push(`Decisions\n${normalizeDecisions(s?.decisions).map((d) => `- ${d.text}`).join('\n')}`);
   if (s?.actions.length) blocks.push(`Action items\n${s.actions.map((a) => `- ${a.text}${a.owner ? ` (${a.owner})` : ''}`).join('\n')}`);
   const wellFormed = (t: string) => t.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD');
   const subject = encodeURIComponent(wellFormed(Array.from(meeting.title).slice(0, MAILTO_SUBJECT_LIMIT).join('')));
