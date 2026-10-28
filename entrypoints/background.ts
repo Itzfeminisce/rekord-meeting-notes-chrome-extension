@@ -20,6 +20,8 @@ let closeAfterDrain: string | null = null;
 let starting: Promise<RecordingReply> | null = null;
 /** A meeting whose drain arrived while it was still stopping, before closeAfterDrain was set. */
 let drainedWhileStopping: string | null = null;
+/** Tail of the queue that runs offscreen create/close decisions one at a time; never rejects. */
+let offscreenQueue: Promise<unknown> = Promise.resolve();
 
 const ready = rehydrate();
 
@@ -143,8 +145,8 @@ async function startRecording(tabId: number): Promise<RecordingReply> {
     console.error('Rekord: recording failed to start', error);
     if (meeting) await putMeeting({ ...meeting, status: 'error', endedAt: Date.now() }).catch(() => undefined);
     setState({ status: 'idle' });
-    // Never close a document another meeting is still transcribing in.
-    if (!closeAfterDrain) await closeOffscreen();
+    // Never close a document still transcribing pending chunks; it closes itself once drained.
+    await closeOffscreen(true);
     return { ok: false, error: error instanceof Error && error.message ? error.message : START_ERROR };
   }
 
@@ -166,7 +168,7 @@ async function stopRecording(): Promise<RecordingReply> {
     setCloseAfterDrain(meetingId);
   }
   setState({ status: 'idle' });
-  if (!closeAfterDrain) await closeOffscreen();
+  await closeOffscreen();
   return { ok: true, meetingId };
 }
 
@@ -179,7 +181,7 @@ async function openForCatchUp(): Promise<void> {
     await ready;
     if (state.status !== 'idle') return; // the recording's document handles it
     if ((await pendingChunks()).length === 0) return;
-    await ensureOffscreen();
+    await ensureOffscreen(() => state.status === 'idle'); // a start that began meanwhile opens its own
   } catch (error) {
     console.error('Rekord: could not resume transcription', error);
   }
@@ -193,20 +195,38 @@ async function hasOffscreen(): Promise<boolean> {
   return contexts.length > 0;
 }
 
-/** Resolves true when this call created the document. */
-async function ensureOffscreen(): Promise<boolean> {
-  if (await hasOffscreen()) return false;
-  await browser.offscreen.createDocument({
-    url: OFFSCREEN_PATH,
-    reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK'] as Browser.offscreen.Reason[],
-    justification: 'Record meeting tab and microphone audio, and keep the meeting audible.',
-  });
-  return true;
+/** Runs one offscreen create/close decision after the previous one settles, so each sees the document's real state. */
+function serialized<T>(task: () => Promise<T>): Promise<T> {
+  const run = offscreenQueue.then(task);
+  offscreenQueue = run.catch(() => undefined);
+  return run;
 }
 
-async function closeOffscreen(): Promise<void> {
+/** Creates the document unless one is open or `stillWanted()` turns false by the time this call's turn comes. */
+function ensureOffscreen(stillWanted: () => boolean = () => true): Promise<void> {
+  return serialized(async () => {
+    if (!stillWanted() || (await hasOffscreen())) return;
+    await browser.offscreen.createDocument({
+      url: OFFSCREEN_PATH,
+      reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK'] as Browser.offscreen.Reason[],
+      justification: 'Record meeting tab and microphone audio, and keep the meeting audible.',
+    });
+  });
+}
+
+/**
+ * Closes the document if, at the moment of closing, nothing is recording or starting and no meeting still awaits
+ * its drain. With `onlyIfNothingPending`, also keeps it open while any chunk awaits transcription.
+ */
+async function closeOffscreen(onlyIfNothingPending = false): Promise<void> {
   try {
-    if (await hasOffscreen()) await browser.offscreen.closeDocument();
+    await serialized(async () => {
+      if (onlyIfNothingPending && (await pendingChunks()).length > 0) return;
+      if (!(await hasOffscreen())) return;
+      // Re-checked after the last await, so a start or stop that began meanwhile keeps its document.
+      if (state.status !== 'idle' || closeAfterDrain) return;
+      await browser.offscreen.closeDocument();
+    });
   } catch (error) {
     console.error('Rekord: could not close recorder', error);
   }
