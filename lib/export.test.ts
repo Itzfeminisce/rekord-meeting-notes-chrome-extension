@@ -10,6 +10,20 @@ const segs = [{ id: 's1', meetingId: 'm1', speaker: 'you' as const, startMs: 650
 const notes = [{ id: 'n1', meetingId: 'm1', atMs: 5000, text: 'Remember this', createdAt: 1 }];
 const markers = [{ id: 'k1', meetingId: 'm1', atMs: 9000, kind: 'decision' as const, label: 'Go' }];
 
+describe('toMarkdown AI markers', () => {
+  it('omits unaccepted AI actions but keeps accepted ones', () => {
+    const ai = (id: string, label: string, status: 'suggested' | 'dismissed' | 'accepted') =>
+      ({ id, meetingId: 'm1', atMs: 1000, kind: 'action' as const, label, source: 'ai' as const, status });
+    const md = toMarkdown(meeting, segs, notes, [
+      ...markers, ai('a', 'Pending thing', 'suggested'), ai('b', 'Dismissed thing', 'dismissed'), ai('c', 'Accepted thing', 'accepted'),
+    ], { ...DEFAULT_OPTIONS, transcript: true, notes: true });
+    expect(md).not.toContain('Pending thing');
+    expect(md).not.toContain('Dismissed thing');
+    expect(md).toContain('Accepted thing');
+    expect(md).toContain('Go');
+  });
+});
+
 describe('toMarkdown', () => {
   it('includes title, summary, actions and decisions by default', () => {
     const md = toMarkdown(meeting, segs, notes, markers);

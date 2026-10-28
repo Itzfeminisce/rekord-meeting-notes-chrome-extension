@@ -6,7 +6,7 @@ import { closeDB, getMeeting, listMarkers, putMarker, putMeeting, putSegment } f
 import { saveKeys } from './keys';
 import { getSettings, updateSettings } from './settings';
 import { buildPrompt } from './summarize';
-import { isDuplicate, parseSuggestions, resolveSuggestion, runSuggest, startSuggester, suggestionCounts } from './suggest';
+import { isDuplicate, parseSuggestions, resolveSuggestion, runSuggest, startSuggester, suggestionCounts, visibleMarkers } from './suggest';
 import type { Marker } from './types';
 
 const reply = (content: string) => new Response(JSON.stringify({ choices: [{ message: { content } }] }), { status: 200 });
@@ -30,6 +30,21 @@ describe('parseSuggestions', () => {
     expect(out[0]).toMatchObject({ owner: 'You', due: 'Thu', atMs: 5000 });
     expect(parseSuggestions('{"actions":[{"text":"X","atMs":"1:05"}]}')[0]?.atMs).toBe(65000);
     expect(parseSuggestions('sorry, none')).toEqual([]);
+  });
+  it('skips a bracketed aside before the real array', () => {
+    const out = parseSuggestions('Sure [see below]\n[{"text":"Send deck","atMs":5000}]');
+    expect(out).toEqual([{ text: 'Send deck', owner: undefined, due: undefined, atMs: 5000 }]);
+  });
+});
+
+describe('visibleMarkers', () => {
+  it('drops unaccepted AI markers and keeps manual ones', () => {
+    const mk = (id: string, extra: Partial<Marker>): Marker => ({ id, meetingId: 'm', atMs: 1, kind: 'action', label: id, ...extra });
+    const out = visibleMarkers([
+      mk('manual', {}), mk('sug', { source: 'ai', status: 'suggested' }),
+      mk('dis', { source: 'ai', status: 'dismissed' }), mk('acc', { source: 'ai', status: 'accepted' }),
+    ]);
+    expect(out.map((m) => m.id)).toEqual(['manual', 'acc']);
   });
 });
 
@@ -78,6 +93,31 @@ describe('runSuggest', () => {
     const body = (fetchFn.mock.calls[0] as unknown as [string, RequestInit])[1].body as string;
     expect(body).toContain('recent talk');
     expect(body).not.toContain('ancient talk');
+  });
+});
+
+describe('in-flight cancellation', () => {
+  it('writes nothing when the meeting ended during the request', async () => {
+    await seg('s1', 1000);
+    const made = await runSuggest('m', {
+      fetchFn: async () => {
+        await putMeeting({ id: 'm', title: 'Sync', startedAt: 0, status: 'done', language: 'en' });
+        return reply('[{"text":"Do it"}]');
+      },
+    });
+    expect(made).toEqual([]);
+    expect(await listMarkers('m')).toHaveLength(0);
+  });
+  it('stop() aborts the request', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    await seg('s1', 1000);
+    let sig: AbortSignal | undefined;
+    const fetchFn = vi.fn((_u: unknown, init?: RequestInit) => { sig = init?.signal ?? undefined; return new Promise<Response>(() => {}); });
+    const stop = startSuggester({ meetingId: 'm', isOk: () => true, onNew: vi.fn(), fetchFn: fetchFn as never });
+    await vi.advanceTimersByTimeAsync(60_000);
+    await vi.waitFor(() => expect(fetchFn).toHaveBeenCalled());
+    stop();
+    expect(sig?.aborted).toBe(true);
   });
 });
 

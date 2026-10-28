@@ -422,3 +422,6 @@ a:hover { color: var(--accent-hover); }
 .sg-dismiss { height: 38px; padding: 0 14px; border: 1px solid #e8e8eb; border-radius: 10px; background: #fff; font: inherit; font-size: 13px; font-weight: 500; color: #44464d; cursor: pointer; }
 .live-sug { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #5f6168; }
 .tr-target { background: #EEF0FF; box-shadow: inset 3px 0 0 var(--accent); }
+
+.live-sug-link { border: none; background: none; padding: 0; font: inherit; font-weight: 500; color: inherit; cursor: pointer; }
+.live-sug-link:hover { text-decoration: underline; }

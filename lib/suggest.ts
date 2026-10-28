@@ -42,15 +42,27 @@ function toMs(v: unknown): number | undefined {
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 
+/** First '[' ... ']' span (tried from each '[') that JSON.parses to an array of objects. */
+function firstArray(text: string): unknown[] | undefined {
+  for (let a = text.indexOf('['); a >= 0; a = text.indexOf('[', a + 1)) {
+    for (let b = text.indexOf(']', a); b >= 0; b = text.indexOf(']', b + 1)) {
+      try {
+        const v: unknown = JSON.parse(text.slice(a, b + 1));
+        if (Array.isArray(v) && v.every((x) => x && typeof x === 'object' && !Array.isArray(x))) return v;
+      } catch { /* keep extending */ }
+    }
+  }
+  return undefined;
+}
+
 /** Parses a model reply into suggestions; tolerates code fences, prose, and a {"actions": [...]} wrapper. */
 export function parseSuggestions(raw: string): Suggestion[] {
-  let text = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  let data: unknown;
-  for (const [open, close] of [['[', ']'], ['{', '}']] as const) {
-    const a = text.indexOf(open);
-    const b = text.lastIndexOf(close);
-    if (a < 0 || b <= a) continue;
-    try { data = JSON.parse(text.slice(a, b + 1)); break; } catch { /* try next shape */ }
+  const text = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  let data: unknown = firstArray(text);
+  if (data === undefined) {
+    const a = text.indexOf('{');
+    const b = text.lastIndexOf('}');
+    if (a >= 0 && b > a) { try { data = JSON.parse(text.slice(a, b + 1)); } catch { /* none */ } }
   }
   if (data && !Array.isArray(data) && typeof data === 'object') {
     const o = data as Record<string, unknown>;
@@ -69,7 +81,12 @@ export function parseSuggestions(raw: string): Suggestion[] {
   return out;
 }
 
-export interface SuggestDeps { fetchFn?: FetchLike }
+export interface SuggestDeps { fetchFn?: FetchLike; signal?: AbortSignal }
+
+/** Drops AI markers the user has not accepted (suggested or dismissed); manual markers are kept. */
+export function visibleMarkers(markers: Marker[]): Marker[] {
+  return markers.filter((m) => m.source !== 'ai' || m.status === 'accepted');
+}
 
 /**
  * One check: looks at transcript after the cursor, asks the model, saves new suggestions as markers.
@@ -97,8 +114,11 @@ export async function runSuggest(meetingId: string, deps: SuggestDeps = {}): Pro
     ].join('\n');
     const reply = await chat(
       [{ role: 'system', content: SUGGEST_SYSTEM }, { role: 'user', content: user }],
-      { json: true, maxTokens: 600 }, deps.fetchFn,
+      { json: true, maxTokens: 600, signal: deps.signal }, deps.fetchFn,
     );
+    if (deps.signal?.aborted) return [];
+    const current = await getMeeting(meetingId);
+    if (!current || current.status !== 'recording' || deps.signal?.aborted) return [];
     const found = parseSuggestions(reply);
 
     const created: Marker[] = [];
@@ -137,16 +157,17 @@ export interface SuggesterOptions {
 export function startSuggester(o: SuggesterOptions): () => void {
   let busy = false;
   let stopped = false;
+  const ctl = new AbortController();
   const tick = async () => {
     if (busy || stopped || !o.isOk()) return;
     busy = true;
     try {
-      const made = await runSuggest(o.meetingId, { fetchFn: o.fetchFn });
+      const made = await runSuggest(o.meetingId, { fetchFn: o.fetchFn, signal: ctl.signal });
       if (!stopped && made.length) o.onNew(made);
     } finally { busy = false; }
   };
   const t = setInterval(tick, o.intervalMs ?? SUGGEST_INTERVAL_MS);
-  return () => { stopped = true; clearInterval(t); };
+  return () => { stopped = true; ctl.abort(); clearInterval(t); };
 }
 
 /** Saves the user's decision on a suggestion (with any edits to its text, owner or due). */

@@ -243,6 +243,7 @@ export default function Live() {
             <span>
               {counts.added} {counts.added === 1 ? 'action' : 'actions'} added · {counts.waiting} {counts.waiting === 1 ? 'suggestion' : 'suggestions'} waiting
             </span>
+            <button type="button" className="live-sug-link" onClick={() => navigate('settings')}>Suggestions on</button>
           </div>
         )}
         <div role="group" aria-label="Mark this moment" className="live-markers">

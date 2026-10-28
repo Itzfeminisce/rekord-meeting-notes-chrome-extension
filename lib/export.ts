@@ -1,4 +1,5 @@
 import { formatClock, formatDuration } from './time';
+import { visibleMarkers } from './suggest';
 import type { Marker, Meeting, Note, Segment } from './types';
 
 export interface ExportOptions {
@@ -46,7 +47,7 @@ export function buildSections(
   if (opts.notes && notes.length) {
     out.push({ heading: 'Your notes', list: true, lines: [...notes].sort((a, b) => a.atMs - b.atMs).map((n) => `${formatClock(n.atMs)} ${n.text}`) });
   }
-  const marked = markers.filter((m) => m.kind !== 'bookmark' || m.label);
+  const marked = visibleMarkers(markers).filter((m) => m.kind !== 'bookmark' || m.label);
   if (opts.notes && marked.length) {
     out.push({
       heading: 'Marked moments', list: true,

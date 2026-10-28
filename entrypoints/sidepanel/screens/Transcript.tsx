@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { visibleMarkers } from '@/lib/suggest';
 import { getMeeting, listMarkers, listNotes, listSegments } from '@/lib/db';
 import { buildTimeline, type TimelineItem } from '@/lib/live';
 import { itemText, matchIds, splitMatches, transcriptToText } from '@/lib/library';
@@ -38,7 +39,7 @@ export default function Transcript() {
       const [meeting, segments, notes, markers] = await Promise.all([
         getMeeting(meetingId), listSegments(meetingId), listNotes(meetingId), listMarkers(meetingId),
       ]);
-      setData({ meeting, items: buildTimeline(segments, notes, markers) });
+      setData({ meeting, items: buildTimeline(segments, notes, visibleMarkers(markers)) });
     } catch {
       setError(true);
     }

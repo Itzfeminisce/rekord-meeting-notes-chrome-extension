@@ -5,6 +5,7 @@ import { useAskEnabled } from './Ask';
 import { getMeeting, listMarkers, listNotes } from '@/lib/db';
 import { summarize } from '@/lib/summarize';
 import { formatClock, formatDuration } from '@/lib/time';
+import { visibleMarkers } from '@/lib/suggest';
 import type { Marker, Meeting, Note } from '@/lib/types';
 
 function when(ms: number): string {
@@ -32,7 +33,7 @@ export default function Summary() {
     Promise.all([getMeeting(meetingId), listNotes(meetingId), listMarkers(meetingId)])
       .then(([m, n, k]) => {
         if (!alive) return;
-        setMeeting(m); setNotes(n); setMarkers(k.filter((x) => x.kind !== 'bookmark' || x.label));
+        setMeeting(m); setNotes(n); setMarkers(visibleMarkers(k).filter((x) => x.kind !== 'bookmark' || x.label));
         setState(m ? 'ready' : 'missing');
       })
       .catch(() => alive && setState('missing'));
