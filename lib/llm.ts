@@ -70,12 +70,15 @@ export async function chat(
   return content;
 }
 
-/** Display name for a segment: "You", a saved speaker name when known, else "Others". */
-export function speakerName(s: Segment, speakers?: Meeting['speakers']): string {
+/** What a speaker shows as: "You", their saved name, else "Speaker A" for a diarized label, else "Others". */
+export function displayName(s: Pick<Segment, 'speaker' | 'speakerLabel'>, speakers?: Meeting['speakers']): string {
   if (s.speaker === 'you') return 'You';
-  const name = s.speakerLabel ? speakers?.[s.speakerLabel]?.name?.trim() : undefined;
-  return name || 'Others';
+  if (!s.speakerLabel) return 'Others';
+  return speakers?.[s.speakerLabel]?.name?.trim() || `Speaker ${s.speakerLabel}`;
 }
+
+/** Display name for a segment (same as `displayName`). */
+export const speakerName = displayName;
 
 /** Transcript as "[mm:ss] Name: text" lines (empty segments skipped). */
 export function transcriptLines(segments: Segment[], speakers?: Meeting['speakers']): string[] {

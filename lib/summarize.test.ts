@@ -36,6 +36,9 @@ describe('parseSummary', () => {
 describe('prompt', () => {
   it('formats lines and truncates the middle', () => {
     expect(buildPrompt('T', [{ id: 's', meetingId: 'm', speaker: 'others', startMs: 65000, endMs: 1, text: 'hi', chunkId: 'c' }], [], [])).toContain('[1:05] Others: hi');
+    const named = { id: 's', meetingId: 'm', speaker: 'others' as const, speakerLabel: 'A', startMs: 65000, endMs: 1, text: 'hi', chunkId: 'c' };
+    expect(buildPrompt('T', [named], [], [], { A: { name: 'Dana' } })).toContain('[1:05] Dana: hi');
+    expect(buildPrompt('T', [named], [], [])).toContain('[1:05] Speaker A: hi');
     const t = truncateMiddle('a'.repeat(100) + 'b'.repeat(100), 100);
     expect(t.startsWith('a')).toBe(true);
     expect(t.endsWith('b')).toBe(true);

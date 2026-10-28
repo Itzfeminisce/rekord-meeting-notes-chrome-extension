@@ -1,5 +1,6 @@
 import type { Meeting, Segment } from './types';
 import type { TimelineItem } from './live';
+import { speakerName } from './llm';
 import { formatClock } from './time';
 
 const DAY = 86_400_000;
@@ -75,11 +76,11 @@ export function matchIds(items: TimelineItem[], query: string): string[] {
 }
 
 /** Plain text of the whole transcript for copying: "[12:04] You: text", notes as "Your note". */
-export function transcriptToText(items: TimelineItem[]): string {
+export function transcriptToText(items: TimelineItem[], speakers?: Meeting['speakers']): string {
   return items
     .map((it) => {
       const at = `[${formatClock(it.atMs)}]`;
-      if (it.kind === 'segment') return `${at} ${it.segment.speaker === 'you' ? 'You' : 'Others'}: ${it.segment.text}`;
+      if (it.kind === 'segment') return `${at} ${speakerName(it.segment, speakers)}: ${it.segment.text}`;
       if (it.kind === 'note') return `${at} Your note: ${it.note.text}`;
       return `${at} ${it.marker.kind.charAt(0).toUpperCase()}${it.marker.kind.slice(1)}${it.marker.label ? `: ${it.marker.label}` : ''}`;
     })

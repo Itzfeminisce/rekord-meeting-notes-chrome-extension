@@ -91,4 +91,22 @@ describe('ContinuousRecording', () => {
     b.start();
     expect(await b.stop()).toBe(false);
   });
+
+  it('returns false and deletes saved parts when a later savePart rejects once', async () => {
+    const parts: number[] = [];
+    const deleted: string[] = [];
+    let fail = true;
+    let emit: (b: Blob) => void = () => undefined;
+    const rec = new ContinuousRecording({
+      meetingId: 'm3', startedAt: 0, saveMeta: async () => undefined,
+      savePart: async (p) => { if (p.seq === 1 && fail) { fail = false; throw new Error('disk'); } parts.push(p.seq); },
+      deleteRecording: async (id) => { deleted.push(id); },
+      createRecorder: (onData) => { emit = onData; return { mimeType: '', start: () => undefined, pause: () => undefined, resume: () => undefined, stop: async () => { onData(new Blob(['last'])); } }; },
+    });
+    rec.start();
+    emit(new Blob(['a']));
+    expect(await rec.stop()).toBe(false);
+    expect(parts).toEqual([0]);
+    expect(deleted).toEqual(['m3']);
+  });
 });

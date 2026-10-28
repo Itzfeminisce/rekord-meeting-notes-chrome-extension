@@ -126,12 +126,7 @@ export function runSpeakerStep(
   return run;
 }
 
-/** What a speaker shows as: their saved name, else "Speaker A" for a diarized label, else "Others". You stays "You". */
-export function displayName(s: Pick<Segment, 'speaker' | 'speakerLabel'>, speakers?: Meeting['speakers']): string {
-  if (s.speaker === 'you') return 'You';
-  if (!s.speakerLabel) return 'Others';
-  return speakers?.[s.speakerLabel]?.name?.trim() || `Speaker ${s.speakerLabel}`;
-}
+export { displayName } from './llm';
 
 export interface SpeakerStats { label: string; talkMs: number; lines: number; quote: Segment | undefined }
 

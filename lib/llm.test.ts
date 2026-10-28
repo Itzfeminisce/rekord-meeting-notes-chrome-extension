@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { saveKeys } from './keys';
-import { chat, LLMError, transcriptLines } from './llm';
+import { chat, LLMError, speakerName, transcriptLines } from './llm';
 import { DEFAULT_SETTINGS, updateSettings } from './settings';
 import type { Segment } from './types';
 
@@ -73,7 +73,18 @@ describe('transcriptLines', () => {
       [seg(65000, 'you', ' hello '), seg(70000, 'others', 'hi', 'A'), seg(71000, 'others', 'yo', 'B'), seg(72000, 'others', '  ')],
       { A: { name: 'Dana' }, B: { suggested: 'Sam' } },
     );
-    expect(lines).toEqual(['[1:05] You: hello', '[1:10] Dana: hi', '[1:11] Others: yo']);
-    expect(transcriptLines([seg(0, 'others', 'x', 'A')])).toEqual(['[0:00] Others: x']);
+    expect(lines).toEqual(['[1:05] You: hello', '[1:10] Dana: hi', '[1:11] Speaker B: yo']);
+    expect(transcriptLines([seg(0, 'others', 'x', 'A')])).toEqual(['[0:00] Speaker A: x']);
+  });
+});
+
+describe('speakerName', () => {
+  it('uses the saved name, else Speaker <label>, else Others', () => {
+    const base = { id: 's', meetingId: 'm', startMs: 0, endMs: 1, text: 't', chunkId: 'c' };
+    const sp = { A: { name: ' Dana ' }, B: {} };
+    expect(speakerName({ ...base, speaker: 'others', speakerLabel: 'A' }, sp)).toBe('Dana');
+    expect(speakerName({ ...base, speaker: 'others', speakerLabel: 'B' }, sp)).toBe('Speaker B');
+    expect(speakerName({ ...base, speaker: 'others' }, sp)).toBe('Others');
+    expect(speakerName({ ...base, speaker: 'you', speakerLabel: 'A' }, sp)).toBe('You');
   });
 });

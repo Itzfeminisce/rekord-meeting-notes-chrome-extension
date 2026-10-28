@@ -218,6 +218,15 @@ export default function Speakers() {
                   <span style={small}>No name came up in the conversation.</span>
                 )}
               </div>
+              {mergedIn.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setMerges((m) => { const next = { ...m }; for (const k of mergedIn) delete next[k]; return next; })}
+                  style={{ alignSelf: 'flex-start', height: 34, padding: '0 10px', border: '1px solid #E8E8EB', borderRadius: 9, background: '#fff', font: 'inherit', fontSize: 13, cursor: 'pointer' }}
+                >
+                  Undo merge
+                </button>
+              )}
             </section>
           );
         })}
@@ -251,6 +260,7 @@ export default function Speakers() {
                 disabled={!pick[0] || !pick[1] || pick[0] === pick[1]}
                 onClick={() => {
                   const [into, from] = pick[0] < pick[1] ? [pick[0], pick[1]] : [pick[1], pick[0]];
+                  setNames((p) => ({ ...p, [into]: p[into]?.trim() ? p[into] : (p[from] ?? '') }));
                   setMerges((m) => ({ ...m, [from]: into }));
                   setMergeOpen(false);
                 }}

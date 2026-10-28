@@ -1,4 +1,5 @@
 import { formatClock, formatDuration } from './time';
+import { speakerName } from './llm';
 import { visibleMarkers } from './suggest';
 import type { Marker, Meeting, Note, Segment } from './types';
 
@@ -57,7 +58,7 @@ export function buildSections(
   if (opts.transcript && segments.length) {
     out.push({
       heading: 'Transcript',
-      lines: [...segments].sort((a, b) => a.startMs - b.startMs).map((g) => `[${formatClock(g.startMs)}] ${g.speaker === 'you' ? 'You' : 'Others'}: ${g.text}`),
+      lines: [...segments].sort((a, b) => a.startMs - b.startMs).map((g) => `[${formatClock(g.startMs)}] ${speakerName(g, meeting.speakers)}: ${g.text}`),
     });
   }
   return out;

@@ -99,3 +99,12 @@ describe('print url', () => {
     expect(parseInclude(inc)).toEqual({ ...DEFAULT_OPTIONS, transcript: true });
   });
 });
+
+describe('toMarkdown speaker names', () => {
+  it('names diarized speakers in the transcript', () => {
+    const sg = [{ ...segs[0]!, speaker: 'others' as const, speakerLabel: 'A' }, { ...segs[0]!, id: 's2', speaker: 'others' as const, speakerLabel: 'B', startMs: 66000 }];
+    const md = toMarkdown({ ...meeting, speakers: { A: { name: 'Dana' } } }, sg, [], [], { ...DEFAULT_OPTIONS, transcript: true });
+    expect(md).toContain('Dana: Hello there');
+    expect(md).toContain('Speaker B: Hello there');
+  });
+});
