@@ -36,6 +36,8 @@ export default function Library() {
 
   const remove = async (id: string) => {
     setConfirming(null);
+    const target = meetings?.find((m) => m.id === id);
+    if (target && (target.status === 'recording' || target.status === 'processing')) return;
     try {
       await deleteMeeting(id);
       setMeetings((cur) => cur?.filter((m) => m.id !== id));
@@ -112,7 +114,7 @@ export default function Library() {
                         {!live && m.endedAt !== undefined && <span className="pill">{formatDuration(m.endedAt - m.startedAt)}</span>}
                       </span>
                     </button>
-                    {confirming === m.id ? (
+                    {!live && (confirming === m.id ? (
                       <div className="lib-confirm" role="alertdialog" aria-label={`Delete ${m.title || 'Untitled meeting'}`}>
                         <span>Delete this meeting for good?</span>
                         <Button variant="secondary" onClick={() => setConfirming(null)}>Cancel</Button>
@@ -122,7 +124,7 @@ export default function Library() {
                       <button type="button" className="icon-btn lib-del" aria-label={`Delete ${m.title || 'Untitled meeting'}`} onClick={() => setConfirming(m.id)}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12h10l1-12M9 7V4h6v3" /></svg>
                       </button>
-                    )}
+                    ))}
                   </div>
                 );
               })}
