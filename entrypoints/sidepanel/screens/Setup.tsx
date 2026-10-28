@@ -190,15 +190,7 @@ export default function Setup() {
           Keep your keys in one safe place and change them any time with <PenvCloudLink />.
         </span>
 
-        {source === 'penv' ? (
-          <button
-            type="button"
-            onClick={() => navigate('penvConnect')}
-            style={{ height: 42, border: '1px solid #DCDCE0', borderRadius: 10, background: '#FFFFFF', font: 'inherit', fontSize: 13, fontWeight: 600, color: '#111114', cursor: 'pointer' }}
-          >
-            Open Penv Cloud connection
-          </button>
-        ) : (
+        {source === 'penv' ? null : (
           <>
             <label htmlFor="anykey" style={LABEL}>Paste your API key</label>
             <input

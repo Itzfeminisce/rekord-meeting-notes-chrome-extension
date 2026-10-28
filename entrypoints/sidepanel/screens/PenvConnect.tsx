@@ -43,6 +43,7 @@ export default function PenvConnect() {
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [noUsable, setNoUsable] = useState(false);
   const keys = useKeyState();
 
   useEffect(() => {
@@ -90,6 +91,7 @@ export default function PenvConnect() {
   async function connectToken() {
     if (!s) return;
     setError('');
+    setNoUsable(false);
     const target = parseEnvPath(envPath);
     if (!target) return setError('Enter the environment as org/project/environment.');
     if (!token.trim()) return setError('Enter your read-only machine token.');
@@ -103,6 +105,7 @@ export default function PenvConnect() {
       const loaded = await loadKeys();
       await saveKeyStatus(await checkKeys(loaded));
       await keys.reload();
+      if (Object.keys(loaded).length === 0) setNoUsable(true);
       setEditing(false);
     } catch (err) {
       setError(friendly(connectErrorMessage(err)));
@@ -121,6 +124,23 @@ export default function PenvConnect() {
       setError('Rekord couldn’t save your choices. Try again.');
       setBusy(false);
     }
+  }
+
+  function noKeysPanel(names: string[]) {
+    return (
+      <div role="alert" style={{ padding: '12px 14px', borderRadius: 14, background: '#FFF8EC', border: '1px solid #F5DDB0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <span style={{ fontSize: 13, lineHeight: 1.45, color: '#5C3200' }}>
+          Connected, but Rekord can’t read a {names.map(serviceLabel).join(' or ')} key yet. Add one to this environment on <PenvCloudLink />, or choose it when you connect.
+        </span>
+        <button
+          type="button"
+          onClick={() => { setNoUsable(false); setEditing(true); setShowToken(true); }}
+          style={{ alignSelf: 'flex-start', height: 32, padding: '0 12px', borderRadius: 9, background: '#FFFFFF', border: '1px solid #F5DDB0', color: '#5C3200', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+        >
+          Change which keys
+        </button>
+      </div>
+    );
   }
 
   const tokenFields = (
@@ -162,12 +182,7 @@ export default function PenvConnect() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A7F4B" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10" /></svg>
           </div>
 
-          {missing.length > 0 && (
-            <div role="status" style={{ padding: '12px 14px', borderRadius: 14, background: '#FFF6E5', border: '1px solid #F2DDB0', fontSize: 13, lineHeight: 1.45, color: '#6B4A00' }}>
-              Connected, but Rekord can’t read a {missing.map(serviceLabel).join(' or ')} key yet. Add one to this environment on <PenvCloudLink />, or choose it when you connect.{' '}
-              <button type="button" onClick={() => setEditing(true)} style={{ ...LINK, padding: 0, border: 'none', background: 'transparent', font: 'inherit', fontSize: 13, color: '#4F46E5', cursor: 'pointer' }}>Change which keys</button>
-            </div>
-          )}
+          {missing.length > 0 && noKeysPanel(missing)}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: '#44464D' }}>Keys Rekord can read</span>
@@ -235,6 +250,7 @@ export default function PenvConnect() {
               </>
             )}
           </span>
+          {noUsable && !error && noKeysPanel(needed)}
           {error && <div className="perm-error" role="alert">{error}</div>}
         </div>
       )}
