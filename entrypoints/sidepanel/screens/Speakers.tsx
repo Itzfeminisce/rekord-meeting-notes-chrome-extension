@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Spinner } from '../components';
 import { useRouter } from '../router';
 import { getMeeting, listRecordingParts, listSegments, getRecordingMeta } from '@/lib/db';
-import { displayName, saveSpeakerNames, skipSpeakers, speakerStats, toRecordingMs, type SpeakerStats } from '@/lib/speakers';
+import { chipsFor, displayName, inviteCandidates, matchInvitee, saveSpeakerNames, skipSpeakers, speakerStats, toRecordingMs, unnamedInvitees, type SpeakerStats } from '@/lib/speakers';
 import type { Meeting, RecordingMeta, Segment } from '@/lib/types';
 
 const COLORS: [string, string][] = [['#E3E2FF', '#3730A3'], ['#FDE7D7', '#8A4B00'], ['#DDF3E6', '#1A6B40'], ['#FCE1EC', '#9B1C4D'], ['#E0F0FA', '#0B5C8A']];
@@ -36,6 +36,8 @@ export default function Speakers() {
   const [merges, setMerges] = useState<Record<string, string>>({});
   const [mergeOpen, setMergeOpen] = useState(false);
   const [pick, setPick] = useState<[string, string]>(['', '']);
+  const [matched, setMatched] = useState<Set<string>>(new Set());
+  const [other, setOther] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [playing, setPlaying] = useState('');
@@ -60,7 +62,17 @@ export default function Speakers() {
         const [meeting, segments, parts, recMeta] = await Promise.all([getMeeting(meetingId), listSegments(meetingId), listRecordingParts(meetingId), getRecordingMeta(meetingId)]);
         if (!meeting) throw new Error('missing');
         const seed: Record<string, string> = {};
-        for (const [l, v] of Object.entries(meeting.speakers ?? {})) seed[l] = v.name ?? v.suggested ?? '';
+        const cand = inviteCandidates(meeting.event);
+        const hit = new Set<string>();
+        const free = new Set<string>();
+        for (const [l, v] of Object.entries(meeting.speakers ?? {})) {
+          const m = v.name ? undefined : matchInvitee(v.suggested, cand);
+          if (m) hit.add(l);
+          seed[l] = v.name ?? m?.name ?? v.suggested ?? '';
+          if (cand.length && !m && seed[l] && !cand.some((c) => c.name === seed[l])) free.add(l);
+        }
+        setMatched(hit);
+        setOther(free);
         setNames(seed);
         setData({ meeting, segments, hasAudio: parts.length > 0, recMeta });
       } catch {
@@ -68,6 +80,9 @@ export default function Speakers() {
       }
     })();
   }, [meetingId]);
+
+  const candidates = useMemo(() => inviteCandidates(data?.meeting.event), [data]);
+  const invite = candidates.length > 0;
 
   const root = (l: string): string => { let x = l; for (let i = 0; i < 26 && merges[x]; i++) x = merges[x]!; return x; };
 
@@ -124,12 +139,13 @@ export default function Speakers() {
     }
   }
 
-  function evidence(label: string): string | undefined {
+  function evidence(label: string, inviteStyle = false): string | undefined {
     const sp = data?.meeting.speakers?.[label];
     if (!sp?.suggested || sp.evidenceMs === undefined || !data) return undefined;
     const seg = data.segments.reduce<Segment | undefined>((best, g) => (!best || Math.abs(g.startMs - sp.evidenceMs!) < Math.abs(best.startMs - sp.evidenceMs!) ? g : best), undefined);
     if (!seg) return undefined;
     const who = seg.speaker === 'you' ? 'you' : displayName(seg, undefined);
+    if (inviteStyle) return `${who === 'you' ? 'You' : who} said “${excerpt(seg.text)}” at ${clock(sp.evidenceMs)}`;
     return `Suggested: ${who} said “${excerpt(seg.text)}” at ${clock(sp.evidenceMs)}`;
   }
 
@@ -164,7 +180,9 @@ export default function Speakers() {
       <div style={{ padding: '12px 20px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <h1 style={{ margin: 0, fontSize: 24, lineHeight: 1.2, fontWeight: 600, letterSpacing: '-0.02em' }}>Who was in the call?</h1>
         <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: '#5F6168' }}>
-          {n === 1 ? 'Rekord heard 1 other voice.' : `Rekord heard ${n} other voices.`} Check the names it suggests, then they’ll replace “Others” across the transcript and summary.
+          {invite
+            ? `Rekord heard ${n === 1 ? '1 other voice' : `${n} other voices`} and matched them with your invite. Check they’re right.`
+            : `${n === 1 ? 'Rekord heard 1 other voice.' : `Rekord heard ${n} other voices.`} Check the names it suggests, then they’ll replace “Others” across the transcript and summary.`}
         </p>
       </div>
 
@@ -172,20 +190,23 @@ export default function Speakers() {
         {n === 0 && <p style={{ ...small, padding: '0 8px' }}>No other voices were found in this meeting.</p>}
         {cards.map((st, i) => {
           const [bg, fg] = COLORS[i % COLORS.length]!;
-          const ev = evidence(st.label);
+          const ev = evidence(st.label, invite);
+          const isMatched = invite && matched.has(st.label);
+          const shown = isMatched ? (names[st.label] ?? '') : '';
+          const chips = invite ? chipsFor(st.label, candidates, names) : [];
           const mergedIn = Object.keys(merges).filter((k) => root(k) === st.label);
           return (
             <section key={st.label} style={card} aria-label={`Speaker ${st.label}`}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span aria-hidden="true" style={{ width: 32, height: 32, borderRadius: '50%', background: bg, color: fg, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{st.label}</span>
+                <span aria-hidden="true" style={{ width: 32, height: 32, borderRadius: '50%', background: bg, color: fg, fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{isMatched && shown ? shown.charAt(0).toUpperCase() : st.label}</span>
                 <span style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>Speaker {st.label}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>{isMatched && shown ? shown : `Speaker ${st.label}`}</span>
                   <span style={small}>{talk(st.talkMs)} · {st.lines === 1 ? '1 line' : `${st.lines} lines`}{mergedIn.length ? ` · includes ${mergedIn.map((k) => `Speaker ${k}`).join(', ')}` : ''}</span>
                 </span>
                 {data.hasAudio && st.quote && (
                   <button
                     type="button"
-                    aria-label={playing === st.label ? `Stop the sample of Speaker ${st.label}` : `Play a sample of Speaker ${st.label}`}
+                    aria-label={playing === st.label ? `Stop the sample of ${isMatched && shown ? shown : `Speaker ${st.label}`}` : `Play a sample of ${isMatched && shown ? shown : `Speaker ${st.label}`}`}
                     onClick={() => void play(st)}
                     style={{ width: 36, height: 36, border: 'none', borderRadius: '50%', background: '#F1F1F3', color: '#111114', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                   >
@@ -197,27 +218,82 @@ export default function Speakers() {
                   </button>
                 )}
               </div>
-              {st.quote && <p style={{ margin: 0, padding: '10px 12px', borderRadius: 10, background: '#F6F6F7', fontSize: 13, lineHeight: 1.45, color: '#2A2B31' }}>“{excerpt(st.quote.text, 160)}”</p>}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label htmlFor={`name-${st.label}`} style={{ fontSize: 12, fontWeight: 500, color: '#44464D' }}>Name</label>
-                <input
-                  id={`name-${st.label}`}
-                  type="text"
-                  style={input}
-                  value={names[st.label] ?? ''}
-                  placeholder={`Add a name, or leave as Speaker ${st.label}`}
-                  onChange={(e) => setNames((p) => ({ ...p, [st.label]: e.target.value }))}
-                  autoComplete="off"
-                />
-                {ev ? (
+              {st.quote && !isMatched && <p style={{ margin: 0, padding: '10px 12px', borderRadius: 10, background: '#F6F6F7', fontSize: 13, lineHeight: 1.45, color: '#2A2B31' }}>“{excerpt(st.quote.text, 160)}”</p>}
+              {isMatched ? (
+                ev && (
                   <span style={{ fontSize: 12, color: '#4F46E5', display: 'flex', alignItems: 'center', gap: 4 }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l2.5 5.5L20 11l-5.5 2.5L12 19l-2.5-5.5L4 11l5.5-2.5z" /></svg>
                     {ev}
                   </span>
-                ) : (
-                  <span style={small}>No name came up in the conversation.</span>
-                )}
-              </div>
+                )
+              ) : invite ? (
+                <div role="group" aria-label="Who is this?" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: '#44464D' }}>Who is this? From your invite:</span>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {chips.map((c) => {
+                      const on = !other.has(st.label) && names[st.label] === c.name;
+                      return (
+                        <button
+                          key={c.email}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => {
+                            setOther((p) => { const x = new Set(p); x.delete(st.label); return x; });
+                            setNames((p) => ({ ...p, [st.label]: on ? '' : c.name }));
+                          }}
+                          style={{ height: 34, padding: '0 12px', border: `1px solid ${on ? '#111114' : '#DCDCE0'}`, borderRadius: 999, background: on ? '#111114' : '#FFFFFF', font: 'inherit', fontSize: 13, fontWeight: 500, color: on ? '#FFFFFF' : '#111114', cursor: 'pointer' }}
+                        >
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      aria-pressed={other.has(st.label)}
+                      onClick={() => {
+                        const open = other.has(st.label);
+                        setOther((p) => { const x = new Set(p); if (open) x.delete(st.label); else x.add(st.label); return x; });
+                        if (!open && candidates.some((c) => c.name === names[st.label])) setNames((p) => ({ ...p, [st.label]: '' }));
+                      }}
+                      style={{ height: 34, padding: '0 12px', border: '1px dashed #DCDCE0', borderRadius: 999, background: other.has(st.label) ? '#F1F1F3' : 'transparent', font: 'inherit', fontSize: 13, fontWeight: 500, color: '#5F6168', cursor: 'pointer' }}
+                    >
+                      Someone else…
+                    </button>
+                  </div>
+                  {other.has(st.label) && (
+                    <input
+                      type="text"
+                      aria-label="Name"
+                      style={input}
+                      value={names[st.label] ?? ''}
+                      onChange={(e) => setNames((p) => ({ ...p, [st.label]: e.target.value }))}
+                      autoComplete="off"
+                      autoFocus
+                    />
+                  )}
+                </div>
+              ) : (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label htmlFor={`name-${st.label}`} style={{ fontSize: 12, fontWeight: 500, color: '#44464D' }}>Name</label>
+                  <input
+                    id={`name-${st.label}`}
+                    type="text"
+                    style={input}
+                    value={names[st.label] ?? ''}
+                    placeholder={`Add a name, or leave as Speaker ${st.label}`}
+                    onChange={(e) => setNames((p) => ({ ...p, [st.label]: e.target.value }))}
+                    autoComplete="off"
+                  />
+                  {ev ? (
+                    <span style={{ fontSize: 12, color: '#4F46E5', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l2.5 5.5L20 11l-5.5 2.5L12 19l-2.5-5.5L4 11l5.5-2.5z" /></svg>
+                      {ev}
+                    </span>
+                  ) : (
+                    <span style={small}>No name came up in the conversation.</span>
+                  )}
+                </div>
+              )}
               {mergedIn.length > 0 && (
                 <button
                   type="button"
@@ -231,9 +307,12 @@ export default function Speakers() {
           );
         })}
 
+        {invite && unnamedInvitees(candidates, names).map((c) => (
+          <span key={c.email} style={{ padding: '0 6px', fontSize: 12, color: '#6E7079' }}>{c.name} didn’t speak, or Rekord couldn’t pick out {c.name}’s voice.</span>
+        ))}
         {audioError && <span role="status" style={small}>{audioError}</span>}
 
-        {n > 1 && !mergeOpen && (
+        {!invite && n > 1 && !mergeOpen && (
           <button
             type="button"
             onClick={() => { setPick([labels[0] ?? '', labels[1] ?? '']); setMergeOpen(true); }}
@@ -242,7 +321,7 @@ export default function Speakers() {
             These are the same person
           </button>
         )}
-        {n > 1 && mergeOpen && (
+        {!invite && n > 1 && mergeOpen && (
           <div style={{ ...card, gap: 10 }} role="group" aria-label="Merge two speakers">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <select aria-label="First speaker" value={pick[0]} onChange={(e) => setPick([e.target.value, pick[1]])} style={{ ...input, height: 36, fontSize: 13 }}>
