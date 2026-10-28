@@ -26,20 +26,14 @@ a{color:#4F46E5}a:hover{color:#3730A3}
 
   <div style="padding: 12px 20px 0; display: flex; flex-direction: column; gap: 8px;">
     <h1 style="margin: 0; font-size: 24px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em;">Who was in the call?</h1>
-    <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #5F6168;">Check the names Rekord suggests. They’ll replace “Others” across the transcript and summary.</p>
+    <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #5F6168;">Rekord heard 1 other voice. Check the names it suggests, then they’ll replace “Others” across the transcript and summary.</p>
   </div>
 
   <div style="flex-grow: 1; overflow: hidden; padding: 18px 12px 0; display: flex; flex-direction: column; gap: 10px;">
-    <section style="padding: 14px; border-radius: 18px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column; gap: 12px;">
+    <section aria-label="Speaker A" style="padding: 14px; border-radius: 18px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column; gap: 12px;">
       <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="display: flex; flex-shrink: 0;">
-          <span style="width: 32px; height: 32px; border-radius: 50%; background: #E3E2FF; color: #3730A3; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid #FFFFFF;">A</span>
-          <span style="width: 32px; height: 32px; margin-left: -10px; border-radius: 50%; background: #FDE7D7; color: #8A4B00; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid #FFFFFF;">B</span>
-        </span>
-        <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 600;">Speakers A and B</span><span style="font-size: 12px; color: #6E7079;">Merged · 20 min · 53 lines</span></span>
-        <button type="button" style="height: 32px; padding: 0 10px; border: 1px solid #E8E8EB; border-radius: 9px; background: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600; color: #111114; display: flex; align-items: center; gap: 6px;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"></path><path d="M4 9h11a5 5 0 0 1 0 10h-3"></path></svg>Undo merge
-        </button>
+        <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 50%; background: #E3E2FF; color: #3730A3; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">A</span>
+        <span style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 600;">Speaker A</span><span style="font-size: 12px; color: #6E7079;">Spoke for 20 min · 53 lines · includes Speaker B</span></span>
       </div>
       <p style="margin: 0; padding: 10px 12px; border-radius: 10px; background: #F6F6F7; font-size: 13px; line-height: 1.45; color: #2A2B31;">“Okay, decided: the launch email goes out on the 14th regardless.”</p>
       <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -50,6 +44,7 @@ a{color:#4F46E5}a:hover{color:#3730A3}
           Suggested: you said “Thanks, Priya” at 05:12
         </span>
       </div>
+      <button type="button" style="align-self: flex-start; height: 34px; padding: 0 10px; border: 1px solid #E8E8EB; border-radius: 9px; background: #fff; font: inherit; font-size: 13px; cursor: pointer;">Undo merge</button>
     </section>
   </div>
 
