@@ -5,6 +5,7 @@ import { attendeeLine } from '@/lib/askAll';
 import { formatDuration } from '@/lib/time';
 import type { Meeting } from '@/lib/types';
 import { Button, EmptyState, Spinner } from '../components';
+import { ComingUp } from '../components/CalendarCard';
 import { useRouter } from '../router';
 
 type Filter = 'all' | 'actions';
@@ -149,6 +150,7 @@ export default function Library() {
           ))}
         </section>
       )}
+      <ComingUp />
     </main>
   );
 }
