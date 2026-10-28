@@ -22,7 +22,7 @@
 - [x] T5 Ask all meetings and the Library entry — sonnet — specs/T5.md (after T1)
 - [x] T6 Google connect and Calendar — opus — specs/T6.md (after T1)
 - [x] T7 Share to Google Docs and view-only link — sonnet — specs/T7.md (after T6)
-- [ ] T8 Notion connect, page choice, share — sonnet — specs/T8.md (after T1)
+- [x] T8 Notion connect, page choice, share — sonnet — specs/T8.md (after T1)
 - [x] T9 Name speakers from the invite — sonnet — specs/T9.md (after T6)
 - [x] T10 What's new and Chrome Web Store packaging — sonnet — specs/T10.md (after T1)
 - [ ] T11 Connect Penv Cloud with one click — opus — specs/T11.md (after T2 and Penv Cloud app connections)
@@ -36,3 +36,4 @@
 - T3 done: In an app capture (getDisplayMedia→WebRTC→offscreen), NoSound; sharing-stopped banner pending Live placement (T4).
 - T9 done: invite matching + V3SpeakersInvite. Open: live names on V3Live (after T4).
 - T7 done: Share (Docs save/update, view-only link). Added pre-save 'Google Docs' row (not in frame). Blocked: OAuth client.
+- T8 done: Notion connect/page/share. Own wording for Notion saved/saving/error. Blocked: live test (NOTION_TOKEN).
