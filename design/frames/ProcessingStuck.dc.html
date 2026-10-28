@@ -16,30 +16,37 @@ a{color:#4F46E5}a:hover{color:#3730A3}
 </style>
 </helmet>
 <div style="width: 400px; height: 820px; box-sizing: border-box; display: flex; flex-direction: column; background: #F6F6F7; color: #111114; font-family: Geist, system-ui, sans-serif;">
-  <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 28px; gap: 24px;">
-    <div style="width: 64px; height: 64px; border-radius: 20px; background: #FFF4E5; display: flex; align-items: center; justify-content: center;">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#8A4B00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+  <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 28px; gap: 28px;">
+    <div style="width: 64px; height: 64px; border-radius: 20px; background: #111114; box-shadow: 0 12px 32px rgba(79,70,229,0.25); display: flex; align-items: center; justify-content: center;">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#C7C4FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.5 5.5L20 11l-5.5 2.5L12 19l-2.5-5.5L4 11l5.5-2.5z"></path></svg>
     </div>
-    <div style="display: flex; flex-direction: column; gap: 10px;">
-      <h1 style="margin: 0; font-size: 26px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em;">Transcription can’t finish right now</h1>
-      <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #5F6168;">The last 3:40 is still waiting. Rekord will keep trying, or you can summarize what’s already transcribed.</p>
+    <div role="status" aria-live="polite" style="display: flex; flex-direction: column; gap: 10px;">
+      <h1 style="margin: 0; font-size: 26px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em;">Writing your summary</h1>
+      <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #5F6168;">34 minutes of conversation and 2 of your notes. This usually takes under a minute.</p>
     </div>
-
-    <ol style="list-style: none; margin: 0; padding: 16px; border-radius: 18px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column; gap: 14px;">
-      <li style="display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500;">
-        <span style="width: 22px; height: 22px; border-radius: 50%; border: 2px solid #8A4B00; border-right-color: #F5DDB0; box-sizing: border-box; flex-shrink: 0;"></span>
-        <span style="flex-grow: 1;">Final transcript</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #8A4B00;">22 of 26 parts</span>
+    <ol aria-label="Progress" style="list-style: none; margin: 0; padding: 16px; border-radius: 18px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column; gap: 14px;">
+      <li style="display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500; color: #111114;">
+        <span style="width: 22px; height: 22px; border-radius: 50%; border: 2px solid #4F46E5; border-right-color: #E3E2FF; box-sizing: border-box; flex-shrink: 0;"></span>
+        <span style="flex-grow: 1;">Final transcript</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">4 left</span>
       </li>
-      <li style="display: flex; align-items: center; gap: 12px; font-size: 14px; color: #6E7079;">
+      <li style="display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 400; color: #6E7079;">
+        <span style="width: 22px; height: 22px; border-radius: 50%; border: 2px solid #DCDCE0; box-sizing: border-box; flex-shrink: 0;"></span>
+        <span style="flex-grow: 1;">Decisions</span>
+      </li>
+      <li style="display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 400; color: #6E7079;">
+        <span style="width: 22px; height: 22px; border-radius: 50%; border: 2px solid #DCDCE0; box-sizing: border-box; flex-shrink: 0;"></span>
+        <span style="flex-grow: 1;">Action items and owners</span>
+      </li>
+      <li style="display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 400; color: #6E7079;">
         <span style="width: 22px; height: 22px; border-radius: 50%; border: 2px solid #DCDCE0; box-sizing: border-box; flex-shrink: 0;"></span>
         <span style="flex-grow: 1;">Summary</span>
       </li>
     </ol>
-    <span style="font-size: 12px; color: #6E7079;">Groq is busy. Next try in 0:42.</span>
   </div>
   <div style="padding: 24px; display: flex; flex-direction: column; gap: 10px;">
-    <a href="Summary.dc.html" style="height: 48px; border-radius: 12px; background: #111114; color: #FFFFFF; font-size: 15px; font-weight: 600; text-decoration: none; display: flex; align-items: center; justify-content: center;">Summarize what exists</a>
-    <span style="text-align: center; font-size: 12px; line-height: 1.45; color: #6E7079;">The missing part is added to the transcript when it comes through.</span>
+    <a href="Summary.dc.html" style="height: 44px; border-radius: 12px; background: #FFFFFF; border: 1px solid #E8E8EB; box-sizing: border-box; color: #111114; font-size: 14px; font-weight: 600; text-decoration: none; display: flex; align-items: center; justify-content: center;">Summarize what exists</a>
+    <a href="Transcript.dc.html" style="height: 44px; border-radius: 12px; background: #FFFFFF; border: 1px solid #E8E8EB; box-sizing: border-box; color: #111114; font-size: 14px; font-weight: 600; text-decoration: none; display: flex; align-items: center; justify-content: center;">Read the transcript meanwhile</a>
+    <span style="text-align: center; font-size: 12px; color: #6E7079;">Some audio is still waiting to be transcribed, maybe because you are offline.</span>
   </div>
 </div>
 </x-dc>
