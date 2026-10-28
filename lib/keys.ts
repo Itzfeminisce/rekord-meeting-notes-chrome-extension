@@ -17,3 +17,8 @@ export async function loadKeys(): Promise<Record<string, string>> {
 export async function clearKeys(): Promise<void> {
   await browser.storage.session.remove(STORAGE_KEY);
 }
+
+/** Adds keys to the ones already in memory; a key that is not in `keys` is left alone. */
+export async function mergeKeys(keys: Record<string, string>): Promise<void> {
+  await saveKeys({ ...(await loadKeys()), ...keys });
+}

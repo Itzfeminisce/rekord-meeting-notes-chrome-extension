@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Spinner, Tag } from '../components';
 import { useRouter } from '../router';
+import { useAskEnabled } from './Ask';
 import { getMeeting, listMarkers, listNotes } from '@/lib/db';
 import { summarize } from '@/lib/summarize';
+import { runSpeakerStep } from '@/lib/speakers';
 import { formatClock, formatDuration } from '@/lib/time';
+import { visibleMarkers } from '@/lib/suggest';
 import type { Marker, Meeting, Note } from '@/lib/types';
 
 function when(ms: number): string {
@@ -15,6 +18,7 @@ function when(ms: number): string {
 
 export default function Summary() {
   const { route, replace, navigate } = useRouter();
+  const askOn = useAskEnabled();
   const meetingId = route.params.meetingId;
   const [meeting, setMeeting] = useState<Meeting | undefined>(undefined);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -23,6 +27,7 @@ export default function Summary() {
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [voices, setVoices] = useState<'idle' | 'working'>('idle');
 
   useEffect(() => {
     if (!meetingId) { setState('missing'); return; }
@@ -30,7 +35,7 @@ export default function Summary() {
     Promise.all([getMeeting(meetingId), listNotes(meetingId), listMarkers(meetingId)])
       .then(([m, n, k]) => {
         if (!alive) return;
-        setMeeting(m); setNotes(n); setMarkers(k.filter((x) => x.kind !== 'bookmark' || x.label));
+        setMeeting(m); setNotes(n); setMarkers(visibleMarkers(k).filter((x) => x.kind !== 'bookmark' || x.label));
         setState(m ? 'ready' : 'missing');
       })
       .catch(() => alive && setState('missing'));
@@ -50,6 +55,23 @@ export default function Summary() {
       setBusy(false);
     }
   }, [meetingId]);
+
+  const retrySpeakers = useCallback(async () => {
+    if (!meetingId) return;
+    setVoices('working');
+    const step = await runSpeakerStep(meetingId);
+    if (step === 'ready') return replace('speakers', { meetingId });
+    setMeeting(await getMeeting(meetingId).catch(() => undefined));
+    setVoices('idle');
+  }, [meetingId, replace]);
+
+  const resumed = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const step = meeting?.speakerStep;
+    if (!meetingId || (step !== 'pending' && step !== 'running') || resumed.current === meetingId) return;
+    resumed.current = meetingId;
+    void retrySpeakers();
+  }, [meeting, meetingId, retrySpeakers]);
 
   const home = () => replace('start');
   if (state === 'loading') return <main className="screen screen-center"><Spinner label="Loading summary" /></main>;
@@ -83,6 +105,17 @@ export default function Summary() {
 
       <div className="sum-cards">
         {error && <p className="perm-error sum-error" role="alert">{error}</p>}
+        {voices === 'working' && meeting.speakerStep !== 'failed' && (
+          <p className="sum-sub" role="status">Telling voices apart…</p>
+        )}
+        {meeting.speakerStep === 'failed' && (
+          <p className="perm-error sum-error" role="alert">
+            Couldn’t tell voices apart.{' '}
+            <button type="button" className="set-link" disabled={voices === 'working'} onClick={() => void retrySpeakers()}>
+              {voices === 'working' ? 'Trying…' : 'Try again'}
+            </button>
+          </p>
+        )}
         {!s ? (
           <section className="sum-card">
             <h2>Summary</h2>
@@ -151,6 +184,7 @@ export default function Summary() {
       </div>
 
       <footer className="sum-foot">
+        {askOn && <Button block variant="secondary" onClick={() => navigate('ask', { meetingId })}>Ask about it</Button>}
         <Button block variant="secondary" onClick={() => navigate('transcript', { meetingId })}>Transcript</Button>
         <Button block onClick={home}>New meeting</Button>
       </footer>

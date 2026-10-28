@@ -1,10 +1,11 @@
-import { putChunk } from '@/lib/db';
+import { putChunk, putRecordingMeta, putRecordingPart } from '@/lib/db';
 import { onMessage, send } from '@/lib/messages';
 import { Chunker } from '@/lib/audio/chunker';
 import { rms, toLevel } from '@/lib/audio/levels';
 import { mediaRecorder, pickMimeType } from '@/lib/audio/recorder';
+import { ContinuousRecording, shouldRecord, sliceRecorder } from '@/lib/audio/recording';
 import { drain, drainAll, enqueue, startTranscriber } from '@/lib/transcribe';
-import type { Speaker } from '@/lib/types';
+import type { Speaker, TranscriberConfig } from '@/lib/types';
 
 const TICK_MS = 125; // silence sampling; levels are posted every 2nd tick (~4/s)
 
@@ -20,13 +21,16 @@ interface Session {
   ctx: AudioContext;
   tracks: Track[];
   timer: ReturnType<typeof setInterval>;
+  /** v2: continuous tab recording for diarization, or null when not wanted (resolves once decided). */
+  recording: Promise<ContinuousRecording | null>;
 }
 
 let session: Session | null = null;
 let busy: Promise<unknown> = Promise.resolve();
 
 /** `micUnavailable`: the microphone was refused or missing, so only the tab ('others') is recorded. */
-export type OffscreenReply = { ok: true; micUnavailable?: boolean } | { ok: false; error: string };
+/** `recorded`: a continuous tab recording was saved for speaker names (reply to `offscreen/stop`). */
+export type OffscreenReply = { ok: true; micUnavailable?: boolean; recorded?: boolean } | { ok: false; error: string };
 
 // Resume chunks left pending (e.g. from an earlier session) and listen for catch-up / online.
 startTranscriber();
@@ -96,7 +100,8 @@ async function start(streamId: string, meetingId: string, startedAt: number): Pr
     if (++n % 2 === 0) void send({ type: 'offscreen/levels', tabLevel: levels[0] ?? 0, micLevel: levels[1] ?? 0 });
   }, TICK_MS);
 
-  session = { meetingId, ctx, tracks, timer };
+  const recording = startContinuous(tab, meetingId, startedAt, mimeType);
+  session = { meetingId, ctx, tracks, timer, recording };
   return mic ? { ok: true } : { ok: true, micUnavailable: true };
 }
 
@@ -105,12 +110,39 @@ async function stop(): Promise<OffscreenReply> {
   if (!s) return { ok: true };
   session = null;
   clearInterval(s.timer);
-  await Promise.all(s.tracks.map((t) => t.chunker.stop()));
+  const recording = await s.recording;
+  const [recorded] = await Promise.all([
+    recording ? recording.stop() : Promise.resolve(false),
+    ...s.tracks.map((t) => t.chunker.stop()),
+  ]);
   s.tracks.forEach((t) => stopStream(t.stream));
   await s.ctx.close().catch(() => undefined);
   // Report when the transcriber has caught up, so the background can close this document.
   void drain(s.meetingId).then(() => send({ type: 'transcription/drained', meetingId: s.meetingId }));
-  return { ok: true };
+  return recorded ? { ok: true, recorded: true } : { ok: true };
+}
+
+/**
+ * v2: one continuous recording of the tab stream for after-meeting diarization, when Speaker names is on and a
+ * diarization key is loaded. Settings come from the background (no storage API here). Fails soft: returns null.
+ */
+async function startContinuous(tab: MediaStream, meetingId: string, startedAt: number, mimeType: string): Promise<ContinuousRecording | null> {
+  try {
+    const config = (await send({ type: 'transcriber/config' })) as TranscriberConfig | undefined;
+    if (!shouldRecord(config, tab.getAudioTracks().length > 0)) return null;
+    if (session?.meetingId !== meetingId) return null; // stopped while asking
+    const recording = new ContinuousRecording({
+      meetingId, startedAt,
+      createRecorder: (onData) => sliceRecorder(tab, mimeType, onData),
+      savePart: putRecordingPart,
+      saveMeta: putRecordingMeta,
+    });
+    recording.start();
+    return recording;
+  } catch (error) {
+    console.error('Rekord: continuous recording unavailable', error);
+    return null;
+  }
 }
 
 function stopStream(stream: MediaStream): void {

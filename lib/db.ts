@@ -1,5 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
-import type { Chunk, Marker, Meeting, Note, Segment } from './types';
+import type { AskTurn, Chunk, Marker, Meeting, Note, RecordingMeta, RecordingPart, Segment } from './types';
 
 interface RekordDB extends DBSchema {
   meetings: { key: string; value: Meeting };
@@ -7,23 +7,36 @@ interface RekordDB extends DBSchema {
   notes: { key: string; value: Note; indexes: { meetingId: string } };
   markers: { key: string; value: Marker; indexes: { meetingId: string } };
   chunks: { key: string; value: Chunk; indexes: { meetingId: string; status: string } };
+  asks: { key: string; value: AskTurn; indexes: { meetingId: string } };
+  recordings: { key: string; value: RecordingPart; indexes: { meetingId: string } };
+  recordingMeta: { key: string; value: RecordingMeta };
 }
 
-type ChildStore = 'segments' | 'notes' | 'markers' | 'chunks';
-const CHILD_STORES: ChildStore[] = ['segments', 'notes', 'markers', 'chunks'];
+type ChildStore = 'segments' | 'notes' | 'markers' | 'chunks' | 'asks' | 'recordings';
+const CHILD_STORES: ChildStore[] = ['segments', 'notes', 'markers', 'chunks', 'asks', 'recordings'];
+
+export const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<RekordDB>> | null = null;
 
 export function getDB(): Promise<IDBPDatabase<RekordDB>> {
-  dbPromise ??= openDB<RekordDB>('rekord', 1, {
-    upgrade(db) {
-      db.createObjectStore('meetings', { keyPath: 'id' });
-      db.createObjectStore('segments', { keyPath: 'id' }).createIndex('meetingId', 'meetingId');
-      db.createObjectStore('notes', { keyPath: 'id' }).createIndex('meetingId', 'meetingId');
-      db.createObjectStore('markers', { keyPath: 'id' }).createIndex('meetingId', 'meetingId');
-      const chunks = db.createObjectStore('chunks', { keyPath: 'id' });
-      chunks.createIndex('meetingId', 'meetingId');
-      chunks.createIndex('status', 'status');
+  dbPromise ??= openDB<RekordDB>('rekord', DB_VERSION, {
+    // Each step only adds stores, so data from earlier versions is kept.
+    upgrade(db, oldVersion) {
+      if (oldVersion < 1) {
+        db.createObjectStore('meetings', { keyPath: 'id' });
+        db.createObjectStore('segments', { keyPath: 'id' }).createIndex('meetingId', 'meetingId');
+        db.createObjectStore('notes', { keyPath: 'id' }).createIndex('meetingId', 'meetingId');
+        db.createObjectStore('markers', { keyPath: 'id' }).createIndex('meetingId', 'meetingId');
+        const chunks = db.createObjectStore('chunks', { keyPath: 'id' });
+        chunks.createIndex('meetingId', 'meetingId');
+        chunks.createIndex('status', 'status');
+      }
+      if (oldVersion < 2) {
+        db.createObjectStore('asks', { keyPath: 'id' }).createIndex('meetingId', 'meetingId');
+        db.createObjectStore('recordings', { keyPath: 'id' }).createIndex('meetingId', 'meetingId');
+        db.createObjectStore('recordingMeta', { keyPath: 'meetingId' });
+      }
     },
   });
   return dbPromise;
@@ -47,11 +60,11 @@ export async function listMeetings(): Promise<Meeting[]> {
   const all = await (await getDB()).getAll('meetings');
   return all.sort((a, b) => b.startedAt - a.startedAt);
 }
-/** Deletes the meeting and all its segments, notes, markers and chunks. */
+/** Deletes the meeting and all its segments, notes, markers, chunks, asks and recorded audio. */
 export async function deleteMeeting(id: string): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction(['meetings', ...CHILD_STORES], 'readwrite');
-  const ops: Promise<unknown>[] = [tx.objectStore('meetings').delete(id)];
+  const tx = db.transaction(['meetings', 'recordingMeta', ...CHILD_STORES], 'readwrite');
+  const ops: Promise<unknown>[] = [tx.objectStore('meetings').delete(id), tx.objectStore('recordingMeta').delete(id)];
   for (const name of CHILD_STORES) {
     const keys = await tx.objectStore(name).index('meetingId').getAllKeys(id);
     for (const key of keys) ops.push(tx.objectStore(name).delete(key));
@@ -98,4 +111,31 @@ export async function pendingChunks(meetingId?: string): Promise<Chunk[]> {
   const started = new Map(meetings.map((m) => [m.id, m.startedAt]));
   const abs = (c: Chunk) => (started.get(c.meetingId) ?? 0) + c.startMs;
   return chunks.sort((a, b) => abs(a) - abs(b));
+}
+
+// Ask turns, oldest first
+export async function putAsk(a: AskTurn): Promise<void> { await (await getDB()).put('asks', a); }
+export async function listAsks(meetingId: string): Promise<AskTurn[]> {
+  return (await listBy('asks', meetingId)).sort((a, b) => a.createdAt - b.createdAt);
+}
+
+// Continuous recording: parts in seq order, plus pause metadata
+export async function putRecordingPart(p: RecordingPart): Promise<void> { await (await getDB()).put('recordings', p); }
+export async function listRecordingParts(meetingId: string): Promise<RecordingPart[]> {
+  return (await listBy('recordings', meetingId)).sort((a, b) => a.seq - b.seq);
+}
+export async function getRecordingMeta(meetingId: string): Promise<RecordingMeta | undefined> {
+  return (await getDB()).get('recordingMeta', meetingId);
+}
+export async function putRecordingMeta(m: RecordingMeta): Promise<void> { await (await getDB()).put('recordingMeta', m); }
+/** Deletes a meeting's recorded audio parts and their metadata (the transcript is kept). */
+export async function deleteRecording(meetingId: string): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(['recordings', 'recordingMeta'], 'readwrite');
+  const keys = await tx.objectStore('recordings').index('meetingId').getAllKeys(meetingId);
+  await Promise.all([
+    ...keys.map((k) => tx.objectStore('recordings').delete(k)),
+    tx.objectStore('recordingMeta').delete(meetingId),
+    tx.done,
+  ]);
 }

@@ -1,14 +1,12 @@
 import { getMeeting, listMarkers, listNotes, listSegments, putMeeting } from './db';
-import { loadKeys } from './keys';
-import { getSettings, PROVIDERS } from './settings';
+import { chat, LLMError, transcriptLines, type FetchLike } from './llm';
+import { getSettings } from './settings';
 import { formatClock } from './time';
 import type { Marker, Meeting, Note, Segment, Summary } from './types';
 
 export const MAX_TRANSCRIPT_CHARS = 100_000;
 
 export class SummarizeError extends Error {}
-
-type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
 /** Keeps the start and end of an over-long text, dropping the middle. */
 export function truncateMiddle(text: string, max = MAX_TRANSCRIPT_CHARS): string {
@@ -17,17 +15,20 @@ export function truncateMiddle(text: string, max = MAX_TRANSCRIPT_CHARS): string
   return `${text.slice(0, half)}\n[... middle of the transcript omitted ...]\n${text.slice(text.length - half)}`;
 }
 
-export function buildPrompt(title: string, segments: Segment[], notes: Note[], markers: Marker[]): string {
-  const lines = segments
-    .filter((s) => s.text.trim())
-    .map((s) => `[${formatClock(s.startMs)}] ${s.speaker === 'you' ? 'You' : 'Others'}: ${s.text.trim()}`);
+const aiExtra = (m: Marker) =>
+  [m.owner && `owner: ${m.owner}`, m.due && `due: ${m.due}`].filter(Boolean).map((x) => ` (${x})`).join('');
+
+export function buildPrompt(
+  title: string, segments: Segment[], notes: Note[], markers: Marker[], speakers?: Meeting['speakers'],
+): string {
+  const lines = transcriptLines(segments, speakers);
   const parts = [`Meeting: ${title}`, '', 'Transcript:', truncateMiddle(lines.join('\n')) || '(no speech was transcribed)'];
   if (notes.length) {
     parts.push('', "The user's own notes:", ...notes.map((n) => `[${formatClock(n.atMs)}] ${n.text}`));
   }
-  const marks = markers.filter((m) => m.kind !== 'bookmark' || m.label);
+  const marks = markers.filter((m) => (m.source !== 'ai' || m.status === 'accepted') && (m.kind !== 'bookmark' || m.label));
   if (marks.length) {
-    parts.push('', 'Moments the user marked:', ...marks.map((m) => `[${formatClock(m.atMs)}] ${m.kind}${m.label ? `: ${m.label}` : ''}`));
+    parts.push('', 'Moments the user marked:', ...marks.map((m) => `[${formatClock(m.atMs)}] ${m.kind}${m.label ? `: ${m.label}` : ''}${m.source === 'ai' ? aiExtra(m) : ''}`));
   }
   return parts.join('\n');
 }
@@ -77,44 +78,28 @@ export async function summarize(meetingId: string, fetchFn: FetchLike = (u, i) =
   if (!meeting) throw new SummarizeError('This meeting could not be found.');
   const done: Meeting = { ...meeting, status: 'done', endedAt: meeting.endedAt ?? Date.now() };
   try {
-    const [settings, keys, segments, notes, markers] = await Promise.all([
-      getSettings(), loadKeys(), listSegments(meetingId), listNotes(meetingId), listMarkers(meetingId),
+    const [settings, segments, notes, markers] = await Promise.all([
+      getSettings(), listSegments(meetingId), listNotes(meetingId), listMarkers(meetingId),
     ]);
-    const { provider, model } = settings.summary;
+    const { model } = settings.summary;
     if (!segments.some((s) => s.text.trim()) && !notes.length) {
       done.summary = { overview: '', decisions: [], actions: [], questions: [], generatedAt: Date.now(), model };
       await putMeeting(done);
       return done;
     }
 
-    const cfg = PROVIDERS[provider];
-    const baseUrl = (settings.summary.baseUrl || cfg.baseUrl).replace(/\/+$/, '');
-    const key = cfg.keyName ? keys[cfg.keyName] : undefined;
-    if (cfg.keyName && !key) throw new SummarizeError('Rekord needs an AI connection to write the summary. Check Connect AI in Settings.');
-
-    let res: Response;
+    let content: string;
     try {
-      res = await fetchFn(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(key ? { Authorization: `Bearer ${key}` } : {}) },
-        body: JSON.stringify({
-          model,
-          temperature: 0.2,
-          messages: [
-            { role: 'system', content: SYSTEM },
-            { role: 'user', content: buildPrompt(meeting.title, segments, notes, markers) },
-          ],
-        }),
-      });
-    } catch {
-      throw new SummarizeError('Rekord could not reach the AI service. Check your connection and try again.');
+      content = await chat([
+        { role: 'system', content: SYSTEM },
+        { role: 'user', content: buildPrompt(meeting.title, segments, notes, markers, meeting.speakers) },
+      ], {}, fetchFn);
+    } catch (e) {
+      if (e instanceof LLMError && e.code === 'no-key') {
+        throw new SummarizeError('Rekord needs an AI connection to write the summary. Check Connect AI in Settings.');
+      }
+      throw e instanceof LLMError ? new SummarizeError(e.message) : e;
     }
-    if (res.status === 401 || res.status === 403) throw new SummarizeError('The AI service did not accept your key. Check Connect AI in Settings.');
-    if (res.status === 429) throw new SummarizeError('The AI service is busy right now. Try again in a minute.');
-    if (!res.ok) throw new SummarizeError(`The AI service returned an error (${res.status}). Try again.`);
-    let content: unknown;
-    try { content = ((await res.json()) as { choices?: { message?: { content?: unknown } }[] }).choices?.[0]?.message?.content; } catch { /* handled below */ }
-    if (typeof content !== 'string') throw new SummarizeError('The AI service sent an unexpected reply. Try again.');
     done.summary = { ...parseSummary(content), generatedAt: Date.now(), model };
     await putMeeting(done);
     return done;

@@ -163,9 +163,12 @@ async function stopRecording(): Promise<RecordingReply> {
   if (state.status !== 'recording') return { ok: true };
   const { meetingId } = state;
   setState({ ...state, status: 'stopping' });
-  await send({ type: 'offscreen/stop' }); // resolves after the last chunks are saved
+  // Resolves after the last chunks (and the final continuous-recording part) are saved.
+  const stopped = await send<OffscreenReply>({ type: 'offscreen/stop' });
   const meeting = await getMeeting(meetingId);
-  if (meeting) await putMeeting({ ...meeting, status: 'processing', endedAt: Date.now() });
+  // v2: a saved tab recording means speaker names can run after the meeting.
+  const speakerStep = stopped?.ok && stopped.recorded ? ({ speakerStep: 'pending' } as const) : {};
+  if (meeting) await putMeeting({ ...meeting, status: 'processing', endedAt: Date.now(), ...speakerStep });
   if (drainedWhileStopping === meetingId) {
     drainedWhileStopping = null; // already drained: nothing left to wait for
   } else {

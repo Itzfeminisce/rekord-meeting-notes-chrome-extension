@@ -50,4 +50,8 @@ describe('library', () => {
     expect(matchIds(items, 'pricing')).toEqual(['b', 'n']);
     expect(transcriptToText(items)).toBe('[0:00] You: hello\n[1:05] Others: the pricing plan\n[1:10] Your note: ask about pricing');
   });
+  it('uses saved names and Speaker labels in copy text', () => {
+    const items = buildTimeline([{ ...seg('a', 0, 'hi', 'others'), speakerLabel: 'A' }, { ...seg('b', 1000, 'yo', 'others'), speakerLabel: 'B' }], [], []);
+    expect(transcriptToText(items, { A: { name: 'Dana' } })).toBe('[0:00] Dana: hi\n[0:01] Speaker B: yo');
+  });
 });

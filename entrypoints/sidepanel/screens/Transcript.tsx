@@ -1,7 +1,9 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { visibleMarkers } from '@/lib/suggest';
 import { getMeeting, listMarkers, listNotes, listSegments } from '@/lib/db';
 import { buildTimeline, type TimelineItem } from '@/lib/live';
 import { itemText, matchIds, splitMatches, transcriptToText } from '@/lib/library';
+import { displayName } from '@/lib/speakers';
 import { formatClock, formatDuration } from '@/lib/time';
 import type { Meeting } from '@/lib/types';
 import { Button, EmptyState, Spinner, Tag } from '../components';
@@ -17,6 +19,17 @@ function Marked({ text, query }: { text: string; query: string }) {
   );
 }
 
+/** Plain text for copying: "[12:04] Name: text", notes as "Your note". */
+function copyText(items: TimelineItem[], speakers: Meeting['speakers']): string {
+  return items
+    .map((it) => {
+      const at = `[${formatClock(it.atMs)}]`;
+      if (it.kind === 'segment') return `${at} ${displayName(it.segment, speakers)}: ${it.segment.text}`;
+      return transcriptToText([it]);
+    })
+    .join('\n');
+}
+
 export default function Transcript() {
   const { route, navigate, back } = useRouter();
   const meetingId = route.params.meetingId;
@@ -24,6 +37,9 @@ export default function Transcript() {
   const [error, setError] = useState(false);
   const [query, setQuery] = useState('');
   const [current, setCurrent] = useState(0);
+  const atMsParam = Number(route.params.atMs);
+  const targetRef = useRef<HTMLDivElement | null>(null);
+  const scrolledFor = useRef<string | undefined>(undefined);
   const [copied, setCopied] = useState<'ok' | 'fail' | null>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -35,7 +51,7 @@ export default function Transcript() {
       const [meeting, segments, notes, markers] = await Promise.all([
         getMeeting(meetingId), listSegments(meetingId), listNotes(meetingId), listMarkers(meetingId),
       ]);
-      setData({ meeting, items: buildTimeline(segments, notes, markers) });
+      setData({ meeting, items: buildTimeline(segments, notes, visibleMarkers(markers)) });
     } catch {
       setError(true);
     }
@@ -49,11 +65,21 @@ export default function Transcript() {
     if (currentId) rowRefs.current[currentId]?.scrollIntoView?.({ block: 'center' });
   }, [currentId]);
 
+  const targetId = useMemo(() => {
+    if (!data?.items.length || route.params.atMs === undefined || !Number.isFinite(atMsParam)) return undefined;
+    return data.items.reduce((best, it) => (Math.abs(it.atMs - atMsParam) < Math.abs(best.atMs - atMsParam) ? it : best)).id;
+  }, [data, atMsParam, route.params.atMs]);
+  useEffect(() => {
+    if (!targetId || scrolledFor.current === `${meetingId}:${atMsParam}`) return;
+    scrolledFor.current = `${meetingId}:${atMsParam}`;
+    targetRef.current?.scrollIntoView?.({ block: 'center' });
+  }, [targetId, meetingId, atMsParam]);
+
   const step = (d: number) => ids.length && setCurrent((c) => (c + d + ids.length) % ids.length);
 
   const copyAll = async () => {
     try {
-      await navigator.clipboard.writeText(transcriptToText(data?.items ?? []));
+      await navigator.clipboard.writeText(copyText(data?.items ?? [], data?.meeting?.speakers));
       setCopied('ok');
     } catch {
       setCopied('fail');
@@ -73,6 +99,9 @@ export default function Transcript() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
         </button>
         <div className="tr-title"><span>Transcript</span><small>{sub}</small></div>
+        {meeting?.speakers && Object.keys(meeting.speakers).length > 0 && (
+          <Button variant="secondary" onClick={() => navigate('speakers', { meetingId })}>Rename speakers</Button>
+        )}
       </header>
 
       <div className="tr-search">
@@ -96,19 +125,20 @@ export default function Transcript() {
           {data.items.map((it) => {
             const on = it.id === currentId;
             const hit = ids.includes(it.id);
-            const cls = `tr-row${it.kind === 'note' ? ' tr-note' : ''}${hit ? ' tr-hit' : ''}${on ? ' tr-on' : ''}`;
+            const isTarget = it.id === targetId;
+            const cls = `tr-row${isTarget ? ' tr-target' : ''}${it.kind === 'note' ? ' tr-note' : ''}${hit ? ' tr-hit' : ''}${on ? ' tr-on' : ''}`;
             const clock = <span className="tr-clock">{formatClock(it.atMs)}</span>;
             if (it.kind === 'marker') {
               return (
-                <div className={cls} key={it.id}>
+                <div className={cls} key={it.id} ref={isTarget ? targetRef : undefined} aria-current={isTarget ? 'true' : undefined}>
                   {clock}
                   <div className="tr-body"><Tag kind={it.marker.kind} />{it.marker.label && <span className="tr-text">{it.marker.label}</span>}</div>
                 </div>
               );
             }
-            const who = it.kind === 'note' ? 'Your note' : it.segment.speaker === 'you' ? 'You' : 'Others';
+            const who = it.kind === 'note' ? 'Your note' : displayName(it.segment, meeting?.speakers);
             return (
-              <div className={cls} key={it.id} ref={(el) => { rowRefs.current[it.id] = el; }}>
+              <div className={cls} key={it.id} ref={(el) => { rowRefs.current[it.id] = el; if (isTarget) targetRef.current = el; }} aria-current={isTarget ? 'true' : undefined}>
                 {clock}
                 <div className="tr-body">
                   <span className={`tr-who${who === 'You' ? '' : ' alt'}`}>{who}</span>
