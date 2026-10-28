@@ -3,7 +3,7 @@
 Personal AI meeting note taker. A Chrome extension (side panel) for Windows first; an iPhone app later.
 
 ## Design
-Canvas with 22 frames (13 v1, 2 v2, 7 states): https://claude.ai/artifact/Pwphr5xv9NLL2jd2c2HeSe
+Canvas with 41 frames (13 v1, 2 v2, 7 built states, 19 v3): https://claude.ai/artifact/Pwphr5xv9NLL2jd2c2HeSe
 Frame sources, one screen per file (`Main` = Welcome): `design/frames/*.dc.html`. Open only the frame you are building. The canvas is the source of truth; copy changes from it into the frames.
 Look: Geist / Geist Mono, grey ground `#F6F6F7`, ink `#111114`, accent indigo `#4F46E5`, recording red only on the record dot. Copy is the product speaking to the user.
 
@@ -19,8 +19,11 @@ In: onboarding (Welcome, Mic access, Connect AI), Start, Live transcript, notes 
 ## v2 scope (field test v1 and v2 together)
 Ask mid-meeting, live action-item suggestions, speaker names (Deepgram diarization after the meeting). Specs: `docs/v2/`.
 
+## v3 scope
+Smart AI setup, desktop-app audio, real-time transcription (Deepgram streaming), Ask all meetings, sharing (Google Docs, view-only link, Notion), Google Calendar, Chrome Web Store (unlisted). Specs and flow map: `docs/v3/`.
+
 ## Later
-Desktop-app audio (Windows system audio via `getDisplayMedia`), Expo iPhone app, Chrome Web Store (unlisted).
+Expo iPhone app, sync across devices.
 
 ## Transcription
 - Groq free tier, `whisper-large-v3-turbo`. Mic and tab are separate streams.
@@ -30,7 +33,7 @@ Desktop-app audio (Windows system audio via `getDisplayMedia`), Expo iPhone app,
 - Speakers: live labels stay "You" and "Others". After the meeting, Deepgram (`nova-3`, `diarize=true`, key `DEEPGRAM_API_KEY`) splits Others into Speaker A/B from one continuous tab recording, the LLM suggests names, and the user confirms.
 
 ## Keys (penv)
-- Settings key source: "penv cloud" or "Paste here".
+- Settings key source: "Penv Cloud" (links to https://penv.cloud) or "Paste a key".
 - penv: a read-only `pck_` machine token scoped to one environment. `GET https://penv.cloud/api/v1/envs/{org}/{project}/{env}` with `Authorization: Bearer`. Keys are held in memory only (`chrome.storage.session`).
 - The penv environment must not be write-only (it would return `redacted`).
 - Unverified: that penv.cloud accepts a `pck_` token as a bearer on `GET /envs`. Test it first, printing key names and status codes, never values.

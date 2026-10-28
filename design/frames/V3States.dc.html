@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>v3 banners and inline states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4F46E5}a:hover{color:#3730A3}
+</style>
+</helmet>
+<div style="width: 400px; height: 1900px; box-sizing: border-box; padding: 20px 12px; display: flex; flex-direction: column; gap: 22px; background: #F6F6F7; color: #111114; font-family: Geist, system-ui, sans-serif;">
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Setup · key not recognized</h2>
+    <div style="padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column; gap: 10px;">
+      <span style="font-size: 14px; font-weight: 600;">Which service is this key from?</span>
+      <span style="font-size: 13px; line-height: 1.45; color: #5F6168;">Rekord didn’t recognize it. Pick the service and Rekord will check the key.</span>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 999px; background: #FFFFFF; font: inherit; font-size: 12px; font-weight: 500; color: #111114;">Groq</button>
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 999px; background: #FFFFFF; font: inherit; font-size: 12px; font-weight: 500; color: #111114;">OpenAI</button>
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 999px; background: #FFFFFF; font: inherit; font-size: 12px; font-weight: 500; color: #111114;">Deepgram</button>
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 999px; background: #FFFFFF; font: inherit; font-size: 12px; font-weight: 500; color: #111114;">Anthropic</button>
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 999px; background: #FFFFFF; font: inherit; font-size: 12px; font-weight: 500; color: #111114;">OpenRouter</button>
+      </div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Setup · key rejected</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FDECEC; border: 1px solid #F2C9C7; display: flex; flex-direction: column; gap: 4px;">
+      <span style="font-size: 14px; font-weight: 600; color: #8A1C14;">Groq didn’t accept this key</span>
+      <span style="font-size: 13px; line-height: 1.45; color: #8A1C14;">Make sure you copied all of it, or <a href="#" style="color: #8A1C14; font-weight: 600;">create a new key</a>.</span>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Setup · Penv Cloud not connected</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FFF8EC; border: 1px solid #F5DDB0; display: flex; align-items: center; gap: 10px;">
+      <span style="flex-grow: 1; font-size: 13px; line-height: 1.45; color: #5C3200;">Penv Cloud wasn’t connected. The window was closed before you chose Allow.</span>
+      <button type="button" style="height: 32px; padding: 0 12px; border: none; border-radius: 9px; background: #111114; color: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600;">Try again</button>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Setup · Penv Cloud shared no usable keys</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FFF8EC; border: 1px solid #F5DDB0; display: flex; flex-direction: column; gap: 10px;">
+      <span style="font-size: 13px; line-height: 1.45; color: #5C3200;">Connected, but Rekord can’t read a Groq key yet. Add one to this environment on Penv Cloud, or choose it when you connect.</span>
+      <a href="#" style="align-self: flex-start; height: 32px; padding: 0 12px; border-radius: 9px; background: #FFFFFF; border: 1px solid #F5DDB0; color: #5C3200; font-size: 12px; font-weight: 600; text-decoration: none; display: flex; align-items: center;">Change which keys</a>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Start or Settings · Penv Cloud disconnected</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FDECEC; border: 1px solid #F2C9C7; display: flex; align-items: center; gap: 10px;">
+      <span style="flex-grow: 1; font-size: 13px; line-height: 1.45; color: #8A1C14;">Rekord was disconnected from Penv Cloud. Connect again to load your keys.</span>
+      <a href="V3PenvConnect.dc.html" style="height: 32px; padding: 0 12px; border-radius: 9px; background: #FFFFFF; border: 1px solid #F2C9C7; color: #8A1C14; font-size: 12px; font-weight: 600; text-decoration: none; display: flex; align-items: center;">Connect again</a>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Live · real time stopped, backup on</h2>
+    <div role="status" style="padding: 12px 14px; border-radius: 14px; background: #FFF8EC; border: 1px solid #F5DDB0; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 14px; font-weight: 600; color: #5C3200;">Switched to Groq</span><span style="font-size: 13px; line-height: 1.45; color: #6B3D00;">Real-time transcription stopped, so text will appear a few seconds later. Nothing was missed.</span></div>
+      <button type="button" style="align-self: flex-start; height: 32px; padding: 0 12px; border: none; border-radius: 9px; background: #111114; color: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600;">Try real time again</button>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Live · screen sharing stopped</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FFF8EC; border: 1px solid #F5DDB0; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 14px; font-weight: 600; color: #5C3200;">Rekord can’t hear Zoom anymore</span><span style="font-size: 13px; line-height: 1.45; color: #6B3D00;">Sharing was stopped. Your microphone is still recording.</span></div>
+      <button type="button" style="align-self: flex-start; height: 32px; padding: 0 12px; border: none; border-radius: 9px; background: #111114; color: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600;">Share again</button>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Start · nothing on the calendar</h2>
+    <div style="padding: 12px 14px; border-radius: 14px; background: #FFFFFF; border: 1px dashed #DCDCE0; display: flex; align-items: center; gap: 10px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6E7079" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>
+      <span style="flex-grow: 1; font-size: 13px; color: #44464D;">No meeting on your calendar right now. Name this one yourself.</span>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Start · calendar access lost</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FFF8EC; border: 1px solid #F5DDB0; display: flex; align-items: center; gap: 10px;">
+      <span style="flex-grow: 1; font-size: 13px; line-height: 1.45; color: #5C3200;">Rekord can’t see your calendar anymore.</span>
+      <a href="V3GoogleConnect.dc.html" style="height: 32px; padding: 0 12px; border-radius: 9px; background: #FFFFFF; border: 1px solid #F5DDB0; color: #5C3200; font-size: 12px; font-weight: 600; text-decoration: none; display: flex; align-items: center;">Reconnect</a>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Ask all · nothing found</h2>
+    <div style="padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column; gap: 10px;">
+      <span style="font-size: 14px; line-height: 1.5;">None of your meetings from the last 30 days mention this.</span>
+      <button type="button" style="align-self: flex-start; height: 32px; padding: 0 12px; border: 1px solid #E8E8EB; border-radius: 9px; background: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600; color: #111114;">Search all time</button>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Share · saving</h2>
+    <div role="status" style="padding: 12px 14px; border-radius: 14px; background: #EEF0FF; border: 1px solid #D9D7FB; display: flex; align-items: center; gap: 10px;">
+      <span style="width: 16px; height: 16px; border-radius: 50%; border: 2px solid #4F46E5; border-right-color: #D9D7FB; box-sizing: border-box; flex-shrink: 0;"></span>
+      <span style="flex-grow: 1; font-size: 13px; font-weight: 500; color: #2E2A8A;">Saving to Google Docs…</span>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Share · couldn’t save</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FDECEC; border: 1px solid #F2C9C7; display: flex; align-items: center; gap: 10px;">
+      <span style="flex-grow: 1; font-size: 13px; line-height: 1.45; color: #8A1C14;">Couldn’t save to Google Docs. Check your connection and try again.</span>
+      <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #F2C9C7; border-radius: 9px; background: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600; color: #8A1C14;">Try again</button>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Share · link copied</h2>
+    <span role="status" style="padding: 0 4px; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: #1A6B40;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>Link copied. Anyone with it can read this meeting.</span>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":1900}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Live transcript, streaming</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4F46E5}a:hover{color:#3730A3}
+</style>
+</helmet>
+<div style="width: 400px; height: 820px; box-sizing: border-box; display: flex; flex-direction: column; background: #F6F6F7; color: #111114; font-family: Geist, system-ui, sans-serif;">
+  <div style="padding: 12px 12px 0;">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 14px; border-radius: 16px; background: #111114; color: #FFFFFF;">
+      <span style="width: 10px; height: 10px; border-radius: 50%; background: #FF5A5F; box-shadow: 0 0 0 4px rgba(255,90,95,0.25); flex-shrink: 0;"></span>
+      <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+        <span style="font-size: 13px; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">Weekly product sync</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #A3A3B2;">Recording · 18:42 · Zoom</span>
+      </div>
+      <a href="Processing.dc.html" style="height: 36px; padding: 0 14px; border-radius: 10px; background: #FFFFFF; color: #111114; font-size: 13px; font-weight: 600; text-decoration: none; display: flex; align-items: center;">End</a>
+    </div>
+  </div>
+
+  <nav aria-label="View" style="margin: 12px 12px 0; padding: 4px; border-radius: 12px; background: #EBEBEE; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;">
+    <a href="V3Live.dc.html" aria-current="page" style="height: 34px; border-radius: 9px; background: #FFFFFF; color: #111114; font-size: 13px; font-weight: 600; text-decoration: none; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(16,16,20,0.08);">Transcript</a>
+    <a href="V3Live.dc.html" style="height: 34px; border-radius: 9px; color: #5F6168; font-size: 13px; font-weight: 500; text-decoration: none; display: flex; align-items: center; justify-content: center;">Notes · 3</a>
+    <a href="Ask.dc.html" style="height: 34px; border-radius: 9px; color: #5F6168; font-size: 13px; font-weight: 500; text-decoration: none; display: flex; align-items: center; justify-content: center;">Ask</a>
+  </nav>
+
+  <div style="margin: 10px 16px 0; display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #5F6168;">
+    <span style="display: flex; align-items: center; gap: 6px;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #1A7F4B;"></span>Transcribing as people speak</span>
+    <span>3 people talking</span>
+  </div>
+
+  <section aria-label="Transcript" aria-live="polite" style="flex-grow: 1; overflow: hidden; padding: 14px 16px 8px; display: flex; flex-direction: column; gap: 16px;">
+    <div style="display: flex; gap: 10px;">
+      <span style="width: 28px; height: 28px; border-radius: 50%; background: #E3E2FF; color: #3730A3; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">P</span>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <span style="font-size: 12px; color: #6E7079;"><span style="font-weight: 600; color: #111114;">Priya</span> · 17:22</span>
+        <span style="font-size: 14px; line-height: 1.5;">Okay, decided: the launch email goes out on the 14th regardless.</span>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <span style="width: 28px; height: 28px; border-radius: 50%; background: #111114; color: #FFFFFF; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">Y</span>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <span style="font-size: 12px; color: #6E7079;"><span style="font-weight: 600; color: #111114;">You</span> · 17:51</span>
+        <span style="font-size: 14px; line-height: 1.5;">I’ll draft the email copy and share it by Thursday.</span>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <span style="width: 28px; height: 28px; border-radius: 50%; background: #FDE7D7; color: #8A4B00; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">B</span>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <span style="font-size: 12px; color: #6E7079;"><span style="font-weight: 600; color: #111114;">Speaker B</span> · 18:30</span>
+        <span style="font-size: 14px; line-height: 1.5;">On pricing, I think we should look at the annual plan next to theirs first.</span>
+      </div>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <span style="width: 28px; height: 28px; border-radius: 50%; background: #E3E2FF; color: #3730A3; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">P</span>
+      <div style="display: flex; flex-direction: column; gap: 3px;">
+        <span style="font-size: 12px; color: #6E7079;"><span style="font-weight: 600; color: #111114;">Priya</span> · now</span>
+        <span style="font-size: 14px; line-height: 1.5; color: #6E7079;">Agreed, and can someone pull the numbers before<span style="display: inline-block; width: 2px; height: 15px; margin-left: 2px; vertical-align: -2px; background: #4F46E5;" aria-hidden="true"></span></span>
+      </div>
+    </div>
+  </section>
+
+  <footer style="margin: 0 12px 12px; padding: 12px; border-radius: 18px; background: #FFFFFF; border: 1px solid #E8E8EB; box-shadow: 0 8px 24px rgba(16,16,20,0.06); display: flex; flex-direction: column; gap: 10px;">
+    <div role="group" aria-label="Mark this moment" style="display: flex; gap: 6px;">
+      <button type="button" style="height: 30px; padding: 0 10px; border: none; border-radius: 999px; background: #F1F1F3; font: inherit; font-size: 12px; font-weight: 500; color: #111114;">Decision</button>
+      <button type="button" style="height: 30px; padding: 0 10px; border: none; border-radius: 999px; background: #F1F1F3; font: inherit; font-size: 12px; font-weight: 500; color: #111114;">Action</button>
+      <button type="button" style="height: 30px; padding: 0 10px; border: none; border-radius: 999px; background: #F1F1F3; font: inherit; font-size: 12px; font-weight: 500; color: #111114;">Question</button>
+      <button type="button" aria-label="Bookmark this moment" style="width: 30px; height: 30px; border: none; border-radius: 999px; background: #F1F1F3; color: #111114; display: flex; align-items: center; justify-content: center;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4z"></path></svg>
+      </button>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <label for="note" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Add a note</label>
+      <input id="note" type="text" placeholder="Add a note at 18:42" style="flex-grow: 1; height: 42px; box-sizing: border-box; padding: 0 12px; border: none; border-radius: 12px; background: #F6F6F7; font: inherit; font-size: 14px; color: #111114;">
+      <button type="button" aria-label="Save note" style="width: 42px; height: 42px; flex-shrink: 0; border: none; border-radius: 12px; background: #4F46E5; color: #FFFFFF; display: flex; align-items: center; justify-content: center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"></path></svg>
+      </button>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

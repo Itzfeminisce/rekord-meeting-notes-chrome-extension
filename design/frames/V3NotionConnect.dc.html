@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connect Notion</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4F46E5}a:hover{color:#3730A3}
+</style>
+</helmet>
+<div style="width: 400px; height: 820px; box-sizing: border-box; display: flex; flex-direction: column; background: #F6F6F7; color: #111114; font-family: Geist, system-ui, sans-serif;">
+  <header style="display: flex; align-items: center; gap: 8px; padding: 14px 16px 0;">
+    <a href="V3Connections.dc.html" aria-label="Back to connected apps" style="width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #111114;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </a>
+  </header>
+
+  <div style="padding: 8px 24px 0; display: flex; flex-direction: column; gap: 10px;">
+    <h1 style="margin: 0; font-size: 24px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em;">Connect Notion</h1>
+    <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #5F6168;">Rekord connects to Notion with a secret you create once. It takes about two minutes.</p>
+  </div>
+
+  <ol aria-label="Steps" style="list-style: none; margin: 18px 24px 0; padding: 16px; border-radius: 18px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column; gap: 14px;">
+    <li style="display: flex; gap: 12px; align-items: flex-start;">
+      <span style="width: 22px; height: 22px; border-radius: 50%; background: #111114; color: #FFFFFF; font-family: 'Geist Mono', monospace; font-size: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">1</span>
+      <span style="font-size: 14px; line-height: 1.45;">In Notion, create a connection named Rekord. <a href="#" style="text-decoration: none; font-weight: 500;">Open Notion connections</a></span>
+    </li>
+    <li style="display: flex; gap: 12px; align-items: flex-start;">
+      <span style="width: 22px; height: 22px; border-radius: 50%; background: #111114; color: #FFFFFF; font-family: 'Geist Mono', monospace; font-size: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">2</span>
+      <span style="font-size: 14px; line-height: 1.45;">Copy its secret and paste it below.</span>
+    </li>
+    <li style="display: flex; gap: 12px; align-items: flex-start;">
+      <span style="width: 22px; height: 22px; border-radius: 50%; background: #111114; color: #FFFFFF; font-family: 'Geist Mono', monospace; font-size: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">3</span>
+      <span style="font-size: 14px; line-height: 1.45;">On the Notion page where meetings should go, open <span style="font-weight: 600;">···</span> then <span style="font-weight: 600;">Connections</span>, and add Rekord.</span>
+    </li>
+  </ol>
+
+  <div style="margin: 14px 24px 0; padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column; gap: 8px;">
+    <label for="ns" style="font-size: 12px; font-weight: 500; color: #44464D;">Notion secret</label>
+    <input id="ns" type="password" placeholder="ntn_…" style="height: 42px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 10px; background: #F9F9FA; font-family: 'Geist Mono', monospace; font-size: 13px; color: #111114;">
+    <span style="font-size: 12px; line-height: 1.45; color: #6E7079;">Using <a href="https://penv.cloud" style="text-decoration: none; font-weight: 500;">Penv Cloud</a>? Add it there as <span style="font-family: 'Geist Mono', monospace;">NOTION_TOKEN</span> and Rekord picks it up.</span>
+  </div>
+
+  <div style="flex-grow: 1;"></div>
+  <div style="padding: 24px; display: flex; flex-direction: column; gap: 8px;">
+    <a href="V3NotionPage.dc.html" style="height: 48px; border-radius: 12px; background: #111114; color: #FFFFFF; font-size: 15px; font-weight: 600; text-decoration: none; display: flex; align-items: center; justify-content: center;">Connect</a>
+    <span style="text-align: center; font-size: 12px; color: #6E7079;">Rekord can only see the pages you add it to.</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

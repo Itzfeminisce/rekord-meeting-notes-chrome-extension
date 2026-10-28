@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Set up your AI, choose my own</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4F46E5}a:hover{color:#3730A3}
+</style>
+</helmet>
+<div style="width: 400px; height: 1040px; box-sizing: border-box; display: flex; flex-direction: column; background: #F6F6F7; color: #111114; font-family: Geist, system-ui, sans-serif;">
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 0;">
+    <a href="V3Setup.dc.html" aria-label="Back" style="width: 36px; height: 36px; margin-left: -8px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #111114;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </a>
+    <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">Step 3 of 3</span>
+  </div>
+
+  <div style="padding: 12px 24px 0; display: flex; flex-direction: column; gap: 8px;">
+    <h1 style="margin: 0; font-size: 26px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em;">Choose your services</h1>
+    <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #5F6168;">Pick who writes down the meeting and who helps you with it. If one service does both, you only need its key once.</p>
+  </div>
+
+  <section aria-labelledby="t-h" style="margin: 18px 24px 0; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="width: 30px; height: 30px; border-radius: 9px; background: #EEF0FF; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10a7 7 0 0 0 14 0M12 17v5"></path></svg></span>
+      <h2 id="t-h" style="margin: 0; font-size: 15px; font-weight: 600;">Transcription</h2>
+    </div>
+    <div role="radiogroup" aria-labelledby="t-h" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 10px; background: #F1F1F3;">
+      <button type="button" role="radio" aria-checked="false" style="height: 34px; border: none; border-radius: 7px; background: transparent; font: inherit; font-size: 12px; font-weight: 500; color: #5F6168;">Groq</button>
+      <button type="button" role="radio" aria-checked="false" style="height: 34px; border: none; border-radius: 7px; background: transparent; font: inherit; font-size: 12px; font-weight: 500; color: #5F6168;">OpenAI</button>
+      <button type="button" role="radio" aria-checked="true" style="height: 34px; border: none; border-radius: 7px; background: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600; color: #111114; box-shadow: 0 1px 2px rgba(16,16,20,0.08);">Deepgram</button>
+    </div>
+    <span style="font-size: 12px; line-height: 1.45; color: #5F6168;">Words appear as people speak, and voices are told apart. Deepgram is a paid service.</span>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <label for="dg" style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 500; color: #44464D;">Deepgram key<span style="display: flex; align-items: center; gap: 5px; font-weight: 600; color: #1A6B40;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #1A7F4B;"></span>Ready</span></label>
+      <input id="dg" type="password" value="xxxxxxxxxxxxxxxx" style="height: 42px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 10px; background: #F9F9FA; font-family: 'Geist Mono', monospace; font-size: 13px; color: #111114;">
+    </div>
+    <label style="display: flex; align-items: center; gap: 10px; font-size: 13px;">
+      <input type="checkbox" checked style="width: 18px; height: 18px; margin: 0; accent-color: #4F46E5;">Switch to Groq if Deepgram stops working
+    </label>
+  </section>
+
+  <section aria-labelledby="a-h" style="margin: 12px 24px 0; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB; display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="width: 30px; height: 30px; border-radius: 9px; background: #EEF0FF; display: flex; align-items: center; justify-content: center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.5 5.5L20 11l-5.5 2.5L12 19l-2.5-5.5L4 11l5.5-2.5z"></path></svg></span>
+      <h2 id="a-h" style="margin: 0; font-size: 15px; font-weight: 600;">Assistant</h2>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <label for="as" style="font-size: 12px; font-weight: 500; color: #44464D;">Service</label>
+      <select id="as" style="height: 42px; padding: 0 10px; border: 1px solid #DCDCE0; border-radius: 10px; background: #FFFFFF; font: inherit; font-size: 14px; color: #111114;"><option>Groq (free to start)</option><option>OpenAI</option><option>Anthropic</option><option>OpenRouter</option><option>Ollama on this computer</option></select>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <label for="gk" style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 500; color: #44464D;">Groq key<span style="display: flex; align-items: center; gap: 5px; font-weight: 600; color: #1A6B40;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #1A7F4B;"></span>Ready</span></label>
+      <input id="gk" type="password" value="gsk_xxxxxxxxxxxx" style="height: 42px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 10px; background: #F9F9FA; font-family: 'Geist Mono', monospace; font-size: 13px; color: #111114;">
+      <span style="font-size: 12px; color: #5F6168;">This key also covers the switch-over above.</span>
+    </div>
+    <details style="font-size: 13px;">
+      <summary style="cursor: pointer; font-weight: 500; color: #4F46E5;">Model</summary>
+      <select aria-label="Assistant model" style="margin-top: 8px; width: 100%; height: 38px; padding: 0 10px; border: 1px solid #DCDCE0; border-radius: 10px; background: #FFFFFF; font: inherit; font-size: 13px; color: #111114;"><option>Llama 3.3 (recommended)</option><option>GPT-OSS 120B</option></select>
+    </details>
+  </section>
+
+  <div style="flex-grow: 1;"></div>
+  <div style="padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 8px;">
+    <a href="V3Start.dc.html" style="height: 48px; border-radius: 12px; background: #111114; color: #FFFFFF; font-size: 15px; font-weight: 600; text-decoration: none; display: flex; align-items: center; justify-content: center;">Start using Rekord</a>
+    <span style="text-align: center; font-size: 12px; color: #6E7079;">Your keys stay in this browser session and are never saved.</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":1040}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
