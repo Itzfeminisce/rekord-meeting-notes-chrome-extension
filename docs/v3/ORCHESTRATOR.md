@@ -11,7 +11,7 @@ Must not change: penv client behaviour (`lib/penv.ts`); keys in `chrome.storage.
 ## Order
 T1 first. Then T2, T3, T5, T6, T10 in parallel. T4 after T3 (both change the offscreen recorder).
 T7 and T9 after T6. T8 any time after T1. T11 after T2, and only once Penv Cloud app connections are live
-(until then T2 ships the Connect button hidden behind `WXT_PENV_APP_CONNECT`; the token path works). Then the final gate.
+(Rekord probes Penv Cloud at runtime and shows the Connect button only when live; the token path always works). Then the final gate.
 Every task runs in a fresh subagent at the model in `HANDOFF.md`; never resume a finished agent.
 
 ## Decisions

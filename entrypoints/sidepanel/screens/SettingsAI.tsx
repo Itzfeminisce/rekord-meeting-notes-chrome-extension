@@ -4,8 +4,10 @@ import { useRouter } from '../router';
 import { connectErrorMessage, forgetAll, formatEnvPath, loadToken, reconnect, transcriptionKeyName } from '@/lib/connect';
 import { serviceLabel } from '@/lib/keyDetect';
 import { getSettings, PROVIDERS, updateSettings } from '@/lib/settings';
+import { disconnectPenvApp, loadPenvAppKeys, PenvAppError, wasDisconnected } from '@/lib/penvApp';
 import { keyUse, STATUS_WORD, type RowStatus } from '@/lib/setup';
 import type { ProviderId, Settings, TranscriptionProvider } from '@/lib/types';
+import { DisconnectedPanel } from './PenvConnect';
 import { BackIcon, CARD, LINK, MONO, PenvCloudLink, StatusDot, useKeyState } from './setupParts';
 
 const ICON = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: '#4F46E5', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true } as const;
@@ -42,13 +44,15 @@ export default function SettingsAI() {
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [message, setMessage] = useState<{ kind: 'error' | 'ok'; text: string } | null>(null);
+  const [disconnected, setDisconnected] = useState(false);
   const keys = useKeyState();
 
   useEffect(() => {
-    Promise.all([getSettings(), loadToken()])
-      .then(([settings, token]) => {
+    Promise.all([getSettings(), loadToken(), wasDisconnected().catch(() => false)])
+      .then(([settings, token, gone]) => {
         setS(settings);
         setHasToken(!!token);
+        setDisconnected(gone && settings.keySource === 'penv-app');
       })
       .catch(() => setLoadFailed(true));
   }, []);
@@ -97,19 +101,20 @@ export default function SettingsAI() {
   const t = rowStatus(tKey);
   const a = rowStatus(aKey);
   const path = s.keySource === 'penv-app' && s.penvApp ? `${s.penvApp.org}/${s.penvApp.project}/${s.penvApp.env}` : formatEnvPath(s.penv);
-  const canDisconnect = keys.loaded.length > 0 || hasToken;
+  const canDisconnect = keys.loaded.length > 0 || hasToken || (s.keySource === 'penv-app' && !!s.penvApp);
 
   async function refresh() {
     setMessage(null);
-    if (s?.keySource === 'penv-app') return navigate('penvConnect');
-    if (!hasToken) return navigate('penvConnect');
+    const app = s?.keySource === 'penv-app' ? s.penvApp : undefined;
+    if (!app && !hasToken) return navigate('penvConnect');
     setBusy(true);
     try {
-      const names = await reconnect();
+      const names = app ? await loadPenvAppKeys(app) : await reconnect();
       if (!names) return navigate('penvConnect');
       setMessage({ kind: 'ok', text: `Keys refreshed: ${names.map(serviceLabel).join(', ')}.` });
     } catch (err) {
-      setMessage({ kind: 'error', text: friendly(connectErrorMessage(err)) });
+      if (err instanceof PenvAppError && err.code === 'disconnected') setDisconnected(true);
+      else setMessage({ kind: 'error', text: friendly(connectErrorMessage(err)) });
     } finally {
       await Promise.all([keys.reload(), refreshToken()]);
       setBusy(false);
@@ -119,6 +124,18 @@ export default function SettingsAI() {
   async function disconnect() {
     setMessage(null);
     setConfirm(false);
+    if (s?.keySource === 'penv-app') {
+      // Revoke the grant on Penv Cloud, clear keys, back to Setup.
+      try {
+        await disconnectPenvApp();
+        await forgetAll();
+        await updateSettings({ keySource: 'penv', penvApp: undefined });
+        return replace('connect');
+      } catch {
+        setMessage({ kind: 'error', text: 'Couldn’t disconnect. Try again.' });
+        return;
+      }
+    }
     try {
       await forgetAll();
       setMessage({ kind: 'ok', text: 'Disconnected. Rekord cleared its keys from memory.' });
@@ -213,6 +230,8 @@ export default function SettingsAI() {
                 </button>
               )}
             </div>
+
+            {disconnected && <DisconnectedPanel onConnect={() => navigate('penvConnect')} />}
 
             {keys.loaded.length > 0 ? (
               <ul aria-label="Your keys" style={{ listStyle: 'none', margin: 0, padding: '10px 12px', borderRadius: 10, background: '#F6F6F7', display: 'flex', flexDirection: 'column', gap: 8 }}>

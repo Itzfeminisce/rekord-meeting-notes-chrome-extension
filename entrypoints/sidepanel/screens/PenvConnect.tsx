@@ -5,7 +5,8 @@ import { checkKeys, connectErrorMessage, connectPenv, formatEnvPath, loadToken, 
 import { serviceLabel } from '@/lib/keyDetect';
 import { loadKeys } from '@/lib/keys';
 import { getSettings, updateSettings } from '@/lib/settings';
-import { canStart, keyUse, neededKeys, penvAppConnectEnabled, startHint } from '@/lib/setup';
+import { connectKeyNames, connectPenvApp, loadPenvAppKeys, PenvAppError, penvAppAvailable, wasDisconnected } from '@/lib/penvApp';
+import { canStart, keyUse, neededKeys, startHint } from '@/lib/setup';
 import type { Settings } from '@/lib/types';
 import {
   CARD, ChosenSetupRow, ExternalLink, INPUT, LABEL, LINK, MONO, PAGE, PenvCloudLink, PRESET_TITLE, SetupHead, SetupIntro, SourceToggle,
@@ -31,9 +32,19 @@ function PvTile({ size = 40 }: { size?: number }) {
   );
 }
 
+/** V3States "Penv Cloud disconnected": the grant stopped working. */
+export function DisconnectedPanel({ onConnect }: { onConnect: () => void }) {
+  return (
+    <div role="alert" style={{ padding: '12px 14px', borderRadius: 14, background: '#FDECEC', border: '1px solid #F2C9C7', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <span style={{ flexGrow: 1, fontSize: 13, lineHeight: 1.45, color: '#8A1C14' }}>Rekord was disconnected from <PenvCloudLink />. Connect again to load your keys.</span>
+      <button type="button" onClick={onConnect} style={{ height: 32, padding: '0 12px', borderRadius: 9, background: '#FFFFFF', border: '1px solid #F2C9C7', color: '#8A1C14', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Connect again</button>
+    </div>
+  );
+}
+
 export default function PenvConnect() {
   const { replace, back, canGoBack } = useRouter();
-  const flag = penvAppConnectEnabled();
+  const [flag, setFlag] = useState(false);
   const [s, setS] = useState<Settings | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [hasToken, setHasToken] = useState(false);
@@ -44,14 +55,19 @@ export default function PenvConnect() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [noUsable, setNoUsable] = useState(false);
+  const [notConnected, setNotConnected] = useState(false);
+  const [disconnected, setDisconnected] = useState(false);
   const keys = useKeyState();
 
   useEffect(() => {
-    Promise.all([getSettings(), loadToken()])
-      .then(([settings, tok]) => {
+    // Penv Cloud app connections are detected at runtime; until they are live, only the token path shows.
+    Promise.all([getSettings(), loadToken(), penvAppAvailable(), wasDisconnected().catch(() => false)])
+      .then(([settings, tok, live, gone]) => {
         setS(settings);
         setHasToken(!!tok);
         setEnvPath(formatEnvPath(settings.penv));
+        setFlag(live);
+        setDisconnected(gone);
       })
       .catch(() => setLoadFailed(true));
   }, []);
@@ -88,6 +104,36 @@ export default function PenvConnect() {
     goSetup();
   }
 
+  /** One click: approval window → grant → keys. Also "Try again", "Change which keys" and "Connect again". */
+  async function connectApp() {
+    if (!s) return;
+    setError('');
+    setNoUsable(false);
+    setNotConnected(false);
+    setBusy(true);
+    try {
+      const conn = await connectPenvApp({ keys: connectKeyNames(needed) });
+      const next = await updateSettings({ keySource: 'penv-app', penvApp: conn });
+      setS(next);
+      setDisconnected(false);
+      const names = await loadPenvAppKeys(conn);
+      await keys.reload();
+      if (!names || names.length === 0) setNoUsable(true);
+      setEditing(false);
+      setShowToken(false);
+    } catch (err) {
+      if (err instanceof PenvAppError) {
+        if (err.code === 'disconnected') setDisconnected(true);
+        else setNotConnected(true);
+      } else {
+        setError(friendly(connectErrorMessage(err)));
+      }
+      await keys.reload();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function connectToken() {
     if (!s) return;
     setError('');
@@ -98,7 +144,7 @@ export default function PenvConnect() {
     setBusy(true);
     try {
       await connectPenv(token.trim(), target);
-      const next = await updateSettings({ penv: target, keySource: 'penv' });
+      const next = await updateSettings({ penv: target, keySource: 'penv', penvApp: undefined });
       setS(next);
       setToken('');
       setHasToken(true);
@@ -134,7 +180,12 @@ export default function PenvConnect() {
         </span>
         <button
           type="button"
-          onClick={() => { setNoUsable(false); setEditing(true); setShowToken(true); }}
+          onClick={() => {
+            setNoUsable(false);
+            if (flag && s?.keySource === 'penv-app') return void connectApp();
+            setEditing(true);
+            setShowToken(true);
+          }}
           style={{ alignSelf: 'flex-start', height: 32, padding: '0 12px', borderRadius: 9, background: '#FFFFFF', border: '1px solid #F5DDB0', color: '#5C3200', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
         >
           Change which keys
@@ -200,7 +251,7 @@ export default function PenvConnect() {
           </div>
           <span style={{ fontSize: 12, lineHeight: 1.45, color: '#6E7079' }}>
             Rekord asks Penv Cloud for these keys each time it starts and never saves them.{' '}
-            <button type="button" onClick={() => setEditing(true)} style={{ ...LINK, padding: 0, border: 'none', background: 'transparent', font: 'inherit', fontSize: 12, color: '#4F46E5', cursor: 'pointer' }}>Change which keys</button>
+            <button type="button" onClick={() => (flag && s.keySource === 'penv-app' ? void connectApp() : setEditing(true))} style={{ ...LINK, padding: 0, border: 'none', background: 'transparent', font: 'inherit', fontSize: 12, color: '#4F46E5', cursor: 'pointer' }}>Change which keys</button>
           </span>
         </div>
       ) : (
@@ -220,9 +271,11 @@ export default function PenvConnect() {
             <>
               <button
                 type="button"
-                onClick={() => setError('Connecting with one click isn’t ready yet. Use a token instead.')}
+                onClick={() => void connectApp()}
+                disabled={busy}
                 style={{ height: 48, border: 'none', borderRadius: 12, background: '#111114', color: '#FFFFFF', font: 'inherit', fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer' }}
               >
+                {busy && !showToken && <Spinner label="Connecting" size={16} />}
                 Connect Penv Cloud
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
               </button>
@@ -250,6 +303,13 @@ export default function PenvConnect() {
               </>
             )}
           </span>
+          {notConnected && (
+            <div role="alert" style={{ padding: '12px 14px', borderRadius: 14, background: '#FFF8EC', border: '1px solid #F5DDB0', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ flexGrow: 1, fontSize: 13, lineHeight: 1.45, color: '#5C3200' }}>Penv Cloud wasn’t connected. The window was closed before you chose Allow.</span>
+              <button type="button" onClick={() => void connectApp()} disabled={busy} style={{ height: 32, padding: '0 12px', border: 'none', borderRadius: 9, background: '#111114', color: '#FFFFFF', font: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>Try again</button>
+            </div>
+          )}
+          {disconnected && !notConnected && <DisconnectedPanel onConnect={() => void connectApp()} />}
           {noUsable && !error && noKeysPanel(needed)}
           {error && <div className="perm-error" role="alert">{error}</div>}
         </div>

@@ -126,12 +126,6 @@ export function startHint(needed: string[], loaded: string[], status: StatusMap)
   return 'Rekord is checking your keys…';
 }
 
-/** One-click Penv Cloud is built but ships hidden until the owner turns the flag on. */
-export function penvAppConnectEnabled(flag: unknown = import.meta.env.WXT_PENV_APP_CONNECT): boolean {
-  const v = String(flag ?? '').trim().toLowerCase();
-  return v !== '' && v !== '0' && v !== 'false' && v !== 'undefined';
-}
-
 /** What a loaded key is used for under the current settings ("assistant and backup", "not in use"). */
 export function keyUse(name: string, s: Pick<Settings, 'transcription' | 'summary' | 'realtimeBackup' | 'features'>): string {
   const roles: string[] = [];

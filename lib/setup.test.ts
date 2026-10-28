@@ -11,7 +11,6 @@ import {
   keyUse,
   missingKeys,
   neededKeys,
-  penvAppConnectEnabled,
   rowDetail,
   startHint,
 } from './setup';
@@ -121,12 +120,5 @@ describe('key use and the Penv Cloud flag', () => {
     expect(keyUse('DEEPGRAM_API_KEY', s)).toBe('transcription');
     expect(keyUse('GROQ_API_KEY', s)).toBe('assistant and backup');
     expect(keyUse('OPENAI_API_KEY', s)).toBe('not in use');
-  });
-
-  it('the one-click button is off unless the flag is set', () => {
-    expect(penvAppConnectEnabled(undefined)).toBe(false);
-    expect(penvAppConnectEnabled('')).toBe(false);
-    expect(penvAppConnectEnabled('0')).toBe(false);
-    expect(penvAppConnectEnabled('1')).toBe(true);
   });
 });
