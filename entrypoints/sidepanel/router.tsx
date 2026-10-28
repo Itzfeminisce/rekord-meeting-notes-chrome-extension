@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 export type ScreenName =
   | 'welcome' | 'permissions' | 'connect' | 'start' | 'live' | 'processing'
   | 'summary' | 'speakers' | 'ask' | 'askall' | 'library' | 'transcript' | 'export' | 'settings' | 'error'
-  | 'whatsnew' | 'connections' | 'googleConnect'
+  | 'whatsnew' | 'connections' | 'googleConnect' | 'share'
   // v3 setup: 'connect' is the Setup screen, 'settings' is the AI settings, 'settingsMore' is Recording, language and data
   | 'setupCustom' | 'penvConnect' | 'howItWorks' | 'settingsMore'
   | 'nosound'; // v3: desktop-app capture hears nothing
