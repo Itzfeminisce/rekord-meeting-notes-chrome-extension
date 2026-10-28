@@ -4,7 +4,11 @@ import { Spinner } from './components';
 import { RouterProvider, useRouter, type Route, type ScreenName } from './router';
 import Welcome from './screens/Welcome';
 import Permissions from './screens/Permissions';
-import Connect from './screens/Connect';
+import Setup from './screens/Setup';
+import SetupCustom from './screens/SetupCustom';
+import PenvConnect from './screens/PenvConnect';
+import HowItWorks from './screens/HowItWorks';
+import SettingsAI from './screens/SettingsAI';
 import Start from './screens/Start';
 import Live from './screens/Live';
 import Processing from './screens/Processing';
@@ -20,7 +24,10 @@ import ErrorScreen from './screens/Error';
 export const SCREENS: Record<ScreenName, ComponentType> = {
   welcome: Welcome,
   permissions: Permissions,
-  connect: Connect,
+  connect: Setup,
+  setupCustom: SetupCustom,
+  penvConnect: PenvConnect,
+  howItWorks: HowItWorks,
   start: Start,
   live: Live,
   processing: Processing,
@@ -30,7 +37,8 @@ export const SCREENS: Record<ScreenName, ComponentType> = {
   library: Library,
   transcript: Transcript,
   export: Export,
-  settings: Settings,
+  settings: SettingsAI,
+  settingsMore: Settings,
   error: ErrorScreen,
 };
 

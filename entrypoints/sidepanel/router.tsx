@@ -2,10 +2,12 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 
 export type ScreenName =
   | 'welcome' | 'permissions' | 'connect' | 'start' | 'live' | 'processing'
-  | 'summary' | 'speakers' | 'ask' | 'library' | 'transcript' | 'export' | 'settings' | 'error';
+  | 'summary' | 'speakers' | 'ask' | 'library' | 'transcript' | 'export' | 'settings' | 'error'
+  // v3 setup: 'connect' is the Setup screen, 'settings' is the AI settings, 'settingsMore' is Recording, language and data
+  | 'setupCustom' | 'penvConnect' | 'howItWorks' | 'settingsMore';
 
 /** Route params. `meetingId` for meeting screens; `message` for the error screen. */
-export interface RouteParams { meetingId?: string; message?: string; atMs?: number }
+export interface RouteParams { meetingId?: string; message?: string; atMs?: number; section?: 'transcription' | 'assistant' }
 export interface Route { screen: ScreenName; params: RouteParams }
 
 export interface Router {
