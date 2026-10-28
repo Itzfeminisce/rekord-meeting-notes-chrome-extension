@@ -18,6 +18,8 @@ let state: RecordingState = { status: 'idle' };
 let closeAfterDrain: string | null = null;
 /** The in-flight start, so a Stop sent while starting takes effect once it finishes. */
 let starting: Promise<RecordingReply> | null = null;
+/** A meeting whose drain arrived while it was still stopping, before closeAfterDrain was set. */
+let drainedWhileStopping: string | null = null;
 
 const ready = rehydrate();
 
@@ -78,8 +80,13 @@ export default defineBackground(() => {
         return undefined;
       case 'transcription/drained':
         void ready.then(async () => {
+          if (state.status !== 'idle') {
+            // Record the drain so the doc can close once the current start/stop settles.
+            if (msg.meetingId === closeAfterDrain) setCloseAfterDrain(null);
+            else if (state.status === 'stopping' && state.meetingId === msg.meetingId) drainedWhileStopping = msg.meetingId;
+            return;
+          }
           // Close whenever nothing is recording, unless another meeting's drain is still pending.
-          if (state.status !== 'idle') return;
           if (closeAfterDrain && closeAfterDrain !== msg.meetingId) return;
           setCloseAfterDrain(null);
           await closeOffscreen();
@@ -105,33 +112,32 @@ async function startRecording(tabId: number): Promise<RecordingReply> {
     return { ok: false, error: START_ERROR };
   }
 
-  const [tab, settings] = await Promise.all([
-    browser.tabs.get(tabId).catch(() => undefined),
-    getSettings(),
-  ]);
-  const meeting: Meeting = {
-    id: meetingId,
-    title: tab?.title?.trim() || 'Untitled meeting',
-    tabUrl: tab?.url,
-    startedAt,
-    status: 'recording',
-    language: settings.language,
-  };
-
-  let created = false;
+  let meeting: Meeting | undefined;
   let micUnavailable = false;
   try {
+    const [tab, settings] = await Promise.all([
+      browser.tabs.get(tabId).catch(() => undefined),
+      getSettings(),
+    ]);
+    meeting = {
+      id: meetingId,
+      title: tab?.title?.trim() || 'Untitled meeting',
+      tabUrl: tab?.url,
+      startedAt,
+      status: 'recording',
+      language: settings.language,
+    };
     await putMeeting(meeting);
-    created = await ensureOffscreen();
+    await ensureOffscreen();
     const reply = await send<OffscreenReply>({ type: 'offscreen/start', streamId, meetingId, startedAt });
     if (!reply?.ok) throw new Error(reply?.error ?? START_ERROR);
     micUnavailable = reply.micUnavailable === true;
   } catch (error) {
     console.error('Rekord: recording failed to start', error);
-    await putMeeting({ ...meeting, status: 'error', endedAt: Date.now() }).catch(() => undefined);
+    if (meeting) await putMeeting({ ...meeting, status: 'error', endedAt: Date.now() }).catch(() => undefined);
     setState({ status: 'idle' });
     // Never close a document another meeting is still transcribing in.
-    if (created && !closeAfterDrain) await closeOffscreen();
+    if (!closeAfterDrain) await closeOffscreen();
     return { ok: false, error: error instanceof Error && error.message ? error.message : START_ERROR };
   }
 
@@ -140,15 +146,20 @@ async function startRecording(tabId: number): Promise<RecordingReply> {
 }
 
 async function stopRecording(): Promise<RecordingReply> {
-  if (state.status === 'starting' && starting) await starting; // stop as soon as start reaches 'recording' (or aborts)
+  if (state.status === 'starting' && starting) await starting.catch(() => undefined); // stop as soon as start reaches 'recording' (or aborts)
   if (state.status !== 'recording') return { ok: true };
   const { meetingId } = state;
   setState({ ...state, status: 'stopping' });
   await send({ type: 'offscreen/stop' }); // resolves after the last chunks are saved
   const meeting = await getMeeting(meetingId);
   if (meeting) await putMeeting({ ...meeting, status: 'processing', endedAt: Date.now() });
-  setCloseAfterDrain(meetingId);
+  if (drainedWhileStopping === meetingId) {
+    drainedWhileStopping = null; // already drained: nothing left to wait for
+  } else {
+    setCloseAfterDrain(meetingId);
+  }
   setState({ status: 'idle' });
+  if (!closeAfterDrain) await closeOffscreen();
   return { ok: true, meetingId };
 }
 
