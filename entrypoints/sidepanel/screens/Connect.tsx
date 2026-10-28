@@ -6,6 +6,7 @@ import {
   connectPaste,
   connectPenv,
   formatEnvPath,
+  optionalKeyNames,
   parseEnvPath,
   requiredKeyNames,
   verifyOrForget,
@@ -18,6 +19,7 @@ type Source = Settings['keySource'];
 const PROVIDER_LABEL: Record<string, string> = {
   GROQ_API_KEY: 'Groq API key',
   OPENAI_API_KEY: 'OpenAI API key',
+  DEEPGRAM_API_KEY: 'Deepgram API key (optional, for speaker names)',
   OPENROUTER_API_KEY: 'OpenRouter API key',
   ANTHROPIC_API_KEY: 'Anthropic API key',
 };
@@ -60,6 +62,7 @@ export default function Connect() {
   }
 
   const needed = requiredKeyNames(settings);
+  const optional = optionalKeyNames(settings);
   const onboarding = !settings.onboarded;
 
   function pick(next: Source) {
@@ -95,7 +98,7 @@ export default function Connect() {
       const names =
         source === 'penv' && target
           ? await connectPenv(token.trim(), target)
-          : await connectPaste(Object.fromEntries(needed.map((n) => [n, pasted[n] ?? ''])));
+          : await connectPaste(Object.fromEntries([...needed, ...optional].map((n) => [n, pasted[n] ?? ''])));
       setFound(names);
       if (source === 'penv' && target) await updateSettings({ penv: target });
       await verifyOrForget(settings);
@@ -182,7 +185,7 @@ export default function Connect() {
           </div>
           <span className="conn-desc">Groq, OpenAI, OpenRouter or Anthropic. Kept in memory only. Nothing is saved to disk.</span>
           {source === 'paste' &&
-            needed.map((name) => (
+            [...needed, ...optional].map((name) => (
               <div className="conn-field" key={name}>
                 <label htmlFor={`key-${name}`}>{PROVIDER_LABEL[name] ?? name}</label>
                 <input

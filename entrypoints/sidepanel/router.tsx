@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 
 export type ScreenName =
   | 'welcome' | 'permissions' | 'connect' | 'start' | 'live' | 'processing'
-  | 'summary' | 'ask' | 'library' | 'transcript' | 'export' | 'settings' | 'error';
+  | 'summary' | 'speakers' | 'ask' | 'library' | 'transcript' | 'export' | 'settings' | 'error';
 
 /** Route params. `meetingId` for meeting screens; `message` for the error screen. */
 export interface RouteParams { meetingId?: string; message?: string; atMs?: number }

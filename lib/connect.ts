@@ -2,7 +2,7 @@
  * Loads API keys into session memory, from penv cloud or pasted by the user, and checks them.
  * The `pck_` token and keys live only in `browser.storage.session`. Never log or show a value.
  */
-import { clearKeys, loadKeys, saveKeys } from './keys';
+import { clearKeys, loadKeys, mergeKeys, saveKeys } from './keys';
 import { fetchPenvKeys, PenvError, type PenvTarget } from './penv';
 import { getSettings, PROVIDERS } from './settings';
 import type { ProviderId, Settings } from './types';
@@ -121,13 +121,13 @@ export async function connectPenv(
   return Object.keys(keys).sort();
 }
 
-/** Saves pasted keys (blank ones dropped) to session memory. Returns the key names saved. */
+/** Saves pasted keys (blank ones dropped), merged into the keys already in memory. Returns the key names in memory. */
 export async function connectPaste(keys: Record<string, string>): Promise<string[]> {
   const clean = Object.fromEntries(
     Object.entries(keys).map(([k, v]) => [k, v.trim()] as const).filter(([, v]) => v),
   );
-  await saveKeys(clean);
-  return Object.keys(clean).sort();
+  await mergeKeys(clean);
+  return Object.keys(await loadKeys()).sort();
 }
 
 /**

@@ -5,7 +5,7 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { closeDB, getMeeting, listRecordingParts, listSegments, putMeeting, putRecordingPart, putSegment } from './db';
 import { saveKeys } from './keys';
 import { DEFAULT_SETTINGS, updateSettings } from './settings';
-import { parseSuggestions, runSpeakerStep, suggestNames } from './speakers';
+import { displayName, parseSuggestions, runSpeakerStep, saveSpeakerNames, skipSpeakers, speakerStats, suggestNames, toRecordingMs } from './speakers';
 
 const llm = (content: unknown) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }), { status: 200 });
 const dg = () => new Response(JSON.stringify({ results: { utterances: [{ start: 0, end: 4, speaker: 0 }, { start: 5, end: 9, speaker: 1 }] } }));
@@ -116,5 +116,74 @@ describe('runSpeakerStep', () => {
     expect(llmFn).not.toHaveBeenCalled();
     expect((await getMeeting('m1'))?.speakerStep).toBe('failed');
     expect((await listSegments('m1')).every((s) => !s.speakerLabel)).toBe(true);
+  });
+});
+
+describe('speaker screen helpers', () => {
+  const label = async () => {
+    const [s1, s2] = await listSegments('m1');
+    await putSegment({ ...s1!, speakerLabel: 'A' });
+    await putSegment({ ...s2!, speakerLabel: 'B' });
+    await putMeeting({ ...(await getMeeting('m1'))!, speakerStep: 'ready', speakers: { A: { suggested: 'Maria' }, B: {} } });
+  };
+
+  it('resolves display names: name, else Speaker X, else Others; You stays You', () => {
+    const sp = { A: { name: ' Maria ' }, B: {} };
+    expect(displayName({ speaker: 'others', speakerLabel: 'A' }, sp)).toBe('Maria');
+    expect(displayName({ speaker: 'others', speakerLabel: 'B' }, sp)).toBe('Speaker B');
+    expect(displayName({ speaker: 'others' }, sp)).toBe('Others');
+    expect(displayName({ speaker: 'you', speakerLabel: 'A' }, sp)).toBe('You');
+  });
+
+  it('computes talk time, lines and the longest line per label', async () => {
+    await label();
+    const st = speakerStats(await listSegments('m1'));
+    expect(st.map((x) => [x.label, x.talkMs, x.lines, x.quote?.id])).toEqual([['A', 4000, 1, 's1'], ['B', 4000, 1, 's2']]);
+  });
+
+  it('maps meeting time back to recording time across pauses', () => {
+    expect(toRecordingMs(70_000, [{ atMs: 30_000, durationMs: 10_000 }])).toBe(60_000);
+    expect(toRecordingMs(20_000, [{ atMs: 30_000, durationMs: 10_000 }])).toBe(20_000);
+  });
+
+  it('save stores typed names, marks saved and deletes the audio', async () => {
+    await label();
+    await saveSpeakerNames('m1', { names: { A: ' Priya ', B: '' } });
+    const m = await getMeeting('m1');
+    expect(m?.speakerStep).toBe('saved');
+    expect(m?.speakers).toEqual({ A: { suggested: 'Maria', name: 'Priya' }, B: {} });
+    expect(await listRecordingParts('m1')).toEqual([]);
+  });
+
+  it('save keeps the audio when Keep audio files is on', async () => {
+    await label();
+    await updateSettings({ keepAudio: true });
+    await saveSpeakerNames('m1', { names: {} });
+    expect(await listRecordingParts('m1')).toHaveLength(1);
+  });
+
+  it('merge relabels segments into one speaker', async () => {
+    await label();
+    await saveSpeakerNames('m1', { names: { A: 'Priya', B: 'x' }, merges: { B: 'A' } });
+    const m = await getMeeting('m1');
+    expect(Object.keys(m?.speakers ?? {})).toEqual(['A']);
+    expect(m?.speakers?.A?.name).toBe('Priya');
+    expect((await listSegments('m1')).map((g) => g.speakerLabel)).toEqual(['A', 'A']);
+  });
+
+  it('skip marks skipped, keeps labels and deletes the audio', async () => {
+    await label();
+    await skipSpeakers('m1');
+    expect((await getMeeting('m1'))?.speakerStep).toBe('skipped');
+    expect((await getMeeting('m1'))?.speakers?.A?.name).toBeUndefined();
+    expect(await listRecordingParts('m1')).toEqual([]);
+  });
+});
+
+describe('runSpeakerStep without a Deepgram key', () => {
+  it('skips quietly and drops the audio', async () => {
+    await saveKeys({ GROQ_API_KEY: 'gsk_test' });
+    expect(await runSpeakerStep('m1')).toBe('skipped');
+    expect(await listRecordingParts('m1')).toEqual([]);
   });
 });

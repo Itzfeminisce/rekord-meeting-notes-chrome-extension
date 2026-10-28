@@ -52,6 +52,12 @@ describe('connect', () => {
     expect(await loadKeys()).toEqual({ GROQ_API_KEY: 'gsk_test' });
   });
 
+  it('connectPaste merges with keys already in memory', async () => {
+    await connectPaste({ GROQ_API_KEY: 'gsk_test', DEEPGRAM_API_KEY: 'dg_test' });
+    expect(await connectPaste({ GROQ_API_KEY: 'gsk_new', DEEPGRAM_API_KEY: '' })).toEqual(['DEEPGRAM_API_KEY', 'GROQ_API_KEY']);
+    expect(await loadKeys()).toEqual({ GROQ_API_KEY: 'gsk_new', DEEPGRAM_API_KEY: 'dg_test' });
+  });
+
   it('reconnect returns null without a token and refetches with one', async () => {
     expect(await reconnect(penvOk())).toBeNull();
     await fakeBrowser.storage.session.set({ penvToken: 'pck_test' });

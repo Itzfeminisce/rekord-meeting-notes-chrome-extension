@@ -47,6 +47,7 @@ export default function Settings() {
   const { navigate, replace } = useRouter();
   const [s, setS] = useState<SettingsT | null>(null);
   const [keyCount, setKeyCount] = useState(0);
+  const [dgKey, setDgKey] = useState(false);
   const [hasToken, setHasToken] = useState(false);
   const [meetings, setMeetings] = useState<number | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -56,7 +57,9 @@ export default function Settings() {
   const [recording, setRecording] = useState(false);
 
   const refreshKeyState = useCallback(async () => {
-    setKeyCount(Object.keys(await loadKeys()).length);
+    const keys = await loadKeys();
+    setKeyCount(Object.keys(keys).length);
+    setDgKey(!!keys.DEEPGRAM_API_KEY?.trim());
     setHasToken(!!(await loadToken()));
   }, []);
 
@@ -164,6 +167,19 @@ export default function Settings() {
   }
 
   const connected = keyCount > 0;
+  const dgName = s.diarization.keyName;
+  const hasDeepgram = dgKey;
+  const setFeature = (k: keyof SettingsT['features'], on: boolean) => save({ features: { ...s.features, [k]: on } });
+  const toggles: { id: string; title: string; sub: string; on: boolean; disabled?: boolean; set: (on: boolean) => void; hint?: string }[] = [
+    { id: 'ask', title: 'Ask about the meeting', sub: 'Ask questions during or after a meeting', on: s.features.ask, set: (on) => setFeature('ask', on) },
+    { id: 'suggest', title: 'Suggest action items live', sub: 'Flags likely tasks as people talk', on: s.features.liveSuggestions, set: (on) => setFeature('liveSuggestions', on) },
+    {
+      id: 'names', title: 'Speaker names', sub: 'Tells other voices apart and suggests names', on: s.features.speakerNames && hasDeepgram,
+      disabled: !hasDeepgram, set: (on) => setFeature('speakerNames', on),
+      hint: hasDeepgram ? undefined : `Add ${dgName} in Connect AI to turn this on.`,
+    },
+    { id: 'keep', title: 'Keep audio files', sub: 'Off: audio is discarded once transcribed', on: s.keepAudio, set: (on) => save({ keepAudio: on }) },
+  ];
   const summaryOptions = SUMMARY_MODELS[s.summary.provider];
 
   return (
@@ -293,6 +309,37 @@ export default function Settings() {
                 />
               </div>
             )}
+          </div>
+        </section>
+
+        <section className="set-section" aria-labelledby="h-rec">
+          <h2 id="h-rec">Recording</h2>
+          <div className="set-card">
+            {toggles.map((t) => (
+              <label key={t.id} className="set-row" htmlFor={`sw-${t.id}`}>
+                <span className="set-text">
+                  <span className="set-label">{t.title}</span>
+                  <span className="set-sub">{t.sub}</span>
+                  {t.hint && <span className="set-sub" id={`hint-${t.id}`}>{t.hint}</span>}
+                </span>
+                <input
+                  id={`sw-${t.id}`}
+                  type="checkbox"
+                  role="switch"
+                  checked={t.on}
+                  disabled={t.disabled}
+                  aria-describedby={t.hint ? `hint-${t.id}` : undefined}
+                  onChange={(e) => t.set(e.target.checked)}
+                  style={{ width: 18, height: 18, margin: 0, accentColor: '#4F46E5' }}
+                />
+              </label>
+            ))}
+            <div className="set-row">
+              <span className="set-text">
+                <span className="set-label">Speaker name key</span>
+                <span className="set-sub" role="status">{hasDeepgram ? `${dgName} is loaded` : `${dgName} is not loaded`}</span>
+              </span>
+            </div>
           </div>
         </section>
 

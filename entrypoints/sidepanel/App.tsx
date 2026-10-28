@@ -8,6 +8,7 @@ import Connect from './screens/Connect';
 import Start from './screens/Start';
 import Live from './screens/Live';
 import Processing from './screens/Processing';
+import Speakers from './screens/Speakers';
 import Summary from './screens/Summary';
 import Ask from './screens/Ask';
 import Library from './screens/Library';
@@ -24,6 +25,7 @@ export const SCREENS: Record<ScreenName, ComponentType> = {
   live: Live,
   processing: Processing,
   summary: Summary,
+  speakers: Speakers,
   ask: Ask,
   library: Library,
   transcript: Transcript,

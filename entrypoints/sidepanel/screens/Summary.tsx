@@ -4,6 +4,7 @@ import { useRouter } from '../router';
 import { useAskEnabled } from './Ask';
 import { getMeeting, listMarkers, listNotes } from '@/lib/db';
 import { summarize } from '@/lib/summarize';
+import { runSpeakerStep } from '@/lib/speakers';
 import { formatClock, formatDuration } from '@/lib/time';
 import { visibleMarkers } from '@/lib/suggest';
 import type { Marker, Meeting, Note } from '@/lib/types';
@@ -26,6 +27,7 @@ export default function Summary() {
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [voices, setVoices] = useState<'idle' | 'working'>('idle');
 
   useEffect(() => {
     if (!meetingId) { setState('missing'); return; }
@@ -53,6 +55,15 @@ export default function Summary() {
       setBusy(false);
     }
   }, [meetingId]);
+
+  const retrySpeakers = useCallback(async () => {
+    if (!meetingId) return;
+    setVoices('working');
+    const step = await runSpeakerStep(meetingId);
+    if (step === 'ready') return replace('speakers', { meetingId });
+    setMeeting(await getMeeting(meetingId).catch(() => undefined));
+    setVoices('idle');
+  }, [meetingId, replace]);
 
   const home = () => replace('start');
   if (state === 'loading') return <main className="screen screen-center"><Spinner label="Loading summary" /></main>;
@@ -86,6 +97,14 @@ export default function Summary() {
 
       <div className="sum-cards">
         {error && <p className="perm-error sum-error" role="alert">{error}</p>}
+        {meeting.speakerStep === 'failed' && (
+          <p className="perm-error sum-error" role="alert">
+            Couldn’t tell voices apart.{' '}
+            <button type="button" className="set-link" disabled={voices === 'working'} onClick={() => void retrySpeakers()}>
+              {voices === 'working' ? 'Trying…' : 'Try again'}
+            </button>
+          </p>
+        )}
         {!s ? (
           <section className="sum-card">
             <h2>Summary</h2>

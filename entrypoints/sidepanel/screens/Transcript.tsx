@@ -3,6 +3,7 @@ import { visibleMarkers } from '@/lib/suggest';
 import { getMeeting, listMarkers, listNotes, listSegments } from '@/lib/db';
 import { buildTimeline, type TimelineItem } from '@/lib/live';
 import { itemText, matchIds, splitMatches, transcriptToText } from '@/lib/library';
+import { displayName } from '@/lib/speakers';
 import { formatClock, formatDuration } from '@/lib/time';
 import type { Meeting } from '@/lib/types';
 import { Button, EmptyState, Spinner, Tag } from '../components';
@@ -16,6 +17,17 @@ function Marked({ text, query }: { text: string; query: string }) {
       {splitMatches(text, query).map((p, i) => (p.hit ? <mark key={i}>{p.text}</mark> : <Fragment key={i}>{p.text}</Fragment>))}
     </>
   );
+}
+
+/** Plain text for copying: "[12:04] Name: text", notes as "Your note". */
+function copyText(items: TimelineItem[], speakers: Meeting['speakers']): string {
+  return items
+    .map((it) => {
+      const at = `[${formatClock(it.atMs)}]`;
+      if (it.kind === 'segment') return `${at} ${displayName(it.segment, speakers)}: ${it.segment.text}`;
+      return transcriptToText([it]);
+    })
+    .join('\n');
 }
 
 export default function Transcript() {
@@ -67,7 +79,7 @@ export default function Transcript() {
 
   const copyAll = async () => {
     try {
-      await navigator.clipboard.writeText(transcriptToText(data?.items ?? []));
+      await navigator.clipboard.writeText(copyText(data?.items ?? [], data?.meeting?.speakers));
       setCopied('ok');
     } catch {
       setCopied('fail');
@@ -87,6 +99,9 @@ export default function Transcript() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
         </button>
         <div className="tr-title"><span>Transcript</span><small>{sub}</small></div>
+        {meeting?.speakers && Object.keys(meeting.speakers).length > 0 && (
+          <Button variant="secondary" onClick={() => navigate('speakers', { meetingId })}>Rename speakers</Button>
+        )}
       </header>
 
       <div className="tr-search">
@@ -121,7 +136,7 @@ export default function Transcript() {
                 </div>
               );
             }
-            const who = it.kind === 'note' ? 'Your note' : it.segment.speaker === 'you' ? 'You' : 'Others';
+            const who = it.kind === 'note' ? 'Your note' : displayName(it.segment, meeting?.speakers);
             return (
               <div className={cls} key={it.id} ref={(el) => { rowRefs.current[it.id] = el; if (isTarget) targetRef.current = el; }} aria-current={isTarget ? 'true' : undefined}>
                 {clock}

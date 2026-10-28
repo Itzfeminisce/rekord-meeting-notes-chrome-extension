@@ -50,8 +50,7 @@ export default function Processing() {
     try { pendingStep = (await getMeeting(meetingId))?.speakerStep === 'pending'; } catch { /* go to Summary */ }
     if (pendingStep) {
       setPhase('speakers');
-      await runSpeakerStep(meetingId);
-      // 'ready' → the Speakers screen once it exists (T6); until then, and on failure, the Summary.
+      if ((await runSpeakerStep(meetingId)) === 'ready') { replace('speakers', { meetingId }); return; }
     }
     replace('summary', { meetingId });
   }, [meetingId, replace]);

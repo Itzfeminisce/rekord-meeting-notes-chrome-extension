@@ -2,12 +2,13 @@
  * Speaker names after diarization: name suggestions from the transcript, and the post-summary
  * speaker step (diarize → suggest names) that Processing runs.
  */
-import { deleteRecording, getMeeting, listSegments, putMeeting } from './db';
+import { deleteRecording, getMeeting, listSegments, putMeeting, putSegment } from './db';
 import { diarize } from './diarize';
 import { chat, transcriptLines, type FetchLike } from './llm';
+import { loadKeys } from './keys';
 import { send } from './messages';
 import { getSettings } from './settings';
-import type { Meeting } from './types';
+import type { Meeting, RecordingMeta, Segment } from './types';
 
 type Speakers = NonNullable<Meeting['speakers']>;
 
@@ -93,7 +94,7 @@ async function runOnce(
     // 'running' here is stale (left by a panel that closed mid-run): run again.
     if (!meeting || (step !== 'pending' && step !== 'failed' && step !== 'running')) return undefined;
     const settings = await getSettings();
-    if (!settings.features.speakerNames) return await skip(meetingId, settings.keepAudio);
+    if (!settings.features.speakerNames || !(await loadKeys())[settings.diarization.keyName]?.trim()) return await skip(meetingId, settings.keepAudio);
     if (!(await listSegments(meetingId)).some((s) => s.speaker === 'others')) return await skip(meetingId, settings.keepAudio);
     await setStep(meetingId, 'running');
     const labels = await diarize(meetingId, fetchFn?.deepgram);
@@ -123,4 +124,78 @@ export function runSpeakerStep(
   const run = runOnce(meetingId, fetchFn).finally(() => inFlight.delete(meetingId));
   inFlight.set(meetingId, run);
   return run;
+}
+
+/** What a speaker shows as: their saved name, else "Speaker A" for a diarized label, else "Others". You stays "You". */
+export function displayName(s: Pick<Segment, 'speaker' | 'speakerLabel'>, speakers?: Meeting['speakers']): string {
+  if (s.speaker === 'you') return 'You';
+  if (!s.speakerLabel) return 'Others';
+  return speakers?.[s.speakerLabel]?.name?.trim() || `Speaker ${s.speakerLabel}`;
+}
+
+export interface SpeakerStats { label: string; talkMs: number; lines: number; quote: Segment | undefined }
+
+/** Per diarized label: talk time, line count and the longest line (the quote), in label order. */
+export function speakerStats(segments: Segment[]): SpeakerStats[] {
+  const by = new Map<string, SpeakerStats>();
+  for (const g of segments) {
+    if (g.speaker !== 'others' || !g.speakerLabel) continue;
+    const st = by.get(g.speakerLabel) ?? { label: g.speakerLabel, talkMs: 0, lines: 0, quote: undefined };
+    st.talkMs += Math.max(0, g.endMs - g.startMs);
+    if (g.text.trim()) {
+      st.lines += 1;
+      if (!st.quote || g.text.trim().length > st.quote.text.trim().length) st.quote = g;
+    }
+    by.set(g.speakerLabel, st);
+  }
+  return [...by.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/** Meeting time → time in the recording file (the recording skips paused stretches). */
+export function toRecordingMs(meetingMs: number, pauses: RecordingMeta['pauses'] = []): number {
+  let rec = meetingMs;
+  for (const p of [...pauses].sort((a, b) => a.atMs - b.atMs)) if (p.atMs < rec) rec -= p.durationMs;
+  return Math.max(0, rec);
+}
+
+export interface SpeakerEdits {
+  /** Typed name per label; blank leaves "Speaker X". */
+  names: Record<string, string>;
+  /** `merges[from] = into`: "from" and "into" are the same person. */
+  merges?: Record<string, string>;
+}
+
+async function finishStep(meetingId: string, step: 'saved' | 'skipped'): Promise<void> {
+  const m = await getMeeting(meetingId);
+  if (m) await putMeeting({ ...m, speakerStep: step });
+  const { keepAudio } = await getSettings();
+  if (!keepAudio) await deleteRecording(meetingId).catch(() => undefined);
+  await send({ type: 'speakers/progress', meetingId, step });
+}
+
+/** Saves typed names (and merged labels) to the meeting, marks the step 'saved', and drops the audio unless kept. */
+export async function saveSpeakerNames(meetingId: string, edits: SpeakerEdits): Promise<void> {
+  const meeting = await getMeeting(meetingId);
+  if (!meeting) throw new Error('This meeting is no longer on this computer.');
+  const merges = edits.merges ?? {};
+  const root = (l: string): string => { let x = l; for (let i = 0; i < 26 && merges[x] && merges[x] !== x; i++) x = merges[x]!; return x; };
+  const speakers: NonNullable<Meeting['speakers']> = {};
+  for (const [label, prev] of Object.entries(meeting.speakers ?? {})) {
+    if (root(label) !== label) continue;
+    const name = (edits.names[label] ?? '').trim().slice(0, 60);
+    const { name: _old, ...rest } = prev;
+    speakers[label] = { ...rest, ...(name ? { name } : {}) };
+  }
+  if (Object.keys(merges).length) {
+    for (const g of await listSegments(meetingId)) {
+      if (g.speakerLabel && root(g.speakerLabel) !== g.speakerLabel) await putSegment({ ...g, speakerLabel: root(g.speakerLabel) });
+    }
+  }
+  await putMeeting({ ...((await getMeeting(meetingId)) ?? meeting), speakers });
+  await finishStep(meetingId, 'saved');
+}
+
+/** Skip: keeps "Speaker A" labels, marks the step 'skipped', and drops the audio unless kept. */
+export async function skipSpeakers(meetingId: string): Promise<void> {
+  await finishStep(meetingId, 'skipped');
 }
