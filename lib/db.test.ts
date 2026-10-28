@@ -42,6 +42,15 @@ describe('db', () => {
     expect(await pendingChunks()).toHaveLength(3);
   });
 
+  it('orders pending chunks across meetings by absolute time', async () => {
+    await putMeeting(meeting('early', 1000));
+    await putMeeting(meeting('late', 5000));
+    await putChunk(chunk('l0', 'late', 0, 'pending'));
+    await putChunk(chunk('e2', 'early', 3000, 'pending'));
+    await putChunk(chunk('e0', 'early', 0, 'pending'));
+    expect((await pendingChunks()).map((c) => c.id)).toEqual(['e0', 'e2', 'l0']);
+  });
+
   it('cascades meeting deletes', async () => {
     await putMeeting(meeting('m', 1));
     await putMeeting(meeting('keep', 2));

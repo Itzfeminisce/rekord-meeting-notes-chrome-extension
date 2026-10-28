@@ -91,5 +91,11 @@ export async function deleteChunk(id: string): Promise<void> { await (await getD
 /** Chunks with status 'pending', oldest first; optionally for one meeting. */
 export async function pendingChunks(meetingId?: string): Promise<Chunk[]> {
   const all = await (await getDB()).getAllFromIndex('chunks', 'status', 'pending');
-  return all.filter((c) => !meetingId || c.meetingId === meetingId).sort(byStart);
+  const chunks = all.filter((c) => !meetingId || c.meetingId === meetingId);
+  if (meetingId) return chunks.sort(byStart);
+  // Across meetings startMs is a per-meeting offset: order by absolute time.
+  const meetings = await (await getDB()).getAll('meetings');
+  const started = new Map(meetings.map((m) => [m.id, m.startedAt]));
+  const abs = (c: Chunk) => (started.get(c.meetingId) ?? 0) + c.startMs;
+  return chunks.sort((a, b) => abs(a) - abs(b));
 }
