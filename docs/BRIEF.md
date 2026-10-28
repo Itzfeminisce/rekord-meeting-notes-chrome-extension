@@ -3,7 +3,7 @@
 Personal AI meeting note taker. A Chrome extension (side panel) for Windows first; an iPhone app later.
 
 ## Design
-Canvas with 15 frames (13 v1, 2 v2): https://claude.ai/artifact/Pwphr5xv9NLL2jd2c2HeSe
+Canvas with 22 frames (13 v1, 2 v2, 7 states): https://claude.ai/artifact/Pwphr5xv9NLL2jd2c2HeSe
 Frame sources, one screen per file (`Main` = Welcome): `design/frames/*.dc.html`. Open only the frame you are building. The canvas is the source of truth; copy changes from it into the frames.
 Look: Geist / Geist Mono, grey ground `#F6F6F7`, ink `#111114`, accent indigo `#4F46E5`, recording red only on the record dot. Copy is the product speaking to the user.
 

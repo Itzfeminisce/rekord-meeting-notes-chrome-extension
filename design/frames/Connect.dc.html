@@ -28,48 +28,55 @@ a{color:#4F46E5}a:hover{color:#3730A3}
     <span style="height: 4px; border-radius: 2px; background: #111114;"></span>
   </div>
 
-  <div style="padding: 32px 24px 0; display: flex; flex-direction: column; gap: 10px;">
+  <div style="padding: 24px 24px 0; display: flex; flex-direction: column; gap: 8px;">
     <h1 style="margin: 0; font-size: 26px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em;">Connect your AI</h1>
-    <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #5F6168;">Choose where Rekord gets its API keys. You can change this any time in Settings.</p>
+    <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #5F6168;">Pick your providers and where Rekord gets their keys. You can change this any time in Settings.</p>
   </div>
 
-  <div role="radiogroup" aria-label="Key source" style="margin: 24px 24px 0; display: flex; flex-direction: column; gap: 10px;">
-    <div role="radio" aria-checked="true" tabindex="0" style="display: flex; flex-direction: column; gap: 14px; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 2px solid #4F46E5; box-shadow: 0 6px 20px rgba(79,70,229,0.10);">
+  <div style="margin: 18px 24px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <label for="tp" style="font-size: 12px; font-weight: 500; color: #44464D;">Transcription</label>
+      <select id="tp" style="height: 40px; padding: 0 10px; border: 1px solid #DCDCE0; border-radius: 10px; background: #FFFFFF; font: inherit; font-size: 13px; color: #111114;"><option>Groq</option><option>OpenAI</option></select>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <label for="ap" style="font-size: 12px; font-weight: 500; color: #44464D;">Assistant</label>
+      <select id="ap" style="height: 40px; padding: 0 10px; border: 1px solid #DCDCE0; border-radius: 10px; background: #FFFFFF; font: inherit; font-size: 13px; color: #111114;"><option>Groq</option><option>OpenAI</option><option>OpenRouter</option><option>Anthropic</option><option>Ollama</option></select>
+    </div>
+  </div>
+
+  <div role="radiogroup" aria-label="Key source" style="margin: 16px 24px 0; display: flex; flex-direction: column; gap: 10px;">
+    <div role="radio" aria-checked="true" tabindex="0" style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 2px solid #4F46E5; box-shadow: 0 6px 20px rgba(79,70,229,0.10);">
       <div style="display: flex; gap: 12px; align-items: center;">
         <span style="width: 20px; height: 20px; border-radius: 50%; border: 6px solid #4F46E5; box-sizing: border-box; flex-shrink: 0;"></span>
         <span style="flex-grow: 1; font-size: 15px; font-weight: 600;">penv cloud</span>
         <span style="padding: 3px 8px; border-radius: 999px; background: #EEF0FF; color: #3730A3; font-size: 11px; font-weight: 600;">Recommended</span>
       </div>
-      <span style="font-size: 13px; line-height: 1.45; color: #5F6168; margin-top: -6px;">Keys live in penv. Rotate them there and Rekord picks them up. Nothing is saved to disk.</span>
+      <span style="font-size: 13px; line-height: 1.45; color: #5F6168; margin-top: -4px;">Keys live in penv. Rotate them there and Rekord picks them up. Nothing is saved to disk.</span>
       <div style="display: flex; flex-direction: column; gap: 6px;">
         <label for="env" style="font-size: 12px; font-weight: 500; color: #44464D;">Environment</label>
-        <input id="env" type="text" placeholder="org/project/environment" style="height: 42px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 10px; background: #F9F9FA; font-family: 'Geist Mono', monospace; font-size: 13px; color: #111114;">
+        <input id="env" type="text" value="acme/meeting-notes/development" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 10px; background: #F9F9FA; font-family: 'Geist Mono', monospace; font-size: 13px; color: #111114;">
       </div>
       <div style="display: flex; flex-direction: column; gap: 6px;">
         <label for="tok" style="font-size: 12px; font-weight: 500; color: #44464D;">Read-only machine token</label>
-        <input id="tok" type="password" placeholder="pck_…" style="height: 42px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 10px; background: #F9F9FA; font-family: 'Geist Mono', monospace; font-size: 13px; color: #111114;">
+        <input id="tok" type="password" value="pck_xxxxxxxxxxxx" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 10px; background: #F9F9FA; font-family: 'Geist Mono', monospace; font-size: 13px; color: #111114;">
       </div>
+      <ul aria-label="Key check" style="list-style: none; margin: 0; padding: 10px 12px; border-radius: 10px; background: #F6F6F7; display: flex; flex-direction: column; gap: 8px;">
+        <li style="display: flex; align-items: center; gap: 8px; font-size: 12px;"><span style="flex-grow: 1; font-family: 'Geist Mono', monospace; color: #2A2B31;">GROQ_API_KEY</span><span style="display: flex; align-items: center; gap: 5px; font-weight: 600; color: #1A6B40;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #1A7F4B;"></span>Works</span></li>
+        <li style="display: flex; align-items: center; gap: 8px; font-size: 12px;"><span style="flex-grow: 1; font-family: 'Geist Mono', monospace; color: #2A2B31;">DEEPGRAM_API_KEY</span><span style="display: flex; align-items: center; gap: 5px; font-weight: 600; color: #6E7079;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #A3A3B2;"></span>Couldn’t check</span></li>
+      </ul>
     </div>
 
     <div role="radio" aria-checked="false" tabindex="-1" style="display: flex; gap: 12px; align-items: flex-start; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB;">
       <span style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #C4C4CA; box-sizing: border-box; flex-shrink: 0; margin-top: 1px;"></span>
       <div style="display: flex; flex-direction: column; gap: 4px;">
         <span style="font-size: 15px; font-weight: 600;">Paste keys here</span>
-        <span style="font-size: 13px; line-height: 1.45; color: #5F6168;">Groq, OpenAI, OpenRouter or Anthropic. Stored on this computer.</span>
-      </div>
-    </div>
-
-    <div role="radio" aria-checked="false" tabindex="-1" style="display: flex; gap: 12px; align-items: flex-start; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB;">
-      <span style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #C4C4CA; box-sizing: border-box; flex-shrink: 0; margin-top: 1px;"></span>
-      <div style="display: flex; flex-direction: column; gap: 4px;">
-        <span style="font-size: 15px; font-weight: 600;">Run locally with Ollama</span>
-        <span style="font-size: 13px; line-height: 1.45; color: #5F6168;">No keys. Nothing leaves this computer.</span>
+        <span style="font-size: 13px; line-height: 1.45; color: #5F6168;">Kept in memory only. Nothing is saved to disk.</span>
       </div>
     </div>
   </div>
 
   <div style="flex-grow: 1;"></div>
-  <div style="padding: 24px;">
+  <div style="padding: 20px 24px 24px;">
     <a href="Start.dc.html" style="height: 48px; border-radius: 12px; background: #111114; color: #FFFFFF; font-size: 15px; font-weight: 600; text-decoration: none; display: flex; align-items: center; justify-content: center;">Connect and finish</a>
   </div>
 </div>

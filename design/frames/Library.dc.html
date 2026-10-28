@@ -33,32 +33,38 @@ a{color:#4F46E5}a:hover{color:#3730A3}
     <div role="group" aria-label="Filter" style="display: flex; gap: 6px;">
       <button type="button" aria-pressed="true" style="height: 30px; padding: 0 12px; border: none; border-radius: 999px; background: #111114; color: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600;">All</button>
       <button type="button" aria-pressed="false" style="height: 30px; padding: 0 12px; border: none; border-radius: 999px; background: #EBEBEE; color: #2A2B31; font: inherit; font-size: 12px; font-weight: 500;">Open actions · 5</button>
-      <button type="button" aria-pressed="false" style="height: 30px; padding: 0 12px; border: none; border-radius: 999px; background: #EBEBEE; color: #2A2B31; font: inherit; font-size: 12px; font-weight: 500;">Starred</button>
     </div>
   </div>
 
   <section style="flex-grow: 1; overflow: hidden; padding: 18px 16px 16px; display: flex; flex-direction: column; gap: 8px;">
     <h2 style="margin: 0; padding: 0 4px; font-size: 12px; font-weight: 600; color: #6E7079;">This week</h2>
-    <a href="Summary.dc.html" style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB; text-decoration: none; color: #111114;">
-      <span style="display: flex; justify-content: space-between; gap: 8px;"><span style="font-size: 15px; font-weight: 600;">Weekly product sync</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">Today</span></span>
-      <span style="font-size: 13px; line-height: 1.45; color: #5F6168;">Launch email locked for the 14th; pricing unchanged this quarter.</span>
-      <span style="display: flex; gap: 6px;"><span style="padding: 3px 8px; border-radius: 999px; background: #FFF4E5; color: #8A4B00; font-size: 11px; font-weight: 600;">3 open actions</span><span style="padding: 3px 8px; border-radius: 999px; background: #F1F1F3; color: #44464D; font-size: 11px; font-weight: 500;">34 min</span></span>
-    </a>
-    <a href="Summary.dc.html" style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB; text-decoration: none; color: #111114;">
-      <span style="display: flex; justify-content: space-between; gap: 8px;"><span style="font-size: 15px; font-weight: 600;">Client onboarding call</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">Oct 27</span></span>
-      <span style="font-size: 13px; line-height: 1.45; color: #5F6168;">Kickoff scheduled; data import to finish before training.</span>
-      <span style="display: flex; gap: 6px;"><span style="padding: 3px 8px; border-radius: 999px; background: #FFF4E5; color: #8A4B00; font-size: 11px; font-weight: 600;">2 open actions</span><span style="padding: 3px 8px; border-radius: 999px; background: #F1F1F3; color: #44464D; font-size: 11px; font-weight: 500;">42 min</span></span>
-    </a>
+    <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB;">
+      <a href="Live.dc.html" style="display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #111114;"><span style="display: flex; justify-content: space-between; gap: 8px;"><span style="font-size: 15px; font-weight: 600;">Weekly product sync</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">Now</span></span><span style="font-size: 13px; line-height: 1.45; color: #5F6168;">Recording. Open it to see the live transcript.</span></a>
+      <span style="display: flex; gap: 6px;"><span style="display: flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 999px; background: #FDECEC; color: #B42318; font-size: 11px; font-weight: 600;"><span style="width: 6px; height: 6px; border-radius: 50%; background: #E5484D;"></span>Recording</span></span>
+    </div>
+    <div role="alertdialog" aria-labelledby="del-q" style="display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #F2C9C7;">
+      <span id="del-q" style="font-size: 14px; font-weight: 600;">Delete “Client onboarding call”?</span>
+      <span style="font-size: 13px; line-height: 1.45; color: #5F6168;">Its transcript, notes and summary are removed from this computer. This can’t be undone.</span>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" style="height: 36px; padding: 0 14px; border: none; border-radius: 10px; background: #B42318; color: #FFFFFF; font: inherit; font-size: 13px; font-weight: 600;">Delete</button>
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #E8E8EB; border-radius: 10px; background: #FFFFFF; font: inherit; font-size: 13px; font-weight: 500; color: #111114;">Keep it</button>
+      </div>
+    </div>
     <h2 style="margin: 10px 0 0; padding: 0 4px; font-size: 12px; font-weight: 600; color: #6E7079;">Earlier</h2>
-    <a href="Summary.dc.html" style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB; text-decoration: none; color: #111114;">
-      <span style="display: flex; justify-content: space-between; gap: 8px;"><span style="font-size: 15px; font-weight: 600;">Design review</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">Oct 26</span></span>
-      <span style="font-size: 13px; line-height: 1.45; color: #5F6168;">New onboarding flow approved with two copy changes.</span>
+    <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB;">
+      <div style="display: flex; align-items: flex-start; gap: 8px;">
+        <a href="Summary.dc.html" style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #111114;"><span style="display: flex; justify-content: space-between; gap: 8px;"><span style="font-size: 15px; font-weight: 600;">Design review</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">Oct 26</span></span><span style="font-size: 13px; line-height: 1.45; color: #5F6168;">New onboarding flow approved with two copy changes.</span></a>
+        <button type="button" aria-label="Delete Design review" style="width: 32px; height: 32px; flex-shrink: 0; border: none; border-radius: 9px; background: transparent; color: #6E7079; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg></button>
+      </div>
       <span style="display: flex; gap: 6px;"><span style="padding: 3px 8px; border-radius: 999px; background: #E8F5EE; color: #1A6B40; font-size: 11px; font-weight: 600;">All done</span><span style="padding: 3px 8px; border-radius: 999px; background: #F1F1F3; color: #44464D; font-size: 11px; font-weight: 500;">28 min</span></span>
-    </a>
-    <a href="Summary.dc.html" style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB; text-decoration: none; color: #111114;">
-      <span style="display: flex; justify-content: space-between; gap: 8px;"><span style="font-size: 15px; font-weight: 600;">1:1 with Sam</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">Oct 21</span></span>
-      <span style="font-size: 13px; line-height: 1.45; color: #5F6168;">Career goals and the Q1 hiring plan.</span>
-    </a>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB;">
+      <div style="display: flex; align-items: flex-start; gap: 8px;">
+        <a href="Summary.dc.html" style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px; text-decoration: none; color: #111114;"><span style="display: flex; justify-content: space-between; gap: 8px;"><span style="font-size: 15px; font-weight: 600;">1:1 with Sam</span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">Oct 21</span></span><span style="font-size: 13px; line-height: 1.45; color: #5F6168;">Career goals and the Q1 hiring plan.</span></a>
+        <button type="button" aria-label="Delete 1:1 with Sam" style="width: 32px; height: 32px; flex-shrink: 0; border: none; border-radius: 9px; background: transparent; color: #6E7079; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg></button>
+      </div>
+      <span style="display: flex; gap: 6px;"><span style="padding: 3px 8px; border-radius: 999px; background: #F1F1F3; color: #44464D; font-size: 11px; font-weight: 500;">31 min</span></span>
+    </div>
   </section>
 </div>
 </x-dc>

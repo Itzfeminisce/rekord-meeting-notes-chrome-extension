@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Banners and inline states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4F46E5}a:hover{color:#3730A3}
+</style>
+</helmet>
+<div style="width: 400px; height: 1700px; box-sizing: border-box; padding: 20px 12px; display: flex; flex-direction: column; gap: 22px; background: #F6F6F7; color: #111114; font-family: Geist, system-ui, sans-serif;">
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Start · transcription key rejected</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FDECEC; border: 1px solid #F2C9C7; display: flex; align-items: center; gap: 10px;">
+      <span style="flex-grow: 1; font-size: 13px; line-height: 1.45; color: #8A1C14;">Your transcription key was rejected. Fix it in Settings.</span>
+      <a href="Settings.dc.html" style="height: 32px; padding: 0 12px; border-radius: 9px; background: #FFFFFF; border: 1px solid #F2C9C7; color: #8A1C14; font-size: 12px; font-weight: 600; text-decoration: none; display: flex; align-items: center;">Settings</a>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Live · connection lost: offline</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FFF8EC; border: 1px solid #F5DDB0; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 14px; font-weight: 600; color: #5C3200;">You’re offline</span><span style="font-size: 13px; line-height: 1.45; color: #6B3D00;">Rekord keeps recording and catches up when you’re back. 6 parts waiting.</span></div>
+      <button type="button" style="align-self: flex-start; height: 32px; padding: 0 12px; border: none; border-radius: 9px; background: #111114; color: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600;">Retry now</button>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Live · connection lost: busy (rate limit)</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FFF8EC; border: 1px solid #F5DDB0; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 14px; font-weight: 600; color: #5C3200;">Groq is busy</span><span style="font-size: 13px; line-height: 1.45; color: #6B3D00;">Still recording. Trying again in <span style="font-family: 'Geist Mono', monospace;">0:42</span>. 3 parts waiting.</span></div>
+      <button type="button" style="align-self: flex-start; height: 32px; padding: 0 12px; border: none; border-radius: 9px; background: #111114; color: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600;">Retry now</button>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Live · connection lost: key rejected</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FDECEC; border: 1px solid #F2C9C7; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 14px; font-weight: 600; color: #8A1C14;">Your transcription key was rejected</span><span style="font-size: 13px; line-height: 1.45; color: #8A1C14;">Still recording. Fix the key and Rekord catches up. 4 parts waiting.</span></div>
+      <div style="display: flex; gap: 8px;">
+        <a href="Settings.dc.html" style="height: 32px; padding: 0 12px; border-radius: 9px; background: #111114; color: #FFFFFF; font-size: 12px; font-weight: 600; text-decoration: none; display: flex; align-items: center;">Settings</a>
+        <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #F2C9C7; border-radius: 9px; background: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600; color: #8A1C14;">Retry now</button>
+      </div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Live · connection lost: server error</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FFF8EC; border: 1px solid #F5DDB0; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 14px; font-weight: 600; color: #5C3200;">Groq isn’t responding</span><span style="font-size: 13px; line-height: 1.45; color: #6B3D00;">Still recording. Trying again in <span style="font-family: 'Geist Mono', monospace;">0:15</span>. 2 parts waiting.</span></div>
+      <button type="button" style="align-self: flex-start; height: 32px; padding: 0 12px; border: none; border-radius: 9px; background: #111114; color: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600;">Retry now</button>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Wrapping up · summary failed</h2>
+    <div role="alert" style="padding: 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #F2C9C7; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 14px; font-weight: 600;">Couldn’t write the summary</span><span style="font-size: 13px; line-height: 1.45; color: #5F6168;">Your transcript and notes are saved.</span></div>
+      <div style="display: flex; gap: 8px;">
+        <button type="button" style="height: 34px; padding: 0 14px; border: none; border-radius: 9px; background: #111114; color: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600;">Retry</button>
+        <a href="Transcript.dc.html" style="height: 34px; padding: 0 12px; border-radius: 9px; background: #FFFFFF; border: 1px solid #E8E8EB; color: #111114; font-size: 12px; font-weight: 500; text-decoration: none; display: flex; align-items: center;">Open transcript</a>
+      </div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Summary · telling voices apart</h2>
+    <div role="status" style="padding: 12px 14px; border-radius: 14px; background: #EEF0FF; border: 1px solid #D9D7FB; display: flex; align-items: center; gap: 10px;">
+      <span style="width: 16px; height: 16px; border-radius: 50%; border: 2px solid #4F46E5; border-right-color: #D9D7FB; box-sizing: border-box; flex-shrink: 0;"></span>
+      <span style="flex-grow: 1; font-size: 13px; font-weight: 500; color: #2E2A8A;">Telling voices apart…</span>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Summary · voices failed</h2>
+    <div role="alert" style="padding: 12px 14px; border-radius: 14px; background: #FFF8EC; border: 1px solid #F5DDB0; display: flex; align-items: center; gap: 10px;">
+      <span style="flex-grow: 1; font-size: 13px; line-height: 1.45; color: #5C3200;">Couldn’t tell voices apart. Speakers stay as “Others”.</span>
+      <button type="button" style="height: 32px; padding: 0 12px; border: none; border-radius: 9px; background: #111114; color: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600;">Try again</button>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Ask · question failed</h2>
+    <div style="align-self: flex-end; max-width: 80%; padding: 10px 14px; border-radius: 16px 16px 4px 16px; background: #111114; color: #FFFFFF; font-size: 14px; line-height: 1.5;">Who owns the pricing research?</div>
+    <div role="alert" style="padding: 12px 14px; border-radius: 16px; background: #FFFFFF; border: 1px solid #F2C9C7; display: flex; align-items: center; gap: 10px;">
+      <span style="flex-grow: 1; font-size: 13px; line-height: 1.45; color: #2A2B31;">This question didn’t finish.</span>
+      <button type="button" style="height: 32px; padding: 0 12px; border: none; border-radius: 9px; background: #111114; color: #FFFFFF; font: inherit; font-size: 12px; font-weight: 600;">Try again</button>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 style="margin: 0; padding: 0 4px; font-family: 'Geist Mono', monospace; font-size: 11px; font-weight: 500; color: #6E7079;">Export · nothing ticked</h2>
+    <div style="padding: 14px; border-radius: 16px; background: #FFFFFF; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+        <label style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 12px; background: #F6F6F7; font-size: 13px; font-weight: 500;"><input type="checkbox" style="width: 18px; height: 18px; margin: 0; accent-color: #4F46E5;">Summary</label>
+        <label style="display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 12px; background: #F6F6F7; font-size: 13px; font-weight: 500;"><input type="checkbox" style="width: 18px; height: 18px; margin: 0; accent-color: #4F46E5;">Transcript</label>
+      </div>
+      <span role="alert" style="font-size: 12px; font-weight: 500; color: #B42318;">Choose at least one thing to include.</span>
+      <button type="button" disabled style="height: 44px; border: none; border-radius: 12px; background: #DCDCE0; color: #6E7079; font: inherit; font-size: 14px; font-weight: 600;">Copy to clipboard</button>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":1700}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

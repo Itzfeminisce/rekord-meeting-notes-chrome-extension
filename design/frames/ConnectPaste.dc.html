@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connect your AI, paste keys</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4F46E5}a:hover{color:#3730A3}
+</style>
+</helmet>
+<div style="width: 400px; height: 820px; box-sizing: border-box; display: flex; flex-direction: column; background: #F6F6F7; color: #111114; font-family: Geist, system-ui, sans-serif;">
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 0;">
+    <a href="Permissions.dc.html" aria-label="Back" style="width: 36px; height: 36px; margin-left: -8px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #111114;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </a>
+    <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: #6E7079;">Step 3 of 3</span>
+  </div>
+
+  <div style="padding: 12px 24px 0; display: flex; flex-direction: column; gap: 8px;">
+    <h1 style="margin: 0; font-size: 26px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em;">Connect your AI</h1>
+  </div>
+
+  <div style="margin: 16px 24px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <label for="tp" style="font-size: 12px; font-weight: 500; color: #44464D;">Transcription</label>
+      <select id="tp" style="height: 40px; padding: 0 10px; border: 1px solid #DCDCE0; border-radius: 10px; background: #FFFFFF; font: inherit; font-size: 13px; color: #111114;"><option>Groq</option><option>OpenAI</option></select>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+      <label for="ap" style="font-size: 12px; font-weight: 500; color: #44464D;">Assistant</label>
+      <select id="ap" style="height: 40px; padding: 0 10px; border: 1px solid #DCDCE0; border-radius: 10px; background: #FFFFFF; font: inherit; font-size: 13px; color: #111114;"><option>OpenAI</option><option>Groq</option><option>OpenRouter</option><option>Anthropic</option><option>Ollama</option></select>
+    </div>
+  </div>
+
+  <div role="radiogroup" aria-label="Key source" style="margin: 16px 24px 0; display: flex; flex-direction: column; gap: 10px;">
+    <div role="radio" aria-checked="false" tabindex="-1" style="display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E8E8EB;">
+      <span style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #C4C4CA; box-sizing: border-box; flex-shrink: 0;"></span>
+      <span style="font-size: 15px; font-weight: 600;">penv cloud</span>
+    </div>
+    <div role="radio" aria-checked="true" tabindex="0" style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 16px; background: #FFFFFF; border: 2px solid #4F46E5; box-shadow: 0 6px 20px rgba(79,70,229,0.10);">
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <span style="width: 20px; height: 20px; border-radius: 50%; border: 6px solid #4F46E5; box-sizing: border-box; flex-shrink: 0;"></span>
+        <span style="font-size: 15px; font-weight: 600;">Paste keys here</span>
+      </div>
+      <span style="font-size: 13px; line-height: 1.45; color: #5F6168; margin-top: -4px;">Kept in memory only. Nothing is saved to disk.</span>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label for="k1" style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 500; color: #44464D;">Groq key<span style="display: flex; align-items: center; gap: 5px; font-weight: 600; color: #1A6B40;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #1A7F4B;"></span>Works</span></label>
+        <input id="k1" type="password" value="gsk_xxxxxxxxxxxx" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 10px; background: #F9F9FA; font-family: 'Geist Mono', monospace; font-size: 13px; color: #111114;">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label for="k2" style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 500; color: #44464D;">OpenAI key<span style="display: flex; align-items: center; gap: 5px; font-weight: 600; color: #B42318;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #E5484D;"></span>Rejected</span></label>
+        <input id="k2" type="password" value="sk-xxxxxxxxxxxx" aria-invalid="true" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #F2C9C7; border-radius: 10px; background: #FFF8F8; font-family: 'Geist Mono', monospace; font-size: 13px; color: #111114;">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <label for="k3" style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 500; color: #44464D;">Deepgram key<span style="font-weight: 400; color: #6E7079;">optional, for speaker names</span></label>
+        <input id="k3" type="password" placeholder="Paste a Deepgram key" style="height: 40px; box-sizing: border-box; padding: 0 12px; border: 1px solid #DCDCE0; border-radius: 10px; background: #F9F9FA; font-family: 'Geist Mono', monospace; font-size: 13px; color: #111114;">
+      </div>
+    </div>
+  </div>
+
+  <div style="flex-grow: 1;"></div>
+  <div style="padding: 16px 24px 24px; display: flex; flex-direction: column; gap: 8px;">
+    <button type="button" style="height: 48px; border: none; border-radius: 12px; background: #111114; color: #FFFFFF; font: inherit; font-size: 15px; font-weight: 600;">Check again</button>
+    <a href="Start.dc.html" style="height: 44px; border-radius: 12px; color: #111114; font-size: 14px; font-weight: 500; text-decoration: none; display: flex; align-items: center; justify-content: center;">Continue anyway</a>
+    <span style="text-align: center; font-size: 12px; line-height: 1.45; color: #6E7079;">Rekord will record, and transcribe once a working key is added.</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":400,"height":820}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
