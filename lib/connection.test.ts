@@ -24,3 +24,10 @@ describe('connection copy', () => {
     expect(retryIn(1000, 5000)).toBe('0:00');
   });
 });
+
+describe('retry guard constants', () => {
+  it('guards for about two seconds', async () => {
+    const { RETRY_GUARD_MS } = await import('./connection');
+    expect(RETRY_GUARD_MS).toBe(2000);
+  });
+});

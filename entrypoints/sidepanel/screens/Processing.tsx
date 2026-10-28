@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from '../components';
 import { useRouter } from '../router';
 import { getMeeting, listNotes, listSegments, pendingChunks } from '@/lib/db';
+import { CONNECTION_LOST, useConnection } from '@/lib/connection';
 import { onMessage, send } from '@/lib/messages';
 import { summarize } from '@/lib/summarize';
 
@@ -35,6 +36,9 @@ export default function Processing() {
   const [facts, setFacts] = useState<{ ms: number; notes: number } | undefined>(undefined);
   const started = useRef(false);
   const failed = useRef(false);
+  const drained = useRef(false);
+  const conn = useConnection();
+  const [lostSeen, setLostSeen] = useState(false);
 
   const run = useCallback(async (manual = false) => {
     if (!meetingId || started.current) return;
@@ -74,13 +78,20 @@ export default function Processing() {
     void refresh();
     void send({ type: 'transcription/catch-up' });
     const off = onMessage((msg) => {
-      if (msg.type === 'transcription/drained' && msg.meetingId === meetingId) void run();
+      if (msg.type === 'transcription/drained' && msg.meetingId === meetingId) { drained.current = true; void run(); }
       else if (msg.type === 'segment/added' && msg.segment.meetingId === meetingId) void refresh();
       return undefined;
     });
     const timer = setInterval(() => void refresh(), 3000);
     return () => { alive = false; off(); clearInterval(timer); };
   }, [meetingId, replace, run]);
+
+  useEffect(() => { if (!conn.ok) setLostSeen(true); }, [conn]);
+  useEffect(() => {
+    if (meetingId && lostSeen && phase === 'transcribing' && (pending ?? 0) > 0 && !drained.current) {
+      replace('error', { message: CONNECTION_LOST, meetingId });
+    }
+  }, [lostSeen, pending, phase, meetingId, replace]);
 
   const summarizing = phase === 'summarizing';
   const waiting = phase === 'transcribing' && (pending ?? 0) > 0;

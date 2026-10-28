@@ -406,3 +406,4 @@ a:hover { color: var(--accent-hover); }
 .exp-copy { height: 50px; border: 0; border-radius: 14px; background: var(--ink); color: #fff; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .exp-copy:hover { background: var(--ink-soft); }
 .exp-close:focus-visible, .exp-row:focus-visible, .exp-pill:focus-visible, .exp-copy:focus-visible, .exp-check:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.conn-primary:disabled { opacity: 0.6; cursor: default; }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { onMessage } from './messages';
 import { formatClock } from './time';
 import type { ConnectionState } from './types';
@@ -26,6 +26,36 @@ export function useConnection(): ConnectionState {
     [],
   );
   return state;
+}
+
+/** Wall clock that ticks every second while `active`, so countdowns keep moving. */
+export function useNow(active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [active]);
+  return now;
+}
+
+export const RETRY_GUARD_MS = 2000;
+
+/** In-flight guard for "Retry now": busy until the next connection/state message (a new `state` object) or ~2 s. */
+export function useRetryGuard(state: ConnectionState, send: () => void): { busy: boolean; retry: () => void } {
+  const [busy, setBusy] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => { setBusy(false); }, [state]);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const retry = useCallback(() => {
+    if (busy) return;
+    setBusy(true);
+    send();
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setBusy(false), RETRY_GUARD_MS);
+  }, [busy, send]);
+  return { busy, retry };
 }
 
 export function providerName(provider: string | undefined): string {

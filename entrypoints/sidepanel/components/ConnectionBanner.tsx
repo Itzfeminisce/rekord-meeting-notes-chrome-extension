@@ -1,22 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from '../router';
-import { connectionCopy, useConnection } from '@/lib/connection';
+import { connectionCopy, useConnection, useNow, useRetryGuard, type LostState } from '@/lib/connection';
 import { send } from '@/lib/messages';
 import { getSettings } from '@/lib/settings';
 
-/** Shown on Live when transcription is paused; renders nothing while the connection is ok. */
-export function ConnectionBanner() {
-  const state = useConnection();
+const catchUp = () => { void send({ type: 'transcription/catch-up' }); };
+
+/** The paused-transcription alert (shared by Live's banner and the connection-lost Error screen). */
+export function ConnectionAlert({ state }: { state: LostState }) {
   const { navigate } = useRouter();
   const [provider, setProvider] = useState<string>();
-  const [now, setNow] = useState(() => Date.now());
+  const now = useNow(true);
+  const { busy, retry } = useRetryGuard(state, catchUp);
   useEffect(() => { void getSettings().then((s) => setProvider(s.transcription.provider)).catch(() => {}); }, []);
-  useEffect(() => {
-    if (state.ok) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, [state.ok]);
-  if (state.ok) return null;
   const copy = connectionCopy(state, provider, now);
   return (
     <div role="alert" className="conn-banner">
@@ -28,9 +24,15 @@ export function ConnectionBanner() {
         </div>
       </div>
       <div className="conn-actions">
-        <button type="button" className="conn-primary" onClick={() => void send({ type: 'transcription/catch-up' })}>Retry now</button>
+        <button type="button" className="conn-primary" disabled={busy} onClick={retry}>Retry now</button>
         <button type="button" className="conn-secondary" onClick={() => navigate(copy.action.to)}>{copy.action.label}</button>
       </div>
     </div>
   );
+}
+
+/** Shown on Live when transcription is paused; renders nothing while the connection is ok. */
+export function ConnectionBanner() {
+  const state = useConnection();
+  return state.ok ? null : <ConnectionAlert state={state} />;
 }
