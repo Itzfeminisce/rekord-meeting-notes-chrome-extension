@@ -131,17 +131,18 @@ export default function Start() {
         <ul className="start-sources">
           <li>
             <label>
-              <input type="checkbox" checked={sources.mic} disabled={isLastSource(sources, 'mic')} onChange={() => setSources((s) => toggleSource(s, 'mic'))} />
+              <input type="checkbox" checked={sources.mic} aria-disabled={isLastSource(sources, 'mic') || undefined} aria-describedby={isLastSource(sources, 'mic') ? 'src-hint' : undefined} onChange={() => { if (!isLastSource(sources, 'mic')) setSources((s) => toggleSource(s, 'mic')); }} />
               <span>You<small>Microphone</small></span>
             </label>
           </li>
           <li>
             <label>
-              <input type="checkbox" checked={sources.tab} disabled={isLastSource(sources, 'tab')} onChange={() => setSources((s) => toggleSource(s, 'tab'))} />
+              <input type="checkbox" checked={sources.tab} aria-disabled={isLastSource(sources, 'tab') || undefined} aria-describedby={isLastSource(sources, 'tab') ? 'src-hint' : undefined} onChange={() => { if (!isLastSource(sources, 'tab')) setSources((s) => toggleSource(s, 'tab')); }} />
               <span>Others<small>This tab</small></span>
             </label>
           </li>
         </ul>
+        {(isLastSource(sources, 'mic') || isLastSource(sources, 'tab')) && <p id="src-hint" className="start-hint">Keep at least one source on</p>}
 
         {keys === 'reconnect' && (
           <div className="start-warn" role="alert">

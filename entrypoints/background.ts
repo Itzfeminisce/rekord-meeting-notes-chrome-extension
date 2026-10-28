@@ -155,7 +155,7 @@ async function startRecording(tabId: number, sources: Sources): Promise<Recordin
     return { ok: false, error: error instanceof Error && error.message ? error.message : START_ERROR };
   }
 
-  setState({ status: 'recording', meetingId, startedAt, micLevel: 0, tabLevel: 0, ...(micUnavailable && { micUnavailable }) });
+  setState({ status: 'recording', meetingId, startedAt, micLevel: 0, tabLevel: 0, sources, ...(micUnavailable && { micUnavailable }) });
   return { ok: true, meetingId };
 }
 

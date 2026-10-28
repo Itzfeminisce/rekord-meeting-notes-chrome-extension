@@ -178,8 +178,8 @@ export default function Live() {
           </div>
           {active && (
             <div className="live-meters">
-              {!active.micUnavailable && <LevelMeter level={active.micLevel} label="Your microphone level" />}
-              <LevelMeter level={active.tabLevel} label="Meeting audio level" />
+              {!active.micUnavailable && active.sources?.mic !== false && <LevelMeter level={active.micLevel} label="Your microphone level" />}
+              {active.sources?.tab !== false && <LevelMeter level={active.tabLevel} label="Meeting audio level" />}
             </div>
           )}
           <button type="button" className="live-end" onClick={stop} disabled={stopping}>{stopping ? 'Ending…' : 'End'}</button>

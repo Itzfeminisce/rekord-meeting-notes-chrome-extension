@@ -85,7 +85,7 @@ export type ConnectionState =
 
 export type RecordingState =
   | { status: 'idle' }
-  | { status: 'starting' | 'recording' | 'stopping'; meetingId: string; startedAt: number; micLevel: number; tabLevel: number; micUnavailable?: boolean }; // micUnavailable: recording the tab only
+  | { status: 'starting' | 'recording' | 'stopping'; meetingId: string; startedAt: number; micLevel: number; tabLevel: number; micUnavailable?: boolean; sources?: { mic: boolean; tab: boolean } }; // sources: what was asked to record; micUnavailable: recording the tab only
 
 // runtime messages (chrome.runtime.sendMessage); all plain JSON, never Blobs
 export type Message =

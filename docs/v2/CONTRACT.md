@@ -43,6 +43,7 @@ export interface Settings {
 DB: bump the version, add stores `asks`, `recordings`, `recordingMeta`; `deleteMeeting` also clears them.
 Messages: add `{ type: 'speakers/progress'; meetingId: string; step: Meeting['speakerStep'] }`.
 Messages (T8): `recording/start` and `offscreen/start` gain `sources?: { mic: boolean; tab: boolean }` (absent = both on; at least one is on). Tab off: no tab stream and no continuous recording; mic off: no mic permission requested.
+RecordingState (non-idle) gains `sources?: { mic: boolean; tab: boolean }`, set by background when status becomes `recording`; the Live screen hides the meter of a source that is off.
 
 export interface Summary {                         // T8: compatible; old saved summaries (string decisions, no due) still load
   overview: string;
