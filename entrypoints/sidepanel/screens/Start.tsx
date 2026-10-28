@@ -7,7 +7,7 @@ import { getMeeting, listMeetings, putMeeting } from '@/lib/db';
 import { dateTile, hostOf } from '@/lib/live';
 import { send } from '@/lib/messages';
 import { formatDuration } from '@/lib/time';
-import type { Meeting } from '@/lib/types';
+import type { Meeting, RecordingState } from '@/lib/types';
 
 interface TabInfo { id: number; title: string; url?: string; favIconUrl?: string }
 
@@ -28,8 +28,17 @@ export default function Start() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [reconnecting, setReconnecting] = useState(false);
+  const [stateChecked, setStateChecked] = useState(false);
 
   useEffect(() => {
+    let alive = true;
+    send<RecordingState>({ type: 'recording/get-state' })
+      .then((s) => {
+        if (!alive) return;
+        if (s && s.status !== 'idle' && 'meetingId' in s && s.meetingId) replace('live', { meetingId: s.meetingId });
+        else setStateChecked(true);
+      })
+      .catch(() => alive && setStateChecked(true));
     browser.tabs
       .query({ active: true, currentWindow: true })
       .then(([t]) => {
@@ -43,6 +52,7 @@ export default function Start() {
     listMeetings()
       .then((all) => setRecent(all.filter((m) => m.status !== 'recording').sort((a, b) => b.startedAt - a.startedAt).slice(0, 3)))
       .catch(() => setRecent([]));
+    return () => { alive = false; };
   }, []);
 
   async function tryReconnect() {
@@ -80,7 +90,7 @@ export default function Start() {
   }
 
   const host = hostOf(tab?.url);
-  const canRecord = !!tab && keys === 'ready' && !busy;
+  const canRecord = !!tab && keys === 'ready' && stateChecked && !busy;
 
   return (
     <main className="screen">
