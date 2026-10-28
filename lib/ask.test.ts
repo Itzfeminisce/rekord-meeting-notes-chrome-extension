@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { ask, buildAskMessages, parseCitations, saveAnswerAsNote } from './ask';
+import { ask, buildAskMessages, markUnfinished, parseCitations, saveAnswerAsNote } from './ask';
 import { closeDB, listAsks, listNotes, putMeeting, putNote, putSegment } from './db';
 import { saveKeys } from './keys';
 
@@ -81,5 +81,28 @@ describe('saveAnswerAsNote', () => {
     const at = (await listNotes('m')).map((n) => [n.text, n.atMs]);
     expect(at).toContainEqual(['a', 5000]);
     expect(at).toContainEqual(['b', 9000]);
+  });
+});
+
+describe('citation validation', () => {
+  it('rejects invalid seconds/minutes', () => {
+    expect(parseCitations('[99:99] [12:75] [1:60] [1:75:00] [1:00:61] [2:05]')).toEqual([125000]);
+  });
+  it('drops citations beyond maxMs', () => {
+    expect(parseCitations('[1:00] [30:00]', 120000)).toEqual([60000]);
+  });
+  it('saveAnswerAsNote ignores out-of-range citations', async () => {
+    const n = await saveAnswerAsNote({ id: 'x', meetingId: 'm', createdAt: 1, question: 'q', answer: 'c', citations: [6000000] }, 9000, 120000);
+    expect(n.atMs).toBe(9000);
+  });
+});
+
+describe('markUnfinished', () => {
+  it('fails unfinished turns except the running one', () => {
+    const base = { meetingId: 'm', createdAt: 1, question: 'q' };
+    const out = markUnfinished([{ ...base, id: 'a' }, { ...base, id: 'b' }, { ...base, id: 'c', answer: 'x' }], 'b');
+    expect(out[0]?.error).toBe("This question didn't finish. Try again.");
+    expect(out[1]?.error).toBeUndefined();
+    expect(out[2]?.error).toBeUndefined();
   });
 });

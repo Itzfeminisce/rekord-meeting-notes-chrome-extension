@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Form
 import { Spinner } from '../components';
 import { ConnectionBanner } from '../components/ConnectionBanner';
 import { useRouter } from '../router';
-import { ask, parseCitations, QUICK_PROMPTS, saveAnswerAsNote } from '@/lib/ask';
+import { ask, CITATION_TOLERANCE_MS, markUnfinished, parseCitations, QUICK_PROMPTS, saveAnswerAsNote } from '@/lib/ask';
 import { getMeeting, listAsks } from '@/lib/db';
 import { getSettings } from '@/lib/settings';
 import { formatClock } from '@/lib/time';
@@ -33,6 +33,7 @@ export function useAskEnabled(): boolean | undefined {
 function Answer({ turn, nowMs, onOpen, onRetry }: { turn: AskTurn; nowMs: number; onOpen: (atMs: number) => void; onRetry: () => void }) {
   const [saved, setSaved] = useState<'idle' | 'saved' | 'failed'>('idle');
   const [copied, setCopied] = useState(false);
+  const maxMs = nowMs > 0 ? nowMs + CITATION_TOLERANCE_MS : undefined;
   const pending = turn.answer === undefined && !turn.error;
   const lines = (turn.answer ?? '').split('\n').filter((l) => l.trim());
 
@@ -40,7 +41,7 @@ function Answer({ turn, nowMs, onOpen, onRetry }: { turn: AskTurn; nowMs: number
     try { await navigator.clipboard.writeText(turn.answer ?? ''); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
   }
   async function save() {
-    try { await saveAnswerAsNote(turn, nowMs); setSaved('saved'); } catch { setSaved('failed'); }
+    try { await saveAnswerAsNote(turn, nowMs, maxMs); setSaved('saved'); } catch { setSaved('failed'); }
   }
 
   return (
@@ -56,7 +57,7 @@ function Answer({ turn, nowMs, onOpen, onRetry }: { turn: AskTurn; nowMs: number
         </>
       )}
       {lines.map((line, i) => {
-        const cites = parseCitations(line);
+        const cites = parseCitations(line, maxMs);
         const text = line.replace(CITE, '').replace(/\s+([.,;:])/g, '$1').trim();
         return (
           <div key={i} style={{ display: 'flex', gap: 8, fontSize: 14, lineHeight: 1.5 }}>
@@ -86,9 +87,13 @@ export function AskPanel({ meetingId, nowMs, onOpenMoment }: { meetingId: string
   const [loadFailed, setLoadFailed] = useState(false);
   const scroller = useRef<HTMLElement>(null);
 
+  const runningId = useRef<string | undefined>(undefined);
   useEffect(() => {
     let alive = true;
-    listAsks(meetingId).then((t) => alive && setTurns(t)).catch(() => alive && setLoadFailed(true));
+    listAsks(meetingId).then((t) => alive && setTurns((cur) => {
+      const running = cur.find((x) => x.id === runningId.current);
+      return markUnfinished(t, runningId.current).map((x) => (running && x.id === running.id ? running : x));
+    })).catch(() => alive && setLoadFailed(true));
     return () => { alive = false; };
   }, [meetingId]);
 
@@ -102,9 +107,11 @@ export function AskPanel({ meetingId, nowMs, onOpenMoment }: { meetingId: string
     if (!q || busy) return;
     setBusy(true);
     const placeholder: AskTurn = { id: turnId ?? `pending-${Date.now()}`, meetingId, createdAt: Date.now(), question: q };
+    runningId.current = placeholder.id;
     setTurns((t) => (turnId ? t.map((x) => (x.id === turnId ? placeholder : x)) : [...t, placeholder]));
     const done = await ask(meetingId, q, { turnId });
     setTurns((t) => t.map((x) => (x.id === placeholder.id ? done : x)));
+    runningId.current = undefined;
     setBusy(false);
   }, [meetingId, busy]);
 

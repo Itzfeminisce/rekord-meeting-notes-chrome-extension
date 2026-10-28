@@ -19,12 +19,17 @@ export const QUICK_PROMPTS = [
 
 const MAX_HISTORY_TURNS = 4;
 
+/** Slack added to the meeting length when dropping out-of-range citations. */
+export const CITATION_TOLERANCE_MS = 60_000;
+
 /** Pulls [m:ss] / [h:mm:ss] citations out of an answer, as unique atMs values in order of appearance. */
-export function parseCitations(answer: string): number[] {
+export function parseCitations(answer: string, maxMs?: number): number[] {
   const out: number[] = [];
   for (const m of answer.matchAll(/\[(\d{1,3}):(\d{2})(?::(\d{2}))?\]/g)) {
-    const secs = m[3] !== undefined ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) : Number(m[1]) * 60 + Number(m[2]);
-    const ms = secs * 1000;
+    const [a, b, c] = [Number(m[1]), Number(m[2]), m[3] !== undefined ? Number(m[3]) : undefined];
+    if (c !== undefined ? b >= 60 || c >= 60 : b >= 60) continue;
+    const ms = (c !== undefined ? a * 3600 + b * 60 + c : a * 60 + b) * 1000;
+    if (maxMs !== undefined && ms > maxMs) continue;
     if (!out.includes(ms)) out.push(ms);
   }
   return out;
@@ -54,12 +59,26 @@ export function buildAskMessages(ctx: AskContext, question: string): ChatMessage
   return messages;
 }
 
+export const UNFINISHED_ASK_ERROR = "This question didn't finish. Try again.";
+
+/** Turns left without an answer or error (panel closed mid-call) become failed so Retry shows. */
+export function markUnfinished(turns: AskTurn[], runningId?: string): AskTurn[] {
+  return turns.map((t) => (t.answer === undefined && !t.error && t.id !== runningId ? { ...t, error: UNFINISHED_ASK_ERROR } : t));
+}
+
 export interface AskDeps {
   fetch?: FetchLike;
   config?: ChatOptions['config'];
   /** Re-run an existing (failed) turn instead of creating a new one. */
   turnId?: string;
   signal?: AbortSignal;
+}
+
+function citationLimit(meeting: Meeting | undefined, segments: Segment[]): number | undefined {
+  const segEnd = segments.reduce((mx, s) => Math.max(mx, s.endMs), 0);
+  const len = meeting?.endedAt !== undefined ? meeting.endedAt - meeting.startedAt : 0;
+  const base = Math.max(segEnd, len);
+  return base > 0 ? base + CITATION_TOLERANCE_MS : undefined;
 }
 
 /**
@@ -84,7 +103,7 @@ export async function ask(meetingId: string, question: string, deps: AskDeps = {
       deps.fetch,
     )).trim();
     if (!answer) throw new LLMError('The AI service sent an unexpected reply. Try again.', 'bad-reply');
-    const done: AskTurn = { ...turn, answer, citations: parseCitations(answer) };
+    const done: AskTurn = { ...turn, answer, citations: parseCitations(answer, citationLimit(meeting, segments)) };
     await putAsk(done);
     return done;
   } catch (e) {
@@ -95,8 +114,9 @@ export async function ask(meetingId: string, question: string, deps: AskDeps = {
 }
 
 /** Saves an answer as a note at its newest cited moment, else at `nowMs`. */
-export async function saveAnswerAsNote(turn: AskTurn, nowMs: number): Promise<Note> {
-  const cited = turn.citations?.length ? Math.max(...turn.citations) : undefined;
+export async function saveAnswerAsNote(turn: AskTurn, nowMs: number, maxMs?: number): Promise<Note> {
+  const valid = (turn.citations ?? []).filter((c) => maxMs === undefined || c <= maxMs);
+  const cited = valid.length ? Math.max(...valid) : undefined;
   const note: Note = {
     id: crypto.randomUUID(), meetingId: turn.meetingId, atMs: cited ?? nowMs,
     text: (turn.answer ?? '').trim(), createdAt: Date.now(),

@@ -24,6 +24,9 @@ export default function Transcript() {
   const [error, setError] = useState(false);
   const [query, setQuery] = useState('');
   const [current, setCurrent] = useState(0);
+  const atMsParam = Number(route.params.atMs);
+  const targetRef = useRef<HTMLDivElement | null>(null);
+  const scrolledFor = useRef<string | undefined>(undefined);
   const [copied, setCopied] = useState<'ok' | 'fail' | null>(null);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -48,6 +51,16 @@ export default function Transcript() {
   useEffect(() => {
     if (currentId) rowRefs.current[currentId]?.scrollIntoView?.({ block: 'center' });
   }, [currentId]);
+
+  const targetId = useMemo(() => {
+    if (!data?.items.length || route.params.atMs === undefined || !Number.isFinite(atMsParam)) return undefined;
+    return data.items.reduce((best, it) => (Math.abs(it.atMs - atMsParam) < Math.abs(best.atMs - atMsParam) ? it : best)).id;
+  }, [data, atMsParam, route.params.atMs]);
+  useEffect(() => {
+    if (!targetId || scrolledFor.current === `${meetingId}:${atMsParam}`) return;
+    scrolledFor.current = `${meetingId}:${atMsParam}`;
+    targetRef.current?.scrollIntoView?.({ block: 'center' });
+  }, [targetId, meetingId, atMsParam]);
 
   const step = (d: number) => ids.length && setCurrent((c) => (c + d + ids.length) % ids.length);
 
@@ -96,11 +109,12 @@ export default function Transcript() {
           {data.items.map((it) => {
             const on = it.id === currentId;
             const hit = ids.includes(it.id);
-            const cls = `tr-row${it.kind === 'note' ? ' tr-note' : ''}${hit ? ' tr-hit' : ''}${on ? ' tr-on' : ''}`;
+            const isTarget = it.id === targetId;
+            const cls = `tr-row${isTarget ? ' tr-target' : ''}${it.kind === 'note' ? ' tr-note' : ''}${hit ? ' tr-hit' : ''}${on ? ' tr-on' : ''}`;
             const clock = <span className="tr-clock">{formatClock(it.atMs)}</span>;
             if (it.kind === 'marker') {
               return (
-                <div className={cls} key={it.id}>
+                <div className={cls} key={it.id} ref={isTarget ? targetRef : undefined} aria-current={isTarget ? 'true' : undefined}>
                   {clock}
                   <div className="tr-body"><Tag kind={it.marker.kind} />{it.marker.label && <span className="tr-text">{it.marker.label}</span>}</div>
                 </div>
@@ -108,7 +122,7 @@ export default function Transcript() {
             }
             const who = it.kind === 'note' ? 'Your note' : it.segment.speaker === 'you' ? 'You' : 'Others';
             return (
-              <div className={cls} key={it.id} ref={(el) => { rowRefs.current[it.id] = el; }}>
+              <div className={cls} key={it.id} ref={(el) => { rowRefs.current[it.id] = el; if (isTarget) targetRef.current = el; }} aria-current={isTarget ? 'true' : undefined}>
                 {clock}
                 <div className="tr-body">
                   <span className={`tr-who${who === 'You' ? '' : ' alt'}`}>{who}</span>
