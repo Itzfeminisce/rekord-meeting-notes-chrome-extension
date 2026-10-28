@@ -6,7 +6,7 @@ import { ensureKeys, reconnect, transcriptionKeyRejected } from '@/lib/connect';
 import { getMeeting, listMeetings, putMeeting } from '@/lib/db';
 import { dateTile, hostOf } from '@/lib/live';
 import { needsTabGrant, TAB_GRANT_HINT } from '@/lib/capture';
-import { send } from '@/lib/messages';
+import { onMessage, send } from '@/lib/messages';
 import { DEFAULT_SOURCES, isLastSource, toggleSource } from '@/lib/sources';
 import { formatDuration } from '@/lib/time';
 import type { Meeting, RecordingState } from '@/lib/types';
@@ -67,6 +67,10 @@ export default function Start() {
     window.addEventListener('focus', onActivated);
     browser.tabs.onActivated.addListener(onActivated);
     browser.tabs.onUpdated.addListener(onUpdated);
+    const offGranted = onMessage((m) => {
+      if (m.type === 'tab/granted') void loadTab();
+      return undefined;
+    });
     ensureKeys().then(setKeys, () => setKeys('reconnect'));
     transcriptionKeyRejected().then((r) => alive && setKeyRejected(r), () => {});
     listMeetings()
@@ -77,6 +81,7 @@ export default function Start() {
       window.removeEventListener('focus', onActivated);
       browser.tabs.onActivated.removeListener(onActivated);
       browser.tabs.onUpdated.removeListener(onUpdated);
+      offGranted();
     };
   }, []);
 
