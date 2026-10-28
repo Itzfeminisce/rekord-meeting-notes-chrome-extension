@@ -26,3 +26,9 @@ reviews get fresh agents.
 A fresh opus agent reviews the full diff against this file and the specs (≤30-line report). Fixes go to fresh agents.
 E2E: synthesize a 2-voice clip (OpenAI TTS, `OPENAI_API_KEY` from penv), run it through T5's diarize + naming with
 `DEEPGRAM_API_KEY` via `penv run`, check that two labels come back. Print counts and labels only, never keys.
+
+## Status
+T1–T6 built, reviewed and fixed; final gate passed after one fix. Verified: typecheck, 156 unit tests, build.
+E2E: penv keys load in the extension, two-voice clip and summary work, but Deepgram rejects the `testing` env's
+`DEEPGRAM_API_KEY` (HTTP 401, also on GET /v1/projects), so diarization fails soft as designed. Rerun the E2E script
+once the key is replaced. Not verified: live tab/mic capture (needs a real Chrome).

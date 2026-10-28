@@ -30,3 +30,4 @@
 - T3 done: lib/suggest (60s scheduler, dedupe, cursor), SuggestionCard in Live, accepted AI actions in summary; 8 tests
 - T5 done: lib/diarize (Deepgram, overlap≥30%, A/B by first use), lib/speakers suggestNames+runSpeakerStep; 9 tests
 - T6 done: Speakers screen (names/merge/sample), displayName, Settings switches, Deepgram paste field, keys merge; export/summarize still say Others
+- Final gate: 1 finding (speaker step stuck after panel close) fixed e87d4dc. E2E blocked: penv DEEPGRAM_API_KEY returns 401.
