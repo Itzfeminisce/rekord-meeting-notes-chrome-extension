@@ -8,7 +8,7 @@ import { chat, transcriptLines, type FetchLike } from './llm';
 import { loadKeys } from './keys';
 import { send } from './messages';
 import { getSettings } from './settings';
-import type { Meeting, RecordingMeta, Segment } from './types';
+import type { CalendarEvent, Meeting, RecordingMeta, Segment } from './types';
 
 type Speakers = NonNullable<Meeting['speakers']>;
 
@@ -44,6 +44,51 @@ export function parseSuggestions(reply: string, labels: string[]): Record<string
   return out;
 }
 
+export interface Invitee { name: string; email: string }
+
+/** Display name of an attendee: their name, else the part of the email before "@". */
+export function inviteeName(a: { name?: string; email: string }): string {
+  return (a.name?.trim() || a.email.split('@')[0] || a.email).trim();
+}
+
+/** Invitees other than you (attendees minus self), de-duplicated by email. */
+export function inviteCandidates(event: CalendarEvent | undefined): Invitee[] {
+  const seen = new Set<string>();
+  const out: Invitee[] = [];
+  for (const a of event?.attendees ?? []) {
+    const key = a.email.trim().toLowerCase();
+    if (a.self || !key || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ name: inviteeName(a), email: a.email });
+  }
+  return out;
+}
+
+const norm = (s: string): string => s.trim().toLowerCase().replace(/\s+/g, ' ');
+
+/** The invitee a suggested name refers to: full name, or a first name that only one invitee has. */
+export function matchInvitee(suggested: string | undefined, candidates: Invitee[]): Invitee | undefined {
+  const n = norm(suggested ?? '');
+  if (!n) return undefined;
+  const exact = candidates.find((c) => norm(c.name) === n);
+  if (exact) return exact;
+  const first = n.split(' ')[0];
+  const hits = candidates.filter((c) => norm(c.name).split(' ')[0] === first);
+  return hits.length === 1 ? hits[0] : undefined;
+}
+
+/** Chips for a label: invitees not already used as a name on another label. */
+export function chipsFor(label: string, candidates: Invitee[], names: Record<string, string>): Invitee[] {
+  const used = new Set(Object.entries(names).filter(([l]) => l !== label).map(([, v]) => norm(v)).filter(Boolean));
+  return candidates.filter((c) => !used.has(norm(c.name)));
+}
+
+/** Invitees whose name no label carries (they didn't speak, or weren't picked out). */
+export function unnamedInvitees(candidates: Invitee[], names: Record<string, string>): Invitee[] {
+  const used = new Set(Object.values(names).map(norm).filter(Boolean));
+  return candidates.filter((c) => !used.has(norm(c.name)));
+}
+
 /** Asks the summary model for a name per speaker label; stores `suggested`/`evidenceMs` on `meeting.speakers`. */
 export async function suggestNames(meetingId: string, fetchFn?: FetchLike): Promise<Speakers> {
   const [meeting, segments] = await Promise.all([getMeeting(meetingId), listSegments(meetingId)]);
@@ -54,8 +99,9 @@ export async function suggestNames(meetingId: string, fetchFn?: FetchLike): Prom
   const named: Speakers = {};
   for (const l of labels) named[l] = { name: `Speaker ${l}` };
   const lines = transcriptLines(segments, named);
+  const invitees = inviteCandidates(meeting.event).map((c) => c.name);
   const reply = await chat(
-    [{ role: 'system', content: SYSTEM }, { role: 'user', content: `Labels: ${labels.join(', ')}\n\n${lines.join('\n')}` }],
+    [{ role: 'system', content: SYSTEM }, { role: 'user', content: `Labels: ${labels.join(', ')}\n${invitees.length ? `People invited (use these names when they fit): ${invitees.join(', ')}\n` : ''}\n${lines.join('\n')}` }],
     { json: true, maxTokens: 400, temperature: 0 },
     fetchFn,
   );
