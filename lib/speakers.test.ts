@@ -8,7 +8,7 @@ import { DEFAULT_SETTINGS, updateSettings } from './settings';
 import { parseSuggestions, runSpeakerStep, suggestNames } from './speakers';
 
 const llm = (content: unknown) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }), { status: 200 });
-const dg = new Response(JSON.stringify({ results: { utterances: [{ start: 0, end: 4, speaker: 0 }, { start: 5, end: 9, speaker: 1 }] } }));
+const dg = () => new Response(JSON.stringify({ results: { utterances: [{ start: 0, end: 4, speaker: 0 }, { start: 5, end: 9, speaker: 1 }] } }));
 
 beforeEach(async () => {
   fakeBrowser.reset();
@@ -33,7 +33,9 @@ describe('parseSuggestions', () => {
 describe('suggestNames', () => {
   it('sends labelled transcript lines and stores suggestions', async () => {
     await putMeeting({ ...(await getMeeting('m1'))!, speakers: { A: {}, B: {} } });
-    await putSegment({ ...(await listSegments('m1'))[1], speakerLabel: 'B' });
+    const s2 = (await listSegments('m1')).find((s) => s.id === 's2');
+    if (!s2) throw new Error('fixture segment s2 missing');
+    await putSegment({ ...s2, speakerLabel: 'B' });
     const f = vi.fn(async () => llm({ A: null, B: { name: 'Maria', evidenceAt: '0:00' } }));
     expect(await suggestNames('m1', f)).toEqual({ A: {}, B: { suggested: 'Maria', evidenceMs: 0 } });
     const body = JSON.parse((f.mock.calls[0] as unknown as [string, RequestInit])[1].body as string);
@@ -44,7 +46,7 @@ describe('suggestNames', () => {
 
 describe('runSpeakerStep', () => {
   it('diarizes, suggests names and marks the step ready', async () => {
-    const step = await runSpeakerStep('m1', { deepgram: async () => dg, llm: async () => llm({ A: null, B: { name: 'Maria', evidenceAt: '0:00' } }) });
+    const step = await runSpeakerStep('m1', { deepgram: async () => dg(), llm: async () => llm({ A: null, B: { name: 'Maria', evidenceAt: '0:00' } }) });
     expect(step).toBe('ready');
     const m = await getMeeting('m1');
     expect(m?.speakerStep).toBe('ready');
@@ -66,5 +68,53 @@ describe('runSpeakerStep', () => {
     expect(f).not.toHaveBeenCalled();
     expect(await listRecordingParts('m1')).toHaveLength(0);
     expect(await runSpeakerStep('m1')).toBeUndefined();
+  });
+
+  it('keeps the labels and marks the step ready when name suggestions fail', async () => {
+    const step = await runSpeakerStep('m1', { deepgram: async () => dg(), llm: async () => new Response('x', { status: 500 }) });
+    expect(step).toBe('ready');
+    const m = await getMeeting('m1');
+    expect(m?.speakerStep).toBe('ready');
+    expect(m?.speakers).toEqual({ A: {}, B: {} });
+    expect((await listSegments('m1')).map((s) => s.speakerLabel)).toEqual(['A', 'B']);
+  });
+
+  it('reruns a stale running step, and joins a run already in flight', async () => {
+    await putMeeting({ ...(await getMeeting('m1'))!, speakerStep: 'running' });
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((r) => { release = r; });
+    const deepgram = vi.fn(async () => { await gate; return dg(); });
+    const llmFn = async () => llm({});
+    const first = runSpeakerStep('m1', { deepgram, llm: llmFn });
+    const second = runSpeakerStep('m1', { deepgram, llm: llmFn });
+    release();
+    expect(await first).toBe('ready');
+    expect(await second).toBe('ready');
+    expect(deepgram).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips and deletes the audio when there is no "others" speech', async () => {
+    for (const s of await listSegments('m1')) await putSegment({ ...s, speaker: 'you' });
+    const f = vi.fn();
+    expect(await runSpeakerStep('m1', { deepgram: f })).toBe('skipped');
+    expect(f).not.toHaveBeenCalled();
+    expect((await getMeeting('m1'))?.speakerStep).toBe('skipped');
+    expect(await listRecordingParts('m1')).toHaveLength(0);
+  });
+
+  it('keeps the audio on skip when Settings keepAudio is on', async () => {
+    await updateSettings({ keepAudio: true });
+    for (const s of await listSegments('m1')) await putSegment({ ...s, speaker: 'you' });
+    expect(await runSpeakerStep('m1')).toBe('skipped');
+    expect(await listRecordingParts('m1')).toHaveLength(1);
+  });
+
+  it('fails when no segment gets a label, keeping You/Others', async () => {
+    const none = new Response(JSON.stringify({ results: { utterances: [{ start: 20, end: 21, speaker: 0 }] } }));
+    const llmFn = vi.fn();
+    expect(await runSpeakerStep('m1', { deepgram: async () => none, llm: llmFn })).toBe('failed');
+    expect(llmFn).not.toHaveBeenCalled();
+    expect((await getMeeting('m1'))?.speakerStep).toBe('failed');
+    expect((await listSegments('m1')).every((s) => !s.speakerLabel)).toBe(true);
   });
 });

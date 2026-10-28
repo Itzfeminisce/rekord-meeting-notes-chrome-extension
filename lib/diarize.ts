@@ -87,7 +87,7 @@ export async function diarize(meetingId: string, fetchFn: FetchLike = (u, i) => 
   const key = keys[settings.diarization.keyName];
   if (!key) throw new DiarizeError('Rekord needs a Deepgram key to tell voices apart.', 'no-key');
 
-  const blob = new Blob(parts.map((p) => p.blob), { type: parts[0].mimeType });
+  const blob = new Blob(parts.map((p) => p.blob), { type: parts[0]?.mimeType ?? '' });
   const q = new URLSearchParams({
     model: settings.diarization.model || 'nova-3',
     diarize: 'true', utterances: 'true', punctuate: 'true',

@@ -74,32 +74,53 @@ async function setStep(meetingId: string, step: NonNullable<Meeting['speakerStep
   await send({ type: 'speakers/progress', meetingId, step });
 }
 
-/**
- * Runs diarize → suggestNames for a meeting whose speakerStep is 'pending' (or 'failed', for retry).
- * Resolves to the final step: 'ready', 'failed', 'skipped' (switch off), or undefined (nothing to do).
- * Never throws: any error marks the step 'failed' and You/Others stays.
- */
-export async function runSpeakerStep(
+/** Speaker steps running in this panel, per meeting. A persisted 'running' with no entry here is stale. */
+const inFlight = new Map<string, Promise<Meeting['speakerStep']>>();
+
+async function skip(meetingId: string, keepAudio: boolean): Promise<'skipped'> {
+  await setStep(meetingId, 'skipped');
+  if (!keepAudio) await deleteRecording(meetingId).catch(() => undefined);
+  return 'skipped';
+}
+
+async function runOnce(
   meetingId: string,
   fetchFn?: { deepgram?: FetchLike; llm?: FetchLike },
 ): Promise<Meeting['speakerStep']> {
   try {
     const meeting = await getMeeting(meetingId);
     const step = meeting?.speakerStep;
-    if (!meeting || (step !== 'pending' && step !== 'failed')) return undefined;
+    // 'running' here is stale (left by a panel that closed mid-run): run again.
+    if (!meeting || (step !== 'pending' && step !== 'failed' && step !== 'running')) return undefined;
     const settings = await getSettings();
-    if (!settings.features.speakerNames) {
-      await setStep(meetingId, 'skipped');
-      if (!settings.keepAudio) await deleteRecording(meetingId).catch(() => undefined);
-      return 'skipped';
-    }
+    if (!settings.features.speakerNames) return await skip(meetingId, settings.keepAudio);
+    if (!(await listSegments(meetingId)).some((s) => s.speaker === 'others')) return await skip(meetingId, settings.keepAudio);
     await setStep(meetingId, 'running');
-    await diarize(meetingId, fetchFn?.deepgram);
-    await suggestNames(meetingId, fetchFn?.llm);
+    const labels = await diarize(meetingId, fetchFn?.deepgram);
+    if (!labels.length) throw new Error('No voices could be told apart.');
+    // Name suggestions are optional: labels are saved, so the user can name speakers by hand.
+    await suggestNames(meetingId, fetchFn?.llm).catch(() => undefined);
     await setStep(meetingId, 'ready');
     return 'ready';
   } catch {
     try { await setStep(meetingId, 'failed'); } catch { /* fail soft */ }
     return 'failed';
   }
+}
+
+/**
+ * Runs diarize → suggestNames for a meeting whose speakerStep is 'pending', 'failed' (retry) or a stale
+ * 'running'. Resolves to the final step: 'ready', 'failed', 'skipped' (switch off or no 'others' speech),
+ * or undefined (nothing to do). A call while this panel already runs the step joins that run.
+ * Never throws: any error (or no labels found) marks the step 'failed' and You/Others stays.
+ */
+export function runSpeakerStep(
+  meetingId: string,
+  fetchFn?: { deepgram?: FetchLike; llm?: FetchLike },
+): Promise<Meeting['speakerStep']> {
+  const running = inFlight.get(meetingId);
+  if (running) return running;
+  const run = runOnce(meetingId, fetchFn).finally(() => inFlight.delete(meetingId));
+  inFlight.set(meetingId, run);
+  return run;
 }
