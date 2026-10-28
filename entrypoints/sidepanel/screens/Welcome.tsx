@@ -1,22 +1,16 @@
+import { Button, Tag, TopBar } from '../components';
+import { useRouter } from '../router';
+
 const WAVE: [height: number, color: string][] = [
   [14, '#3A3A44'], [26, '#4A4A56'], [40, '#6D67F0'], [22, '#6D67F0'], [46, '#8F8AF5'], [30, '#6D67F0'],
   [18, '#4A4A56'], [34, '#6D67F0'], [12, '#3A3A44'], [24, '#4A4A56'], [38, '#6D67F0'], [16, '#3A3A44'],
 ];
 
-export default function Welcome({ onGetStarted }: { onGetStarted: () => void }) {
+export default function Welcome() {
+  const { navigate } = useRouter();
   return (
     <main className="screen">
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-              <path d="M5 9v6M9 6v12M13 9v6M17 11v2" />
-            </svg>
-          </span>
-          Rekord
-        </div>
-        <span className="step">Step 1 of 3</span>
-      </header>
+      <TopBar right={<span className="step">Step 1 of 3</span>} />
 
       <div className="hero" aria-hidden="true">
         <div className="wave">
@@ -27,7 +21,7 @@ export default function Welcome({ onGetStarted }: { onGetStarted: () => void }) 
         <div className="moment">
           <span className="moment-meta">12:04 · Others</span>
           <span className="moment-text">Let’s lock the launch for the 14th.</span>
-          <span className="tag">Decision</span>
+          <Tag kind="decision" onDark />
         </div>
       </div>
 
@@ -60,12 +54,12 @@ export default function Welcome({ onGetStarted }: { onGetStarted: () => void }) 
       </ul>
 
       <footer className="footer">
-        <button type="button" className="button-primary" onClick={onGetStarted}>
+        <Button block onClick={() => navigate('permissions')}>
           Get started
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M5 12h14M13 6l6 6-6 6" />
           </svg>
-        </button>
+        </Button>
         <span className="hint">Takes about a minute</span>
       </footer>
     </main>
