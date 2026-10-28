@@ -8,6 +8,13 @@
 - Each v2 feature checks its Settings switch and fails soft (v1 behaviour continues).
 - Commit `T<n>: <summary>` on the v2 branch. Do not push. Tick your task, add one log line (≤120 chars), report ≤10 lines.
 
+## Conventions (v2, from T1)
+- LLM: `chat(messages, {json?, maxTokens?, temperature?, signal?, config?}, fetch?)` in lib/llm.ts → text; throws `LLMError`
+  (.code no-key|offline|auth|rate-limited|server|bad-reply, user-facing message). Offscreen: pass `config:{settings,keys}`.
+- `transcriptLines(segments, meeting.speakers)` / `speakerName(seg, speakers)` in lib/llm.ts for "[m:ss] Name: text".
+- DB v2 helpers: putAsk/listAsks, putRecordingPart/listRecordingParts, get/putRecordingMeta, deleteRecording.
+- `updateSettings` replaces nested objects whole: pass the full `features` object when changing one switch.
+
 ## Tasks
 - [x] T1 v2 core: types, DB migration, settings, shared LLM client — opus — specs/T1.md
 - [ ] T2 Ask mid-meeting and after — sonnet — specs/T2.md (after T1)
