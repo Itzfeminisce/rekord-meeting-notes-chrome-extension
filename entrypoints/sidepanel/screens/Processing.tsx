@@ -5,8 +5,9 @@ import { getMeeting, listNotes, listSegments, pendingChunks } from '@/lib/db';
 import { CONNECTION_LOST, useConnection } from '@/lib/connection';
 import { onMessage, send } from '@/lib/messages';
 import { summarize } from '@/lib/summarize';
+import { runSpeakerStep } from '@/lib/speakers';
 
-type Phase = 'transcribing' | 'summarizing' | 'failed' | 'missing';
+type Phase = 'transcribing' | 'summarizing' | 'speakers' | 'failed' | 'missing';
 
 function minutesText(ms: number): string {
   const n = ms > 0 ? Math.max(1, Math.round(ms / 60000)) : 0;
@@ -39,6 +40,21 @@ export default function Processing() {
   const drained = useRef(false);
   const conn = useConnection();
   const [lostSeen, setLostSeen] = useState(false);
+  const speakersStarted = useRef(false);
+
+  // After the summary: tell voices apart when the meeting has a recording. Never fails the summary.
+  const finish = useCallback(async () => {
+    if (!meetingId || speakersStarted.current) return;
+    speakersStarted.current = true;
+    let pendingStep = false;
+    try { pendingStep = (await getMeeting(meetingId))?.speakerStep === 'pending'; } catch { /* go to Summary */ }
+    if (pendingStep) {
+      setPhase('speakers');
+      await runSpeakerStep(meetingId);
+      // 'ready' → the Speakers screen once it exists (T6); until then, and on failure, the Summary.
+    }
+    replace('summary', { meetingId });
+  }, [meetingId, replace]);
 
   const run = useCallback(async (manual = false) => {
     if (!meetingId || started.current) return;
@@ -49,14 +65,15 @@ export default function Processing() {
     setPhase('summarizing');
     try {
       await summarize(meetingId);
-      replace('summary', { meetingId });
     } catch (e) {
       started.current = false;
       failed.current = true;
       setError(e instanceof Error ? e.message : 'Something went wrong while writing the summary.');
       setPhase('failed');
+      return;
     }
-  }, [meetingId, replace]);
+    await finish();
+  }, [meetingId, finish]);
 
   useEffect(() => {
     if (!meetingId) { setPhase('missing'); return; }
@@ -66,7 +83,11 @@ export default function Processing() {
         const [m, chunks, segs, notes] = await Promise.all([getMeeting(meetingId), pendingChunks(meetingId), listSegments(meetingId), listNotes(meetingId)]);
         if (!alive) return;
         if (!m) { setPhase('missing'); return; }
-        if (m.status === 'done' && m.summary) { replace('summary', { meetingId }); return; }
+        if (m.status === 'done' && m.summary) {
+          if (m.speakerStep === 'pending' || speakersStarted.current) void finish();
+          else replace('summary', { meetingId });
+          return;
+        }
         const last = segs.reduce((mx, s) => Math.max(mx, s.endMs), 0);
         setFacts({ ms: m.endedAt ? m.endedAt - m.startedAt : last, notes: notes.length });
         setPending(chunks.length);
@@ -84,7 +105,7 @@ export default function Processing() {
     });
     const timer = setInterval(() => void refresh(), 3000);
     return () => { alive = false; off(); clearInterval(timer); };
-  }, [meetingId, replace, run]);
+  }, [meetingId, replace, run, finish]);
 
   useEffect(() => { if (!conn.ok) setLostSeen(true); }, [conn]);
   useEffect(() => {
@@ -93,7 +114,8 @@ export default function Processing() {
     }
   }, [lostSeen, pending, phase, meetingId, replace]);
 
-  const summarizing = phase === 'summarizing';
+  const speakers = phase === 'speakers';
+  const summarizing = phase === 'summarizing' || speakers;
   const waiting = phase === 'transcribing' && (pending ?? 0) > 0;
 
   return (
@@ -119,9 +141,10 @@ export default function Processing() {
         {(phase === 'transcribing' || summarizing) && (
           <ol className="proc-steps" aria-label="Progress">
             <Step state={summarizing ? 'done' : 'active'} note={summarizing ? 'done' : waiting ? `${pending} left` : undefined}>Final transcript</Step>
-            <Step state="todo">Decisions</Step>
-            <Step state="todo">Action items and owners</Step>
-            <Step state={summarizing ? 'active' : 'todo'}>Summary</Step>
+            <Step state={speakers ? 'done' : 'todo'}>Decisions</Step>
+            <Step state={speakers ? 'done' : 'todo'}>Action items and owners</Step>
+            <Step state={speakers ? 'done' : summarizing ? 'active' : 'todo'} note={speakers ? 'done' : undefined}>Summary</Step>
+            {speakers && <Step state="active">Telling voices apart</Step>}
           </ol>
         )}
       </div>
