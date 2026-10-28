@@ -59,7 +59,7 @@ export function buildAskMessages(ctx: AskContext, question: string): ChatMessage
   return messages;
 }
 
-export const UNFINISHED_ASK_ERROR = "This question didn't finish. Try again.";
+export const UNFINISHED_ASK_ERROR = "This question didn’t finish. Try again.";
 
 /** Turns left without an answer or error (panel closed mid-call) become failed so Retry shows. */
 export function markUnfinished(turns: AskTurn[], runningId?: string): AskTurn[] {

@@ -10,7 +10,7 @@ import type { OffscreenReply } from './offscreen/main';
 export type RecordingReply = { ok: true; meetingId?: string } | { ok: false; error: string };
 
 const OFFSCREEN_PATH = '/offscreen.html';
-const START_ERROR = "Rekord couldn't start recording. Click the Rekord icon on your meeting tab, then try again.";
+const START_ERROR = "Rekord couldn’t start recording. Click the Rekord icon on your meeting tab, then try again.";
 
 const STORE_KEY = 'rekord:recorder'; // storage.session survives service-worker restarts
 type Persisted = { state: RecordingState; closeAfterDrain: string | null };

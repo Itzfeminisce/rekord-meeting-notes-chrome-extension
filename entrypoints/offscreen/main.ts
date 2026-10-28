@@ -59,7 +59,7 @@ async function start(streamId: string, meetingId: string, startedAt: number, sou
       });
     } catch (error) {
       console.error('Rekord: tab capture failed', error);
-      return { ok: false, error: "Rekord can't hear this tab. Click the Rekord icon on your meeting tab, then try again." };
+      return { ok: false, error: "Rekord can’t hear this tab. Click the Rekord icon on your meeting tab, then try again." };
     }
   }
   if (sources.mic) try {

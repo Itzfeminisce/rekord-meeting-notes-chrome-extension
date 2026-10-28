@@ -90,7 +90,7 @@ export default function Start() {
       return;
     }
     setBusy(false);
-    setError(reply && !reply.ok ? reply.error : "Rekord couldn't start recording. Try again in a moment.");
+    setError(reply && !reply.ok ? reply.error : "Rekord couldn’t start recording. Try again in a moment.");
   }
 
   const host = hostOf(tab?.url);

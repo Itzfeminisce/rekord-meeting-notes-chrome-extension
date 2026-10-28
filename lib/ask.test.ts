@@ -101,7 +101,7 @@ describe('markUnfinished', () => {
   it('fails unfinished turns except the running one', () => {
     const base = { meetingId: 'm', createdAt: 1, question: 'q' };
     const out = markUnfinished([{ ...base, id: 'a' }, { ...base, id: 'b' }, { ...base, id: 'c', answer: 'x' }], 'b');
-    expect(out[0]?.error).toBe("This question didn't finish. Try again.");
+    expect(out[0]?.error).toBe("This question didn’t finish. Try again.");
     expect(out[1]?.error).toBeUndefined();
     expect(out[2]?.error).toBeUndefined();
   });
