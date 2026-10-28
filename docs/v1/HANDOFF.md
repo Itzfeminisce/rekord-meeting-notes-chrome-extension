@@ -27,7 +27,7 @@
 - [x] T5 Connect AI + Settings screens, key loading (penv / paste) — opus — specs/T5.md
 - [x] T6 Start + Live screens: transcript, notes, markers — sonnet — specs/T6.md
 - [x] T7 Wrapping up + Summary: LLM summary — sonnet — specs/T7.md
-- [ ] T8 Library + Transcript screens — sonnet — specs/T8.md
+- [x] T8 Library + Transcript screens — sonnet — specs/T8.md
 - [ ] T9 Export: Markdown, PDF, email draft — sonnet — specs/T9.md
 - [ ] T10 Connection-lost state — sonnet — specs/T10.md
 
@@ -39,3 +39,4 @@
 - T3 done: Groq/OpenAI client, 1-at-a-time queue ≤20/min, 429/auth/offline/5xx handling, catch-up; 8 tests.
 - T6 done: Start (tab, keys check, recent) + Live (clock, meters, transcript, notes, markers, banner slot); lib/live +7 tests.
 - T7 done: Processing (drain/pending, summarize-anyway, retry) + Summary; lib/summarize chat/completions; 7 tests.
+- T8 done: Library (groups, search title+transcript, filter, delete confirm) + Transcript (find, copy, notes/markers); lib/library +6 tests.
