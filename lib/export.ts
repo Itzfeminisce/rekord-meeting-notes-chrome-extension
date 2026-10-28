@@ -12,7 +12,8 @@ export interface ExportOptions {
 export const DEFAULT_OPTIONS: ExportOptions = { summary: true, actions: true, decisions: true, transcript: false, notes: false };
 
 const KIND: Record<Marker['kind'], string> = { decision: 'Decision', action: 'Action', question: 'Question', bookmark: 'Bookmark' };
-export const MAILTO_BODY_LIMIT = 1800;
+export const MAILTO_URL_LIMIT = 1900;
+export const MAILTO_SUBJECT_LIMIT = 120;
 export const SHORTENED_NOTE = '… (Shortened. The full notes are in Rekord.)';
 
 export function dateLine(meeting: Meeting): string {
@@ -78,13 +79,21 @@ export function toMailto(meeting: Meeting): { href: string; shortened: boolean }
   if (s?.overview) blocks.push(s.overview);
   if (s?.decisions.length) blocks.push(`Decisions\n${s.decisions.map((d) => `- ${d}`).join('\n')}`);
   if (s?.actions.length) blocks.push(`Action items\n${s.actions.map((a) => `- ${a.text}${a.owner ? ` (${a.owner})` : ''}`).join('\n')}`);
-  let body = blocks.join('\n\n');
-  let shortened = false;
-  if (body.length > MAILTO_BODY_LIMIT) {
-    body = body.slice(0, MAILTO_BODY_LIMIT).trimEnd() + `\n\n${SHORTENED_NOTE}`;
-    shortened = true;
+  const wellFormed = (t: string) => t.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '\uFFFD');
+  const subject = encodeURIComponent(wellFormed(Array.from(meeting.title).slice(0, MAILTO_SUBJECT_LIMIT).join('')));
+  const prefix = `mailto:?subject=${subject}&body=`;
+  const full = wellFormed(blocks.join('\n\n')).replace(/\r\n|\r|\n/g, '\r\n');
+  const fullEnc = encodeURIComponent(full);
+  if (prefix.length + fullEnc.length <= MAILTO_URL_LIMIT) return { href: prefix + fullEnc, shortened: false };
+  const tail = encodeURIComponent(`\r\n\r\n${SHORTENED_NOTE}`);
+  let budget = MAILTO_URL_LIMIT - prefix.length - tail.length;
+  let kept = '';
+  for (const ch of full) {
+    const n = encodeURIComponent(ch).length;
+    if (n > budget) break;
+    budget -= n; kept += ch;
   }
-  return { href: `mailto:?subject=${encodeURIComponent(meeting.title)}&body=${encodeURIComponent(body)}`, shortened };
+  return { href: prefix + encodeURIComponent(kept.trimEnd()) + tail, shortened: true };
 }
 
 export function printUrl(meetingId: string, opts: ExportOptions): string {

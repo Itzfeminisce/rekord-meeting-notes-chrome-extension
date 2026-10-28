@@ -25,6 +25,7 @@ export default function Export() {
   const [choosing, setChoosing] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     if (!meetingId) { setState('missing'); return; }
@@ -53,7 +54,7 @@ export default function Export() {
 
   const markdown = () => toMarkdown(meeting, data.segments, data.notes, data.markers, opts);
   const nothing = !Object.values(opts).some(Boolean);
-  const note = (m: string) => { setError(''); setMessage(m); };
+  const note = (m: string) => { setError(''); setMessage(m); setTick((t) => t + 1); };
   const fail = (m: string) => { setMessage(''); setError(m); };
 
   const copy = async () => {
@@ -88,13 +89,17 @@ export default function Export() {
 
   const email = () => {
     if (nothing) return fail('Choose at least one thing to include.');
-    const { href, shortened } = toMailto(meeting);
-    window.open(href, '_blank');
-    note(shortened ? 'Opened your mail app. The email was shortened to fit.' : 'Opened your mail app.');
+    try {
+      const { href, shortened } = toMailto(meeting);
+      window.open(href, '_blank');
+      note(shortened ? 'Opened your mail app. The email was shortened to fit.' : 'Opened your mail app.');
+    } catch {
+      fail('Could not open your mail app.');
+    }
   };
 
   return (
-    <main className="screen exp" aria-live="polite">
+    <main className="screen exp">
       <div className="exp-backdrop" onClick={close} aria-hidden="true" />
       <div className="exp-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
         <span className="exp-grab" aria-hidden="true" />
@@ -139,7 +144,7 @@ export default function Export() {
         </div>
 
         {error && <p className="perm-error exp-msg" role="alert">{error}</p>}
-        {message && <p className="exp-ok" role="status">{message}</p>}
+        {message && <p className="exp-ok" key={tick} role="status">{message}</p>}
         <button type="button" className="exp-copy" onClick={() => void copy()}>Copy to clipboard</button>
       </div>
     </main>

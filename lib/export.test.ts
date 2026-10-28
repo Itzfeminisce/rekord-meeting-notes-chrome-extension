@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAILTO_BODY_LIMIT, parseInclude, printUrl, toMailto, toMarkdown, DEFAULT_OPTIONS } from './export';
+import { MAILTO_URL_LIMIT, parseInclude, printUrl, toMailto, toMarkdown, DEFAULT_OPTIONS } from './export';
 import type { Meeting } from './types';
 
 const meeting: Meeting = {
@@ -44,13 +44,37 @@ describe('toMailto', () => {
     expect(body).toContain('- Ship Friday');
     expect(body).toContain('- Write notes (Sam)');
   });
+  const withOverview = (overview: string, title = meeting.title) => ({ ...meeting, title, summary: { ...meeting.summary!, overview } });
   it('truncates long bodies and says so', () => {
-    const long = { ...meeting, summary: { ...meeting.summary!, overview: 'a'.repeat(3000) } };
-    const { href, shortened } = toMailto(long);
-    const body = decodeURIComponent(href.split("body=")[1]!);
+    const { href, shortened } = toMailto(withOverview('a'.repeat(3000)));
     expect(shortened).toBe(true);
-    expect(body.length).toBeLessThan(MAILTO_BODY_LIMIT + 100);
-    expect(body).toContain('Shortened');
+    expect(href.length).toBeLessThanOrEqual(MAILTO_URL_LIMIT);
+    expect(decodeURIComponent(href.split('body=')[1]!)).toContain('Shortened');
+  });
+  it('keeps many-line ASCII within the URL limit (CRLF)', () => {
+    const { href, shortened } = toMailto(withOverview(Array(1500).fill('x').join('\n')));
+    expect(shortened).toBe(true);
+    expect(href.length).toBeLessThanOrEqual(MAILTO_URL_LIMIT);
+    expect(href).toContain('%0D%0A');
+    expect(href).not.toMatch(/%0A/.source + '(?<!%0D%0A)');
+  });
+  it('keeps Cyrillic and CJK within the URL limit', () => {
+    for (const text of ['Привет мир '.repeat(300), '会議のメモ'.repeat(400)]) {
+      const { href } = toMailto(withOverview(text, text.slice(0, 300)));
+      expect(href.length).toBeLessThanOrEqual(MAILTO_URL_LIMIT);
+      expect(() => decodeURIComponent(href.split('body=')[1]!)).not.toThrow();
+    }
+  });
+  it('caps the subject at 120 characters', () => {
+    const { href } = toMailto(withOverview('hi', 'T'.repeat(500)));
+    expect(decodeURIComponent(href.split('&body=')[0]!.split('subject=')[1]!)).toHaveLength(120);
+  });
+  it('never splits an emoji at the cut', () => {
+    for (let pad = 1700; pad < 1900; pad++) {
+      const { href } = toMailto(withOverview('a'.repeat(pad) + '😀' + 'b'.repeat(50)));
+      expect(href.length).toBeLessThanOrEqual(MAILTO_URL_LIMIT);
+      expect(() => decodeURIComponent(href.split('body=')[1]!)).not.toThrow();
+    }
   });
 });
 
