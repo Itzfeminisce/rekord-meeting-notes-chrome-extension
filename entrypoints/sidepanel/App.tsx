@@ -1,0 +1,67 @@
+import { useEffect, useState, type ComponentType } from 'react';
+import { getSettings } from '@/lib/settings';
+import { Spinner } from './components';
+import { RouterProvider, useRouter, type Route, type ScreenName } from './router';
+import Welcome from './screens/Welcome';
+import Permissions from './screens/Permissions';
+import Connect from './screens/Connect';
+import Start from './screens/Start';
+import Live from './screens/Live';
+import Processing from './screens/Processing';
+import Summary from './screens/Summary';
+import Library from './screens/Library';
+import Transcript from './screens/Transcript';
+import Export from './screens/Export';
+import Settings from './screens/Settings';
+import ErrorScreen from './screens/Error';
+
+export const SCREENS: Record<ScreenName, ComponentType> = {
+  welcome: Welcome,
+  permissions: Permissions,
+  connect: Connect,
+  start: Start,
+  live: Live,
+  processing: Processing,
+  summary: Summary,
+  library: Library,
+  transcript: Transcript,
+  export: Export,
+  settings: Settings,
+  error: ErrorScreen,
+};
+
+/** First screen: onboarding until the user has finished it, then Start. */
+export async function initialRoute(): Promise<Route> {
+  try {
+    const settings = await getSettings();
+    return { screen: settings.onboarded ? 'start' : 'welcome', params: {} };
+  } catch {
+    return { screen: 'error', params: { message: 'Rekord couldn’t load your settings. Try reopening the side panel.' } };
+  }
+}
+
+function CurrentScreen() {
+  const { route } = useRouter();
+  const Screen = SCREENS[route.screen];
+  return <Screen key={`${route.screen}:${route.params.meetingId ?? ''}`} />;
+}
+
+export default function App() {
+  const [initial, setInitial] = useState<Route | null>(null);
+  useEffect(() => {
+    void initialRoute().then(setInitial);
+  }, []);
+
+  if (!initial) {
+    return (
+      <main className="screen screen-center">
+        <Spinner label="Opening Rekord" />
+      </main>
+    );
+  }
+  return (
+    <RouterProvider initial={initial}>
+      <CurrentScreen />
+    </RouterProvider>
+  );
+}
