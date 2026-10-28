@@ -1,8 +1,7 @@
 import { getChunk, getMeeting, pendingChunks, putChunk, putSegment } from '@/lib/db';
-import { loadKeys } from '@/lib/keys';
 import { send as sendMessage, onMessage } from '@/lib/messages';
-import { getSettings, PROVIDERS } from '@/lib/settings';
-import type { Chunk, ConnectionState, Message, Segment, Settings } from '@/lib/types';
+import { PROVIDERS } from '@/lib/settings';
+import type { Chunk, ConnectionState, Message, Segment, Settings, TranscriberConfig } from '@/lib/types';
 import { TranscribeError, transcribeChunk } from './client';
 
 export const MAX_ATTEMPTS = 5;
@@ -23,14 +22,29 @@ export interface TranscriberDeps {
 
 type FailReason = Exclude<ConnectionState, { ok: true }>['reason'];
 
+/**
+ * Config loaders for the offscreen document, which has no storage API: each call asks the background
+ * (`transcriber/config`) for fresh settings and keys. Nothing is cached, so keys live only for one request.
+ */
+export function configLoader(send: (msg: Message) => Promise<unknown> = sendMessage) {
+  async function request(): Promise<TranscriberConfig> {
+    const reply = (await send({ type: 'transcriber/config' })) as TranscriberConfig | undefined;
+    if (!reply || typeof reply !== 'object' || !reply.settings) throw new Error('Transcriber config unavailable');
+    return reply;
+  }
+  return {
+    getSettings: async (): Promise<Settings> => (await request()).settings,
+    loadKeys: async (): Promise<Record<string, string>> => (await request()).keys ?? {},
+  };
+}
+
 const defaultDeps = (): TranscriberDeps => ({
   fetch: (...args) => fetch(...args),
   send: sendMessage,
   now: () => Date.now(),
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
   isOnline: () => (typeof navigator === 'undefined' ? true : navigator.onLine !== false),
-  getSettings,
-  loadKeys,
+  ...configLoader(),
 });
 
 /** A single-request-at-a-time transcription queue backed by the pending chunks in IndexedDB. */
@@ -180,7 +194,8 @@ export function createTranscriber(overrides: Partial<TranscriberDeps> = {}) {
         }
       }
     } catch {
-      // DB errors: stop this run; the next enqueue/catch-up starts again.
+      // Unexpected (DB/config) error: stop this run and tell the UI; the next enqueue/catch-up starts again.
+      try { await sendState('server'); } catch { /* DB unavailable too: nothing more to report */ }
     } finally {
       running = false;
       resolveWaiters();

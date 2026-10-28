@@ -5,7 +5,7 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { closeDB, getChunk, listSegments, putChunk, putMeeting } from '@/lib/db';
 import { DEFAULT_SETTINGS } from '@/lib/settings';
 import type { Chunk, Message } from '@/lib/types';
-import { createTranscriber } from './queue';
+import { configLoader, createTranscriber } from './queue';
 
 const KEY = 'gsk_test';
 const chunk = (id: string, startMs: number, meetingId = 'm1'): Chunk => ({
@@ -163,5 +163,32 @@ describe('transcription queue', () => {
     q.catchUp();
     await q.drain(); // waits for the run to end
     expect(sent).toContainEqual({ type: 'transcription/drained', meetingId: 'm1' });
+  });
+
+  it('reports a server error instead of silently stopping when config cannot load', async () => {
+    const sent: Message[] = [];
+    const q2 = createTranscriber({ send: async (m) => { sent.push(m); }, getSettings: async () => { throw new Error('no storage'); } });
+    queues.push(q2);
+    await putChunk(chunk('a', 0));
+    q2.enqueue('a');
+    await q2.drain('m1'); // must not hang
+    expect(sent).toContainEqual({ type: 'connection/state', state: { ok: false, reason: 'server', pendingChunks: 1 } });
+    expect((await getChunk('a'))?.status).toBe('pending');
+  });
+});
+
+describe('configLoader', () => {
+  it('requests settings and keys from the background via transcriber/config', async () => {
+    const sent: Message[] = [];
+    const loader = configLoader(async (m) => { sent.push(m); return { settings: DEFAULT_SETTINGS, keys: { GROQ_API_KEY: KEY } }; });
+    expect(await loader.getSettings()).toEqual(DEFAULT_SETTINGS);
+    expect(await loader.loadKeys()).toEqual({ GROQ_API_KEY: KEY });
+    expect(sent).toEqual([{ type: 'transcriber/config' }, { type: 'transcriber/config' }]);
+  });
+
+  it('throws when nothing answers', async () => {
+    const loader = configLoader(async () => undefined);
+    await expect(loader.getSettings()).rejects.toThrow();
+    await expect(loader.loadKeys()).rejects.toThrow();
   });
 });

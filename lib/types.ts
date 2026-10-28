@@ -72,4 +72,8 @@ export type Message =
   | { type: 'segment/added'; segment: Segment }         // offscreen/transcriber → all
   | { type: 'connection/state'; state: ConnectionState }
   | { type: 'transcription/drained'; meetingId: string } // queue empty for that meeting
-  | { type: 'transcription/catch-up' };                  // ask the transcriber to retry pending chunks
+  | { type: 'transcription/catch-up' }                   // ask the transcriber to retry pending chunks
+  | { type: 'transcriber/config' };                      // offscreen → background only; reply: TranscriberConfig
+
+/** Reply to `transcriber/config` (the offscreen document has no storage API). Keys are never persisted by the caller. */
+export interface TranscriberConfig { settings: Settings; keys: Record<string, string> }

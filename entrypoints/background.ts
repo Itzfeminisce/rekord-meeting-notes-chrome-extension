@@ -1,7 +1,8 @@
 import { getMeeting, pendingChunks, putMeeting } from '@/lib/db';
+import { loadKeys } from '@/lib/keys';
 import { onMessage, send } from '@/lib/messages';
 import { getSettings } from '@/lib/settings';
-import type { Meeting, RecordingState } from '@/lib/types';
+import type { Meeting, RecordingState, TranscriberConfig } from '@/lib/types';
 import type { OffscreenReply } from './offscreen/main';
 
 /** Reply to `recording/start` and `recording/stop`. */
@@ -83,6 +84,9 @@ export default defineBackground(() => {
           if (state.status === 'recording') setState({ ...state, micLevel: msg.micLevel, tabLevel: msg.tabLevel });
         });
         return undefined;
+      case 'transcriber/config':
+        // The offscreen transcriber has no storage API; only the background answers this.
+        return Promise.all([getSettings(), loadKeys()]).then(([settings, keys]): TranscriberConfig => ({ settings, keys }));
       case 'transcription/catch-up':
         // The offscreen transcriber handles it when open; otherwise open it so it resumes pending chunks.
         void openForCatchUp();
