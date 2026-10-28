@@ -18,7 +18,7 @@
 - [x] T1 v3 core: types, settings, key detection, manifest (identity, hosts, fixed key) — opus — specs/T1.md
 - [x] T2 Smart setup, How it works, Settings AI — sonnet — specs/T2.md (after T1)
 - [x] T3 Desktop-app audio and its states — opus — specs/T3.md (after T1)
-- [ ] T4 Real-time transcription with Deepgram, backup to Groq — opus — specs/T4.md (after T3)
+- [x] T4 Real-time transcription with Deepgram, backup to Groq — opus — specs/T4.md (after T3)
 - [x] T5 Ask all meetings and the Library entry — sonnet — specs/T5.md (after T1)
 - [x] T6 Google connect and Calendar — opus — specs/T6.md (after T1)
 - [x] T7 Share to Google Docs and view-only link — sonnet — specs/T7.md (after T6)
@@ -37,3 +37,4 @@
 - T9 done: invite matching + V3SpeakersInvite. Open: live names on V3Live (after T4).
 - T7 done: Share (Docs save/update, view-only link). Added pre-save 'Google Docs' row (not in frame). Blocked: OAuth client.
 - T8 done: Notion connect/page/share. Own wording for Notion saved/saving/error. Blocked: live test (NOTION_TOKEN).
+- T4 done: Deepgram stream (grant + ['bearer',jwt]) w/ Groq chunk backup, Live status. Blocked: live E2E (DG key 401).
