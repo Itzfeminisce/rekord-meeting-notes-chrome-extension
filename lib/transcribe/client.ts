@@ -43,13 +43,13 @@ export async function transcribeChunk(
   const { provider, model } = settings.transcription;
   const form = new FormData();
   form.append('file', chunk.audio, fileName(chunk.mimeType));
-  form.append('model', model);
+  form.append('model', provider === 'deepgram' ? 'whisper-large-v3-turbo' : model); // no chunked Deepgram client yet: Groq backup
   form.append('response_format', 'json');
   if (settings.language !== 'auto') form.append('language', 'en');
 
   let res: Response;
   try {
-    res = await fetchFn(`${PROVIDERS[provider].baseUrl}/audio/transcriptions`, {
+    res = await fetchFn(`${PROVIDERS[provider === 'deepgram' ? 'groq' : provider].baseUrl}/audio/transcriptions`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}` },
       body: form,

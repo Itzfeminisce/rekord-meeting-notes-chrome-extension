@@ -5,7 +5,7 @@
 import { clearKeys, loadKeys, mergeKeys, saveKeys } from './keys';
 import { fetchPenvKeys, PenvError, type PenvTarget } from './penv';
 import { getSettings, PROVIDERS } from './settings';
-import type { ProviderId, Settings } from './types';
+import type { ProviderId, Settings, TranscriptionProvider } from './types';
 
 const TOKEN_KEY = 'penvToken';
 const TARGET_KEY = 'penvTarget';
@@ -48,9 +48,16 @@ export function formatEnvPath(t: PenvTarget): string {
 
 /** Key names the chosen providers need (transcription first), without duplicates. */
 export function requiredKeyNames(s: Pick<Settings, 'transcription' | 'summary'>): string[] {
-  const ids: ProviderId[] = [s.transcription.provider, s.summary.provider];
-  const names = ids.map((id) => PROVIDERS[id].keyName).filter((n): n is string => !!n);
-  return [...new Set(names)];
+  const names = [transcriptionKeyName(s.transcription.provider), PROVIDERS[s.summary.provider].keyName];
+  return [...new Set(names.filter((n): n is string => !!n && !OPTIONAL_KEYS.includes(n)))];
+}
+
+/** Keys loaded when present but never required to connect. */
+const OPTIONAL_KEYS = ['DEEPGRAM_API_KEY', 'NOTION_TOKEN'];
+
+/** The key name a transcription provider uses. */
+export function transcriptionKeyName(id: TranscriptionProvider): string | undefined {
+  return id === 'deepgram' ? 'DEEPGRAM_API_KEY' : PROVIDERS[id].keyName;
 }
 
 /**
@@ -58,7 +65,7 @@ export function requiredKeyNames(s: Pick<Settings, 'transcription' | 'summary'>)
  * penv keeps every key it sends; offer these as optional fields when pasting.
  */
 export function optionalKeyNames(s: Pick<Settings, 'diarization'>): string[] {
-  return [s.diarization.keyName];
+  return [...new Set([s.diarization.keyName, ...OPTIONAL_KEYS])];
 }
 
 /** Plain-words message for a failed connect. Never includes a token or key. */
@@ -92,13 +99,14 @@ export async function verifyTranscriptionKey(
   keys: Record<string, string>,
   fetchImpl: typeof fetch = fetch,
 ): Promise<void> {
-  const provider = PROVIDERS[settings.transcription.provider];
-  const name = provider.keyName;
+  const name = transcriptionKeyName(settings.transcription.provider);
   const key = name ? keys[name] : undefined;
   if (!name || !key) throw new VerifyError(`No ${name ?? 'API'} key was found. Add it, then try again.`);
+  const req = checkRequest(name, key);
   let response: Response;
   try {
-    response = await fetchImpl(`${provider.baseUrl}/models`, { headers: { Authorization: `Bearer ${key}` } });
+    if (!req) throw new Error('unknown key');
+    response = await fetchImpl(req.url, { headers: req.headers });
   } catch {
     throw new VerifyError('Couldn’t reach the transcription service. Check your connection and try again.');
   }
@@ -147,11 +155,13 @@ export type KeyStatus = 'ok' | 'rejected' | 'unreachable';
 /** Status per key name. Never holds a key value. */
 export type KeyResults = Record<string, KeyStatus>;
 
-export const TRANSCRIPTION_ORDER: Settings['transcription']['provider'][] = ['groq', 'openai'];
+/** Batch (non-streaming) transcription providers, in fallback order. */
+export const TRANSCRIPTION_ORDER: Extract<TranscriptionProvider, ProviderId>[] = ['groq', 'openai'];
 export const SUMMARY_ORDER: ProviderId[] = ['groq', 'openai', 'openrouter', 'anthropic'];
-const TRANSCRIPTION_MODEL: Record<Settings['transcription']['provider'], string> = {
+const TRANSCRIPTION_MODEL: Record<TranscriptionProvider, string> = {
   groq: 'whisper-large-v3-turbo',
   openai: 'whisper-1',
+  deepgram: 'nova-3',
 };
 const SUMMARY_MODEL: Record<ProviderId, string> = {
   groq: 'llama-3.3-70b-versatile',
@@ -244,7 +254,8 @@ export function pickProviders(
   results: KeyResults,
   settings: Pick<Settings, 'transcription' | 'summary' | 'features'>,
 ): Pick<Settings, 'transcription' | 'summary' | 'features'> {
-  const t = providerWorks(settings.transcription.provider, results)
+  const current = transcriptionKeyName(settings.transcription.provider);
+  const t = !current || results[current] === 'ok'
     ? settings.transcription.provider
     : TRANSCRIPTION_ORDER.find((id) => providerWorks(id, results)) ?? settings.transcription.provider;
   const s = providerWorks(settings.summary.provider, results)
@@ -276,7 +287,7 @@ export async function transcriptionKeyRejected(
   fetchImpl: typeof fetch = fetch,
 ): Promise<boolean> {
   const s = settings ?? (await getSettings());
-  const name = PROVIDERS[s.transcription.provider].keyName;
+  const name = transcriptionKeyName(s.transcription.provider);
   const status = await loadKeyStatus();
   if (!name || status[name] !== 'rejected') return false;
   const key = (await loadKeys())[name];

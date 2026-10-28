@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Spinner } from '../components';
 import { useRouter } from '../router';
-import { connectErrorMessage, forgetAll, formatEnvPath, loadToken, reconnect } from '@/lib/connect';
+import { connectErrorMessage, forgetAll, formatEnvPath, loadToken, reconnect, transcriptionKeyName } from '@/lib/connect';
 import { deleteMeeting, listMeetings } from '@/lib/db';
 import { loadKeys } from '@/lib/keys';
 import { onMessage, send } from '@/lib/messages';
@@ -23,7 +23,9 @@ const TRANSCRIPTION_MODELS: Record<TranscriptionId, { value: string; label: stri
     { value: 'whisper-large-v3-turbo', label: 'whisper-large-v3-turbo' },
   ],
   openai: [{ value: 'whisper-1', label: 'whisper-1' }],
+  deepgram: [{ value: 'nova-3', label: 'nova-3' }],
 };
+const TRANSCRIPTION_NAMES: Record<TranscriptionId, string> = { groq: NAMES.groq, openai: NAMES.openai, deepgram: 'Deepgram' };
 const SUMMARY_MODELS: Partial<Record<ProviderId, { value: string; label: string }[]>> = {
   groq: [
     { value: 'llama-3.3-70b-versatile', label: 'llama-3.3-70b' },
@@ -41,6 +43,11 @@ const SUMMARY_DEFAULT: Record<ProviderId, string> = {
 function keyLine(id: ProviderId): string {
   const name = PROVIDERS[id].keyName;
   return name ? `${NAMES[id]} · ${name}` : `${NAMES[id]} · no key needed`;
+}
+
+function transcriptionKeyLine(id: TranscriptionId): string {
+  const name = transcriptionKeyName(id);
+  return name ? `${TRANSCRIPTION_NAMES[id]} · ${name}` : `${TRANSCRIPTION_NAMES[id]} · no key needed`;
 }
 
 export default function Settings() {
@@ -221,7 +228,7 @@ export default function Settings() {
             <div className="set-row">
               <span className="set-text">
                 <span className="set-label">Transcription</span>
-                <span className="set-sub">{keyLine(s.transcription.provider)}</span>
+                <span className="set-sub">{transcriptionKeyLine(s.transcription.provider)}</span>
               </span>
               <span className="set-controls">
                 <select
@@ -233,7 +240,7 @@ export default function Settings() {
                   }}
                 >
                   {(Object.keys(TRANSCRIPTION_MODELS) as TranscriptionId[]).map((id) => (
-                    <option key={id} value={id}>{NAMES[id]}</option>
+                    <option key={id} value={id}>{TRANSCRIPTION_NAMES[id]}</option>
                   ))}
                 </select>
                 <select

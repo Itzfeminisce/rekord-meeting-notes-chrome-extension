@@ -200,7 +200,7 @@ describe('connect', () => {
   });
 
   it('keeps the optional DEEPGRAM_API_KEY but never requires it', async () => {
-    expect(optionalKeyNames(DEFAULT_SETTINGS)).toEqual(['DEEPGRAM_API_KEY']);
+    expect(optionalKeyNames(DEFAULT_SETTINGS)).toEqual(['DEEPGRAM_API_KEY', 'NOTION_TOKEN']);
     expect(requiredKeyNames(DEFAULT_SETTINGS)).not.toContain('DEEPGRAM_API_KEY');
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
       keys: [{ name: 'GROQ_API_KEY', value: 'gsk_test' }, { name: 'DEEPGRAM_API_KEY', value: 'dg_test' }],
