@@ -1,8 +1,8 @@
-import { tabRefusedReply } from '@/lib/capture';
+import { appSources, tabRefusedReply, type AppFlag } from '@/lib/capture';
 import { resolveSources, type Sources } from '@/lib/sources';
 import { getMeeting, pendingChunks, putMeeting } from '@/lib/db';
 import { loadKeys } from '@/lib/keys';
-import { onMessage, send } from '@/lib/messages';
+import { onMessage, send, type MessageOf } from '@/lib/messages';
 import { getSettings } from '@/lib/settings';
 import { handleInstalled } from '@/lib/whatsNew';
 import type { Meeting, RecordingState, TranscriberConfig } from '@/lib/types';
@@ -89,7 +89,9 @@ export default defineBackground(() => {
       case 'recording/start':
         return ready.then(() => {
           if (state.status !== 'idle') return { ok: false, error: 'Rekord is already recording.' } as RecordingReply;
-          const run = startRecording(msg.tabId, resolveSources(msg.sources));
+          // v3: an app start (`app: true`) records the shared screen audio instead of the tab.
+          const app = appSources(msg as typeof msg & AppFlag);
+          const run = startRecording(msg.tabId, app ?? resolveSources(msg.sources), app !== null);
           starting = run.finally(() => (starting = null));
           return run;
         });
@@ -127,14 +129,14 @@ export default defineBackground(() => {
   });
 });
 
-async function startRecording(tabId: number, sources: Sources): Promise<RecordingReply> {
+async function startRecording(tabId: number, sources: Sources, app = false): Promise<RecordingReply> {
   const startedAt = Date.now();
   const meetingId = crypto.randomUUID();
   setState({ status: 'starting', meetingId, startedAt, micLevel: 0, tabLevel: 0 });
 
   let streamId = '';
   try {
-    if (sources.tab) streamId = await browser.tabCapture.getMediaStreamId({ targetTabId: tabId });
+    if (sources.tab && !app) streamId = await browser.tabCapture.getMediaStreamId({ targetTabId: tabId });
   } catch (error) {
     console.error('Rekord: tab capture refused', error instanceof Error ? error.message : error);
     setState({ status: 'idle' });
@@ -145,7 +147,7 @@ async function startRecording(tabId: number, sources: Sources): Promise<Recordin
   let micUnavailable = false;
   try {
     const [tab, settings] = await Promise.all([
-      browser.tabs.get(tabId).catch(() => undefined),
+      app ? undefined : browser.tabs.get(tabId).catch(() => undefined),
       getSettings(),
     ]);
     meeting = {
@@ -155,10 +157,12 @@ async function startRecording(tabId: number, sources: Sources): Promise<Recordin
       startedAt,
       status: 'recording',
       language: settings.language,
+      ...(app && { source: 'app' as const }),
     };
     await putMeeting(meeting);
     await ensureOffscreen();
-    const reply = await send<OffscreenReply>({ type: 'offscreen/start', streamId, meetingId, startedAt, sources });
+    const start: MessageOf<'offscreen/start'> & AppFlag = { type: 'offscreen/start', streamId, meetingId, startedAt, sources, ...(app && { app }) };
+    const reply = await send<OffscreenReply>(start);
     if (!reply?.ok) throw new Error(reply?.error ?? START_ERROR);
     micUnavailable = reply.micUnavailable === true;
   } catch (error) {
@@ -170,7 +174,8 @@ async function startRecording(tabId: number, sources: Sources): Promise<Recordin
     return { ok: false, error: error instanceof Error && error.message ? error.message : START_ERROR };
   }
 
-  setState({ status: 'recording', meetingId, startedAt, micLevel: 0, tabLevel: 0, sources, ...(micUnavailable && { micUnavailable }) });
+  // In an app the shared screen audio is the meeting ("others"), shown on the meeting meter.
+  setState({ status: 'recording', meetingId, startedAt, micLevel: 0, tabLevel: 0, sources: app ? { ...sources, tab: true } : sources, ...(micUnavailable && { micUnavailable }) });
   return { ok: true, meetingId };
 }
 
@@ -231,8 +236,8 @@ function ensureOffscreen(stillWanted: () => boolean = () => true): Promise<void>
     if (!stillWanted() || (await hasOffscreen())) return;
     await browser.offscreen.createDocument({
       url: OFFSCREEN_PATH,
-      reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK'] as Browser.offscreen.Reason[],
-      justification: 'Record meeting tab and microphone audio, and keep the meeting audible.',
+      reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK', 'WEB_RTC'] as Browser.offscreen.Reason[],
+      justification: 'Record meeting tab, app and microphone audio, and keep the meeting audible.',
     });
   });
 }

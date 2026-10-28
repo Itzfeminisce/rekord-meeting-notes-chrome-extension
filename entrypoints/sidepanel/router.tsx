@@ -5,7 +5,8 @@ export type ScreenName =
   | 'summary' | 'speakers' | 'ask' | 'askall' | 'library' | 'transcript' | 'export' | 'settings' | 'error'
   | 'whatsnew' | 'connections' | 'googleConnect'
   // v3 setup: 'connect' is the Setup screen, 'settings' is the AI settings, 'settingsMore' is Recording, language and data
-  | 'setupCustom' | 'penvConnect' | 'howItWorks' | 'settingsMore';
+  | 'setupCustom' | 'penvConnect' | 'howItWorks' | 'settingsMore'
+  | 'nosound'; // v3: desktop-app capture hears nothing
 
 /** Route params. `meetingId` for meeting screens; `message` for the error screen. */
 export interface RouteParams { meetingId?: string; message?: string; atMs?: number; section?: 'transcription' | 'assistant' }

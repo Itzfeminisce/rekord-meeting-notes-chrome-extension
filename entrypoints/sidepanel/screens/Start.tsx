@@ -7,9 +7,9 @@ import type { RecordingReply } from '../../background';
 import { ensureKeys, reconnect, transcriptionKeyRejected } from '@/lib/connect';
 import { getMeeting, listMeetings, putMeeting } from '@/lib/db';
 import { dateTile, hostOf } from '@/lib/live';
-import { needsTabGrant, TAB_GRANT_HINT } from '@/lib/capture';
-import { onMessage, send } from '@/lib/messages';
-import { DEFAULT_SOURCES, isLastSource, toggleSource } from '@/lib/sources';
+import { captureSources, needsTabGrant, TAB_GRANT_HINT, type AppFlag, type MeetingPlace } from '@/lib/capture';
+import { appAudio } from '@/lib/audio/appAudio';
+import { onMessage, send, type MessageOf } from '@/lib/messages';
 import { formatDuration } from '@/lib/time';
 import type { CalendarEvent, Meeting, RecordingState } from '@/lib/types';
 
@@ -27,7 +27,9 @@ export default function Start() {
   const { navigate, replace } = useRouter();
   const [tab, setTab] = useState<TabInfo | null | undefined>(undefined);
   const [name, setName] = useState('');
-  const [sources, setSources] = useState(DEFAULT_SOURCES);
+  const [place, setPlace] = useState<MeetingPlace>('tab');
+  const [mic, setMic] = useState(true);
+  const placeRefs = useRef<Record<MeetingPlace, HTMLButtonElement | null>>({ tab: null, app: null });
   const [keys, setKeys] = useState<'checking' | 'ready' | 'reconnect'>('checking');
   const [recent, setRecent] = useState<Meeting[] | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -102,13 +104,44 @@ export default function Start() {
     }
   }
 
+  function choosePlace(next: MeetingPlace, focus = false) {
+    setPlace(next);
+    setError('');
+    if (focus) placeRefs.current[next]?.focus();
+  }
+
+  function onPlaceKey(e: React.KeyboardEvent) {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+    e.preventDefault();
+    choosePlace(place === 'tab' ? 'app' : 'tab', true);
+  }
+
   async function record() {
-    if (!tab || busy) return;
+    if ((place === 'tab' && !tab) || busy) return;
     setBusy(true);
     setError('');
-    const reply = await send<RecordingReply>({ type: 'recording/start', tabId: tab.id, sources });
+    // In an app: Chrome's share picker first (still inside the click), then the recording.
+    const app = place === 'app' ? appAudio() : null;
+    const picked = app ? await app.pick() : 'audio';
+    if (picked === 'cancelled' || picked === 'error') {
+      setBusy(false);
+      if (picked === 'error') setError("Rekord couldn’t start recording. Try again in a moment.");
+      return;
+    }
+    const { sources, app: isApp } = captureSources(place, mic, picked === 'audio');
+    const start: MessageOf<'recording/start'> & AppFlag = { type: 'recording/start', tabId: tab?.id ?? -1, sources, ...(isApp && { app: true }) };
+    const reply = await send<RecordingReply>(start);
+    if (reply && reply.ok && reply.meetingId && app) {
+      try {
+        await app.connect();
+      } catch {
+        // The microphone keeps recording; the meeting can be shared again from the next screen.
+      }
+    } else if (app) app.end();
     if (reply && reply.ok && reply.meetingId) {
-      const title = name.trim();
+      // In an app the tab's title isn't the meeting's name: only keep a name the user typed.
+      const typed = place === 'app' && name === autoName.current ? '' : name;
+      const title = typed.trim();
       if (title) {
         try {
           const m = await getMeeting(reply.meetingId);
@@ -116,7 +149,7 @@ export default function Start() {
         } catch { /* keep the default title */ }
       }
       if (calEvent.current) await attachEvent(reply.meetingId, calEvent.current).catch(() => undefined);
-      replace('live', { meetingId: reply.meetingId });
+      replace(app && app.status === 'silent' ? 'nosound' : 'live', { meetingId: reply.meetingId });
       return;
     }
     setBusy(false);
@@ -124,10 +157,11 @@ export default function Start() {
   }
 
   const host = hostOf(tab?.url);
-  const canRecord = !!tab && keys === 'ready' && stateChecked && !busy;
+  const canRecord = (place === 'app' || !!tab) && keys === 'ready' && stateChecked && !busy;
 
   return (
     <main className="screen">
+      <style>{START_CSS}</style>
       <header className="topbar start-top">
         <div className="brand"><BrandMark />Rekord</div>
         <div className="topbar-right">
@@ -143,7 +177,7 @@ export default function Start() {
       <CalendarCard onEvent={(ev) => { calEvent.current = ev; if (ev) setName((n) => (n === autoName.current ? ev.title : n)); }} />
 
       <section className="start-card" aria-label="New recording">
-        {tab === undefined ? (
+        {place === 'app' ? null : tab === undefined ? (
           <Spinner label="Checking your tab" />
         ) : tab === null ? (
           <p className="start-warn" role="status">Rekord can’t see your current tab. Open your meeting in a tab, then reopen this panel.</p>
@@ -160,21 +194,19 @@ export default function Start() {
           <input id="mt" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Untitled meeting" />
         </div>
 
-        <ul className="start-sources">
-          <li>
-            <label>
-              <input type="checkbox" checked={sources.mic} aria-disabled={isLastSource(sources, 'mic') || undefined} aria-describedby={isLastSource(sources, 'mic') ? 'src-hint' : undefined} onChange={() => { if (!isLastSource(sources, 'mic')) setSources((s) => toggleSource(s, 'mic')); }} />
-              <span>You<small>Microphone</small></span>
-            </label>
-          </li>
-          <li>
-            <label>
-              <input type="checkbox" checked={sources.tab} aria-disabled={isLastSource(sources, 'tab') || undefined} aria-describedby={isLastSource(sources, 'tab') ? 'src-hint' : undefined} onChange={() => { if (!isLastSource(sources, 'tab')) setSources((s) => toggleSource(s, 'tab')); }} />
-              <span>Others<small>This tab</small></span>
-            </label>
-          </li>
-        </ul>
-        {(isLastSource(sources, 'mic') || isLastSource(sources, 'tab')) && <p id="src-hint" className="start-hint">Keep at least one source on</p>}
+        <div className="start-place">
+          <span id="others-lbl" className="start-place-lbl">Where is the meeting?</span>
+          <div role="radiogroup" aria-labelledby="others-lbl" className="start-seg" onKeyDown={onPlaceKey}>
+            <button type="button" role="radio" aria-checked={place === 'tab'} tabIndex={place === 'tab' ? 0 : -1} ref={(el) => { placeRefs.current.tab = el; }} onClick={() => choosePlace('tab')}>In this tab<span>Meet, Zoom or Teams in Chrome</span></button>
+            <button type="button" role="radio" aria-checked={place === 'app'} tabIndex={place === 'app' ? 0 : -1} ref={(el) => { placeRefs.current.app = el; }} onClick={() => choosePlace('app')}>In an app<span>Zoom or Teams for Windows</span></button>
+          </div>
+          {place === 'app' && (
+            <p className="start-steps">Next, Chrome asks what to share. Choose <b>Entire screen</b> and turn on <b>Also share system audio</b>. Rekord only listens. It never records your screen.</p>
+          )}
+          <label className="start-mic">
+            <input type="checkbox" checked={mic} onChange={(e) => setMic(e.target.checked)} />Include my microphone
+          </label>
+        </div>
 
         {keys === 'reconnect' && (
           <div className="start-warn" role="alert">
@@ -188,7 +220,7 @@ export default function Start() {
             <Button variant="secondary" onClick={() => navigate('settings')}>Settings</Button>
           </div>
         )}
-        {!error && tab && needsTabGrant({ tabOn: sources.tab, tabUrl: tab.url }) && (
+        {!error && tab && place === 'tab' && needsTabGrant({ tabOn: true, tabUrl: tab.url }) && (
           <p className="start-grant" role="status">{TAB_GRANT_HINT}</p>
         )}
         {error && <p className="start-warn" role="alert">{error}</p>}
@@ -229,3 +261,18 @@ export default function Start() {
     </main>
   );
 }
+
+/* v3 "Where is the meeting?" (V3Start) */
+const START_CSS = `
+.start-place { display: flex; flex-direction: column; gap: 8px; }
+.start-place-lbl { font-size: 12px; font-weight: 500; color: #44464d; }
+.start-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 12px; background: #f1f1f3; }
+.start-seg button { height: 40px; border: none; border-radius: 9px; background: transparent; font: inherit; font-size: 13px; font-weight: 500; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; cursor: pointer; }
+.start-seg button span { font-size: 10px; font-weight: 500; color: var(--faint); }
+.start-seg button[aria-checked="true"] { background: var(--surface); font-weight: 600; color: var(--ink); box-shadow: 0 1px 2px rgba(16,16,20,0.08); }
+.start-seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.start-steps { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--ground); font-size: 12px; line-height: 1.45; color: #44464d; }
+.start-steps b { font-weight: 600; }
+.start-mic { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.start-mic input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+`;

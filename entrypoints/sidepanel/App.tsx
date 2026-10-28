@@ -25,6 +25,7 @@ import WhatsNew from './screens/WhatsNew';
 import Connections from './screens/Connections';
 import GoogleConnect from './screens/GoogleConnect';
 import { shouldShowWhatsNew } from '@/lib/whatsNew';
+import NoSound, { AppAudioWatch } from './screens/NoSound';
 
 export const SCREENS: Record<ScreenName, ComponentType> = {
   welcome: Welcome,
@@ -49,6 +50,7 @@ export const SCREENS: Record<ScreenName, ComponentType> = {
   whatsnew: WhatsNew,
   connections: Connections,
   googleConnect: GoogleConnect,
+  nosound: NoSound,
 };
 
 /** First screen: onboarding until the user has finished it, then Start. */
@@ -67,7 +69,12 @@ export async function initialRoute(): Promise<Route> {
 function CurrentScreen() {
   const { route } = useRouter();
   const Screen = SCREENS[route.screen];
-  return <Screen key={`${route.screen}:${route.params.meetingId ?? ''}`} />;
+  return (
+    <>
+      <Screen key={`${route.screen}:${route.params.meetingId ?? ''}`} />
+      {route.screen === 'live' && <AppAudioWatch meetingId={route.params.meetingId} />}
+    </>
+  );
 }
 
 export default function App() {
