@@ -7,14 +7,16 @@ import {
   ensureKeys,
   forgetAll,
   loadToken,
+  loadTokenTarget,
   parseEnvPath,
   reconnect,
   requiredKeyNames,
+  verifyOrForget,
   verifyTranscriptionKey,
 } from './connect';
 import { loadKeys, saveKeys } from './keys';
 import { PenvError } from './penv';
-import { DEFAULT_SETTINGS } from './settings';
+import { DEFAULT_SETTINGS, updateSettings } from './settings';
 
 const TARGET = { org: 'acme', project: 'notes', env: 'dev' };
 const penvOk = () =>
@@ -65,6 +67,26 @@ describe('connect', () => {
     await fakeBrowser.storage.session.set({ penvToken: 'pck_test' });
     expect(await ensureKeys(vi.fn(async () => new Response('', { status: 401 })))).toBe('reconnect');
     expect(await loadToken()).toBe('pck_test');
+  });
+
+  it('reconnect uses the env the token was saved with, not settings.penv', async () => {
+    await connectPenv('pck_test', TARGET, penvOk());
+    expect(await loadTokenTarget()).toEqual(TARGET);
+    await updateSettings({ penv: { org: 'old', project: 'old', env: 'old' } });
+    const fetchImpl = penvOk();
+    await reconnect(fetchImpl);
+    expect(String((fetchImpl.mock.calls[0] as unknown[])[0])).toContain('acme');
+    expect(String((fetchImpl.mock.calls[0] as unknown[])[0])).not.toContain('old');
+  });
+
+  it('verifyOrForget forgets token and keys when the provider rejects the key', async () => {
+    await connectPenv('pck_test', TARGET, penvOk());
+    const rejected = vi.fn(async () => new Response('', { status: 401 }));
+    await expect(verifyOrForget(DEFAULT_SETTINGS, rejected)).rejects.toThrow(/rejected GROQ_API_KEY/);
+    expect(await loadKeys()).toEqual({});
+    expect(await loadToken()).toBeUndefined();
+    expect(await loadTokenTarget()).toBeUndefined();
+    expect(await ensureKeys(penvOk())).toBe('reconnect');
   });
 
   it('forgetAll clears token and keys', async () => {

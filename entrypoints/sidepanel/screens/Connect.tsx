@@ -8,9 +8,8 @@ import {
   formatEnvPath,
   parseEnvPath,
   requiredKeyNames,
-  verifyTranscriptionKey,
+  verifyOrForget,
 } from '@/lib/connect';
-import { loadKeys } from '@/lib/keys';
 import { getSettings, updateSettings } from '@/lib/settings';
 import type { Settings } from '@/lib/types';
 
@@ -98,8 +97,9 @@ export default function Connect() {
           ? await connectPenv(token.trim(), target)
           : await connectPaste(Object.fromEntries(needed.map((n) => [n, pasted[n] ?? ''])));
       setFound(names);
-      await verifyTranscriptionKey(settings, await loadKeys());
-      await updateSettings({ keySource: source, onboarded: true, ...(source === 'penv' && target ? { penv: target } : {}) });
+      if (source === 'penv' && target) await updateSettings({ penv: target });
+      await verifyOrForget(settings);
+      await updateSettings({ keySource: source, onboarded: true });
       setToken('');
       replace('start');
     } catch (err) {
@@ -180,7 +180,7 @@ export default function Connect() {
             <span className="conn-dot" aria-hidden="true" />
             <span className="conn-title">Paste keys here</span>
           </div>
-          <span className="conn-desc">Groq, OpenAI, OpenRouter or Anthropic. Stored on this computer.</span>
+          <span className="conn-desc">Groq, OpenAI, OpenRouter or Anthropic. Kept in memory only. Nothing is saved to disk.</span>
           {source === 'paste' &&
             needed.map((name) => (
               <div className="conn-field" key={name}>

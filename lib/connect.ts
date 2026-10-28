@@ -8,6 +8,7 @@ import { getSettings, PROVIDERS } from './settings';
 import type { ProviderId, Settings } from './types';
 
 const TOKEN_KEY = 'penvToken';
+const TARGET_KEY = 'penvTarget';
 
 export async function saveToken(token: string): Promise<void> {
   await browser.storage.session.set({ [TOKEN_KEY]: token });
@@ -19,9 +20,16 @@ export async function loadToken(): Promise<string | undefined> {
   return typeof token === 'string' && token ? token : undefined;
 }
 
-/** Forgets the token and every key held in memory. */
+/** The penv environment the kept token belongs to, if any. */
+export async function loadTokenTarget(): Promise<PenvTarget | undefined> {
+  const stored = await browser.storage.session.get(TARGET_KEY);
+  const t = stored[TARGET_KEY] as Partial<PenvTarget> | undefined;
+  return t && t.org && t.project && t.env ? { org: t.org, project: t.project, env: t.env } : undefined;
+}
+
+/** Forgets the token, its environment and every key held in memory. */
 export async function forgetAll(): Promise<void> {
-  await browser.storage.session.remove(TOKEN_KEY);
+  await browser.storage.session.remove([TOKEN_KEY, TARGET_KEY]);
   await clearKeys();
 }
 
@@ -101,7 +109,7 @@ export async function connectPenv(
 ): Promise<string[]> {
   const keys = await fetchPenvKeys(token, target, fetchImpl);
   await saveKeys(keys);
-  await saveToken(token);
+  await browser.storage.session.set({ [TOKEN_KEY]: token, [TARGET_KEY]: target });
   return Object.keys(keys).sort();
 }
 
@@ -122,8 +130,24 @@ export async function connectPaste(keys: Record<string, string>): Promise<string
 export async function reconnect(fetchImpl: typeof fetch = fetch): Promise<string[] | null> {
   const token = await loadToken();
   if (!token) return null;
-  const settings = await getSettings();
-  return connectPenv(token, settings.penv, fetchImpl);
+  const target = (await loadTokenTarget()) ?? (await getSettings()).penv;
+  return connectPenv(token, target, fetchImpl);
+}
+
+/**
+ * Checks the transcription key now in memory. If it fails, forgets the token and keys so nothing is
+ * left half-connected, then rethrows (show it with `connectErrorMessage`).
+ */
+export async function verifyOrForget(
+  settings: Pick<Settings, 'transcription'>,
+  fetchImpl: typeof fetch = fetch,
+): Promise<void> {
+  try {
+    await verifyTranscriptionKey(settings, await loadKeys(), fetchImpl);
+  } catch (err) {
+    await forgetAll();
+    throw err;
+  }
 }
 
 /**

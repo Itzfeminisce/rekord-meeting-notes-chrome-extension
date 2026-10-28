@@ -4,8 +4,9 @@ import { useRouter } from '../router';
 import { connectErrorMessage, forgetAll, formatEnvPath, loadToken, reconnect } from '@/lib/connect';
 import { deleteMeeting, listMeetings } from '@/lib/db';
 import { loadKeys } from '@/lib/keys';
+import { onMessage, send } from '@/lib/messages';
 import { getSettings, PROVIDERS, updateSettings } from '@/lib/settings';
-import type { ProviderId, Settings as SettingsT } from '@/lib/types';
+import type { ProviderId, RecordingState, Settings as SettingsT } from '@/lib/types';
 
 const NAMES: Record<ProviderId, string> = {
   groq: 'Groq',
@@ -52,6 +53,7 @@ export default function Settings() {
   const [busy, setBusy] = useState<'' | 'refresh' | 'delete'>('');
   const [message, setMessage] = useState<{ kind: 'error' | 'ok'; text: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [recording, setRecording] = useState(false);
 
   const refreshKeyState = useCallback(async () => {
     setKeyCount(Object.keys(await loadKeys()).length);
@@ -66,6 +68,16 @@ export default function Settings() {
       .then((m) => setMeetings(m.length))
       .catch(() => setMeetings(null));
   }, [refreshKeyState]);
+
+  useEffect(() => {
+    const apply = (state?: RecordingState) => setRecording(!!state && state.status !== 'idle');
+    send<RecordingState>({ type: 'recording/get-state' })
+      .then(apply)
+      .catch(() => setRecording(false));
+    return onMessage((msg) => {
+      if (msg.type === 'recording/state') apply(msg.state);
+    });
+  }, []);
 
   async function save(partial: Partial<SettingsT>) {
     try {
@@ -106,6 +118,12 @@ export default function Settings() {
     setBusy('delete');
     setMessage(null);
     try {
+      const state = await send<RecordingState>({ type: 'recording/get-state' });
+      if (state && state.status !== 'idle') {
+        setRecording(true);
+        setConfirmDelete(false);
+        return;
+      }
       for (const m of await listMeetings()) await deleteMeeting(m.id);
       setMeetings(0);
       setConfirmDelete(false);
@@ -307,12 +325,13 @@ export default function Settings() {
                 </span>
               </span>
               {!confirmDelete && (
-                <button type="button" className="set-danger" onClick={() => setConfirmDelete(true)} disabled={meetings === 0}>
+                <button type="button" className="set-danger" onClick={() => setConfirmDelete(true)} disabled={meetings === 0 || recording}>
                   Delete all
                 </button>
               )}
             </div>
-            {confirmDelete && (
+            {recording && <span className="set-sub" role="status">Stop recording first.</span>}
+            {confirmDelete && !recording && (
               <div className="set-confirm" role="alertdialog" aria-label="Delete all meetings">
                 <span>Delete every meeting, transcript and note? This can’t be undone.</span>
                 <span className="set-confirm-actions">
