@@ -5,7 +5,7 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { closeDB, getMeeting, listRecordingParts, listSegments, putMeeting, putRecordingPart, putSegment } from './db';
 import { saveKeys } from './keys';
 import { DEFAULT_SETTINGS, updateSettings } from './settings';
-import { displayName, parseSuggestions, runSpeakerStep, saveSpeakerNames, skipSpeakers, speakerStats, suggestNames, toRecordingMs } from './speakers';
+import { chipsFor, displayName, inviteCandidates, liveLineName, matchInvitee, parseSuggestions, unnamedInvitees, runSpeakerStep, saveSpeakerNames, skipSpeakers, speakerStats, suggestNames, toRecordingMs } from './speakers';
 
 const llm = (content: unknown) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }), { status: 200 });
 const dg = () => new Response(JSON.stringify({ results: { utterances: [{ start: 0, end: 4, speaker: 0 }, { start: 5, end: 9, speaker: 1 }] } }));
@@ -185,5 +185,42 @@ describe('runSpeakerStep without a Deepgram key', () => {
     await saveKeys({ GROQ_API_KEY: 'gsk_test' });
     expect(await runSpeakerStep('m1')).toBe('skipped');
     expect(await listRecordingParts('m1')).toEqual([]);
+  });
+});
+
+describe('invite matching', () => {
+  const event = { id: 'e', title: 'T', start: 0, end: 1, attendees: [
+    { email: 'me@x.com', name: 'Me', self: true }, { email: 'priya@x.com', name: 'Priya Shah' },
+    { email: 'sam@x.com' }, { email: 'leo@x.com', name: 'Leo' }, { email: 'SAM@x.com' },
+  ] };
+  const cands = inviteCandidates(event);
+
+  it('drops you and duplicates, naming email-only invitees from the email', () => {
+    expect(cands.map((c) => c.name)).toEqual(['Priya Shah', 'sam', 'Leo']);
+    expect(inviteCandidates(undefined)).toEqual([]);
+  });
+  it('matches a suggested name to an invitee by full or unique first name', () => {
+    expect(matchInvitee('Priya', cands)?.email).toBe('priya@x.com');
+    expect(matchInvitee('leo', cands)?.email).toBe('leo@x.com');
+    expect(matchInvitee('Maria', cands)).toBeUndefined();
+    expect(matchInvitee('Priya', [...cands, { name: 'Priya Rao', email: 'r@x.com' }])).toBeUndefined();
+  });
+  it('leaves out names already chosen on other labels from the chips', () => {
+    expect(chipsFor('B', cands, { A: 'Priya Shah', B: 'Leo' }).map((c) => c.name)).toEqual(['sam', 'Leo']);
+  });
+  it('lists invitees nobody was named as', () => {
+    expect(unnamedInvitees(cands, { A: 'Priya Shah', B: 'Leo' }).map((c) => c.name)).toEqual(['sam']);
+  });
+});
+
+describe('liveLineName', () => {
+  const cands = [{ name: 'Priya Rao', email: 'p@x.com' }];
+  const seg = { speaker: 'others' as const, speakerLabel: 'A' };
+  it('prefers saved names, then the matched invitee, then Speaker X', () => {
+    expect(liveLineName(seg, { A: { name: 'Sam' } }, cands)).toBe('Sam');
+    expect(liveLineName(seg, { A: { suggested: 'Priya' } }, cands)).toBe('Priya Rao');
+    expect(liveLineName(seg, { A: { suggested: 'Zed' } }, cands)).toBe('Speaker A');
+    expect(liveLineName(seg, undefined, cands)).toBe('Speaker A');
+    expect(liveLineName({ speaker: 'you' }, undefined, cands)).toBe('You');
   });
 });

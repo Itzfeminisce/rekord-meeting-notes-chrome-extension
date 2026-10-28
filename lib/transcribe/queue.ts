@@ -132,7 +132,7 @@ export function createTranscriber(overrides: Partial<TranscriberDeps> = {}) {
       return;
     }
     const settings = await d.getSettings();
-    const keyName = PROVIDERS[settings.transcription.provider].keyName;
+    const keyName = PROVIDERS[settings.transcription.provider === 'deepgram' ? 'groq' : settings.transcription.provider].keyName;
     const key = keyName ? (await d.loadKeys())[keyName] : undefined;
     if (!key) {
       authBlocked = true;

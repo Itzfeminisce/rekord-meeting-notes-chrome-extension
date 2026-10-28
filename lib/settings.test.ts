@@ -52,4 +52,30 @@ describe('settings', () => {
     await fakeBrowser.storage.local.set({ settings: { ...v1, features: { ask: false } } });
     expect((await getSettings()).features).toEqual({ ask: false, liveSuggestions: true, speakerNames: true });
   });
+
+  it('has v3 defaults and keeps a saved v2 Groq user working', async () => {
+    const d = await getSettings();
+    expect(d.setup).toBe('free');
+    expect(d.realtimeBackup).toBe(true);
+    expect(d.google).toEqual({ calendar: false, docs: false });
+    expect(d.notion).toEqual({});
+
+    const { setup: _s, realtimeBackup: _r, google: _g, notion: _n, ...v2 } = DEFAULT_SETTINGS;
+    await fakeBrowser.storage.local.set({
+      settings: { ...v2, onboarded: true, keySource: 'paste', summary: { provider: 'groq', model: 'llama-3.3-70b-versatile' } },
+    });
+    const s = await getSettings();
+    expect(s.onboarded).toBe(true);
+    expect(s.keySource).toBe('paste');
+    expect(s.transcription).toEqual({ provider: 'groq', model: 'whisper-large-v3-turbo' });
+    expect(s.setup).toBe('free');
+    expect(s.realtimeBackup).toBe(true);
+    expect(s.google).toEqual({ calendar: false, docs: false });
+    expect(s.notion).toEqual({});
+
+    await fakeBrowser.storage.local.set({ settings: { ...v2, google: { calendar: true }, notion: { pageId: 'p1' } } });
+    const partial = await getSettings();
+    expect(partial.google).toEqual({ calendar: true, docs: false });
+    expect(partial.notion).toEqual({ pageId: 'p1' });
+  });
 });

@@ -1,9 +1,11 @@
-import { tabRefusedReply } from '@/lib/capture';
+import { appSources, tabRefusedReply, type AppFlag } from '@/lib/capture';
 import { resolveSources, type Sources } from '@/lib/sources';
 import { getMeeting, pendingChunks, putMeeting } from '@/lib/db';
 import { loadKeys } from '@/lib/keys';
-import { onMessage, send } from '@/lib/messages';
+import { onMessage, send, type MessageOf } from '@/lib/messages';
 import { getSettings } from '@/lib/settings';
+import { handleInstalled } from '@/lib/whatsNew';
+import { isStreamRequest, tokenReply } from '@/lib/transcribe/stream';
 import type { Meeting, RecordingState, TranscriberConfig } from '@/lib/types';
 import type { OffscreenReply } from './offscreen/main';
 
@@ -60,6 +62,9 @@ function setCloseAfterDrain(meetingId: string | null): void {
 }
 
 export default defineBackground(() => {
+  browser.runtime.onInstalled.addListener(({ reason }) => {
+    handleInstalled(reason, browser.runtime.getManifest().version).catch((error) => console.error('Rekord: could not record the update', error));
+  });
   // We open the panel ourselves from action.onClicked: with openPanelOnActionClick the click never reaches
   // the extension, so the meeting tab is not granted (activeTab) and tab capture is refused.
   browser.sidePanel
@@ -79,13 +84,17 @@ export default defineBackground(() => {
   browser.runtime.onStartup.addListener(() => void openForCatchUp());
 
   onMessage((msg) => {
+    // v3 real time: a fresh short-lived Deepgram token per socket; the key itself never leaves the background.
+    if (isStreamRequest(msg, 'stream/token')) return tokenReply(loadKeys);
     switch (msg.type) {
       case 'recording/get-state':
         return ready.then(() => state);
       case 'recording/start':
         return ready.then(() => {
           if (state.status !== 'idle') return { ok: false, error: 'Rekord is already recording.' } as RecordingReply;
-          const run = startRecording(msg.tabId, resolveSources(msg.sources));
+          // v3: an app start (`app: true`) records the shared screen audio instead of the tab.
+          const app = appSources(msg as typeof msg & AppFlag);
+          const run = startRecording(msg.tabId, app ?? resolveSources(msg.sources), app !== null);
           starting = run.finally(() => (starting = null));
           return run;
         });
@@ -123,14 +132,14 @@ export default defineBackground(() => {
   });
 });
 
-async function startRecording(tabId: number, sources: Sources): Promise<RecordingReply> {
+async function startRecording(tabId: number, sources: Sources, app = false): Promise<RecordingReply> {
   const startedAt = Date.now();
   const meetingId = crypto.randomUUID();
   setState({ status: 'starting', meetingId, startedAt, micLevel: 0, tabLevel: 0 });
 
   let streamId = '';
   try {
-    if (sources.tab) streamId = await browser.tabCapture.getMediaStreamId({ targetTabId: tabId });
+    if (sources.tab && !app) streamId = await browser.tabCapture.getMediaStreamId({ targetTabId: tabId });
   } catch (error) {
     console.error('Rekord: tab capture refused', error instanceof Error ? error.message : error);
     setState({ status: 'idle' });
@@ -141,7 +150,7 @@ async function startRecording(tabId: number, sources: Sources): Promise<Recordin
   let micUnavailable = false;
   try {
     const [tab, settings] = await Promise.all([
-      browser.tabs.get(tabId).catch(() => undefined),
+      app ? undefined : browser.tabs.get(tabId).catch(() => undefined),
       getSettings(),
     ]);
     meeting = {
@@ -151,10 +160,12 @@ async function startRecording(tabId: number, sources: Sources): Promise<Recordin
       startedAt,
       status: 'recording',
       language: settings.language,
+      ...(app && { source: 'app' as const }),
     };
     await putMeeting(meeting);
     await ensureOffscreen();
-    const reply = await send<OffscreenReply>({ type: 'offscreen/start', streamId, meetingId, startedAt, sources });
+    const start: MessageOf<'offscreen/start'> & AppFlag = { type: 'offscreen/start', streamId, meetingId, startedAt, sources, ...(app && { app }) };
+    const reply = await send<OffscreenReply>(start);
     if (!reply?.ok) throw new Error(reply?.error ?? START_ERROR);
     micUnavailable = reply.micUnavailable === true;
   } catch (error) {
@@ -166,7 +177,8 @@ async function startRecording(tabId: number, sources: Sources): Promise<Recordin
     return { ok: false, error: error instanceof Error && error.message ? error.message : START_ERROR };
   }
 
-  setState({ status: 'recording', meetingId, startedAt, micLevel: 0, tabLevel: 0, sources, ...(micUnavailable && { micUnavailable }) });
+  // In an app the shared screen audio is the meeting ("others"), shown on the meeting meter.
+  setState({ status: 'recording', meetingId, startedAt, micLevel: 0, tabLevel: 0, sources: app ? { ...sources, tab: true } : sources, ...(micUnavailable && { micUnavailable }) });
   return { ok: true, meetingId };
 }
 
@@ -179,8 +191,10 @@ async function stopRecording(): Promise<RecordingReply> {
   const stopped = await send<OffscreenReply>({ type: 'offscreen/stop' });
   const meeting = await getMeeting(meetingId);
   // v2: a saved tab recording means speaker names can run after the meeting.
-  const speakerStep = stopped?.ok && stopped.recorded ? ({ speakerStep: 'pending' } as const) : {};
-  if (meeting) await putMeeting({ ...meeting, status: 'processing', endedAt: Date.now(), ...speakerStep });
+  // v3: a realtime meeting already has live speaker labels; the names step uses those.
+  const realtime = stopped?.ok === true && stopped.realtime === true;
+  const speakerStep = stopped?.ok && (stopped.recorded || realtime) ? ({ speakerStep: 'pending' } as const) : {};
+  if (meeting) await putMeeting({ ...meeting, status: 'processing', endedAt: Date.now(), ...speakerStep, ...(realtime && { realtime: true }) });
   if (drainedWhileStopping === meetingId) {
     drainedWhileStopping = null; // already drained: nothing left to wait for
   } else {
@@ -227,8 +241,8 @@ function ensureOffscreen(stillWanted: () => boolean = () => true): Promise<void>
     if (!stillWanted() || (await hasOffscreen())) return;
     await browser.offscreen.createDocument({
       url: OFFSCREEN_PATH,
-      reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK'] as Browser.offscreen.Reason[],
-      justification: 'Record meeting tab and microphone audio, and keep the meeting audible.',
+      reasons: ['USER_MEDIA', 'AUDIO_PLAYBACK', 'WEB_RTC'] as Browser.offscreen.Reason[],
+      justification: 'Record meeting tab, app and microphone audio, and keep the meeting audible.',
     });
   });
 }

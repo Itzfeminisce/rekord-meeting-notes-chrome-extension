@@ -12,6 +12,10 @@ export const DEFAULT_SETTINGS: Settings = {
   features: { ask: true, liveSuggestions: true, speakerNames: true },
   diarization: { provider: 'deepgram', model: 'nova-3', keyName: 'DEEPGRAM_API_KEY' },
   keepAudio: false,
+  setup: 'free',
+  realtimeBackup: true,
+  google: { calendar: false, docs: false },
+  notion: {},
 };
 
 export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
@@ -32,6 +36,8 @@ function merge(stored: Partial<Settings> | undefined): Settings {
     penv: { ...DEFAULT_SETTINGS.penv, ...s.penv },
     features: { ...DEFAULT_SETTINGS.features, ...s.features },
     diarization: { ...DEFAULT_SETTINGS.diarization, ...s.diarization },
+    google: { ...DEFAULT_SETTINGS.google, ...s.google },
+    notion: { ...DEFAULT_SETTINGS.notion, ...s.notion },
   };
 }
 
