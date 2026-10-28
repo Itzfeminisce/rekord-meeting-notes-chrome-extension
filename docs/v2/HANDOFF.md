@@ -21,7 +21,7 @@
 - [x] T3 Live action-item suggestions — sonnet — specs/T3.md (after T1)
 - [x] T4 Continuous tab recording for diarization — opus — specs/T4.md (after T1)
 - [x] T5 Diarize with Deepgram + suggest names — opus — specs/T5.md (after T4)
-- [ ] T6 Name speakers screen, display names, Settings switches — sonnet — specs/T6.md (after T5)
+- [x] T6 Name speakers screen, display names, Settings switches — sonnet — specs/T6.md (after T5)
 
 ## Log
 - T1 done: types, DB v2 (asks/recordings/recordingMeta), settings v2, lib/llm chat()+transcriptLines; 102 tests pass
@@ -29,3 +29,4 @@
 - T2 done: lib/ask (ask, citations, save-as-note), Ask screen + Live Ask tab + Summary button, router 'ask'; 6 tests
 - T3 done: lib/suggest (60s scheduler, dedupe, cursor), SuggestionCard in Live, accepted AI actions in summary; 8 tests
 - T5 done: lib/diarize (Deepgram, overlap≥30%, A/B by first use), lib/speakers suggestNames+runSpeakerStep; 9 tests
+- T6 done: Speakers screen (names/merge/sample), displayName, Settings switches, Deepgram paste field, keys merge; export/summarize still say Others
