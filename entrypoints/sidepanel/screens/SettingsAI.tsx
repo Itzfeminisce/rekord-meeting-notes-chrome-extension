@@ -279,6 +279,14 @@ export default function SettingsAI() {
           <div style={{ ...CARD, display: 'flex', flexDirection: 'column' }}>
             <button
               type="button"
+              onClick={() => navigate('connections')}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, border: 'none', borderBottom: '1px solid #F0F0F2', background: 'transparent', font: 'inherit', textAlign: 'left', color: '#111114', cursor: 'pointer' }}
+            >
+              <span style={{ flexGrow: 1, fontSize: 14, fontWeight: 500 }}>Connected apps</span>
+              <span style={{ fontSize: 12, color: '#6E7079' }}>Calendar, Docs, Notion</span>
+            </button>
+            <button
+              type="button"
               onClick={() => navigate('settingsMore')}
               style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 14, border: 'none', background: 'transparent', font: 'inherit', textAlign: 'left', color: '#111114', cursor: 'pointer' }}
             >
