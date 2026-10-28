@@ -147,7 +147,12 @@ export default function Connect() {
     const checked = await checkKeys(await loadKeys());
     await saveKeyStatus(checked);
     setResults(checked);
-    setChoice(pickProviders(checked, { ...settings, ...draft }));
+    const picked = pickProviders(checked, { ...settings, ...draft });
+    const allowed = ASSISTANT_IDS.filter((id) => providerWorks(id, checked));
+    if (allowed[0] && !allowed.includes(picked.summary.provider)) {
+      picked.summary = summaryFor(allowed[0], { ...settings, ...draft }.summary);
+    }
+    setChoice(picked);
   }
 
   async function checkAgain() {
@@ -309,7 +314,7 @@ export default function Connect() {
           {rows.length === 0 ? (
             <p className="conn-desc conn-empty">Rekord didn’t find any keys it can use.</p>
           ) : (
-            <ul className="conn-keys">
+            <ul className="conn-keys" role="status" aria-live="polite">
               {rows.map(([name, status]) => (
                 <li key={name} className="conn-key">
                   <span className="conn-key-name">{name}</span>
