@@ -25,7 +25,7 @@ import WhatsNew from './screens/WhatsNew';
 import Connections from './screens/Connections';
 import GoogleConnect from './screens/GoogleConnect';
 import { shouldShowWhatsNew } from '@/lib/whatsNew';
-import NoSound, { AppAudioWatch } from './screens/NoSound';
+import NoSound from './screens/NoSound';
 
 export const SCREENS: Record<ScreenName, ComponentType> = {
   welcome: Welcome,
@@ -70,10 +70,7 @@ function CurrentScreen() {
   const { route } = useRouter();
   const Screen = SCREENS[route.screen];
   return (
-    <>
-      <Screen key={`${route.screen}:${route.params.meetingId ?? ''}`} />
-      {route.screen === 'live' && <AppAudioWatch meetingId={route.params.meetingId} />}
-    </>
+    <Screen key={`${route.screen}:${route.params.meetingId ?? ''}`} />
   );
 }
 

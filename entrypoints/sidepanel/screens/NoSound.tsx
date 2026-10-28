@@ -206,7 +206,7 @@ const NOSOUND_CSS = `
 .ns-primary:disabled { opacity: 0.6; }
 .ns-secondary { height: 44px; border: 0; border-radius: 12px; background: transparent; color: var(--ink); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
 .ns-end:focus-visible, .ns-primary:focus-visible, .ns-secondary:focus-visible, .ns-banner button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.ns-banner { position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 20; padding: 12px 14px; border-radius: 14px; background: #fff8ec; border: 1px solid #f5ddb0; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 4px 16px rgba(16,16,20,0.12); }
+.ns-banner { margin: 12px 12px 0; padding: 12px 14px; border-radius: 14px; background: #fff8ec; border: 1px solid #f5ddb0; display: flex; flex-direction: column; gap: 10px; }
 .ns-banner-text { display: flex; flex-direction: column; gap: 3px; font-size: 13px; line-height: 1.45; color: #6b3d00; }
 .ns-banner-title { font-size: 14px; font-weight: 600; color: #5c3200; }
 .ns-banner button { align-self: flex-start; height: 32px; padding: 0 12px; border: none; border-radius: 9px; background: var(--ink); color: #fff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
