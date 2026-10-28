@@ -9,7 +9,7 @@
 - Commit `T<n>: <summary>` on the v2 branch. Do not push. Tick your task, add one log line (≤120 chars), report ≤10 lines.
 
 ## Tasks
-- [ ] T1 v2 core: types, DB migration, settings, shared LLM client — opus — specs/T1.md
+- [x] T1 v2 core: types, DB migration, settings, shared LLM client — opus — specs/T1.md
 - [ ] T2 Ask mid-meeting and after — sonnet — specs/T2.md (after T1)
 - [ ] T3 Live action-item suggestions — sonnet — specs/T3.md (after T1)
 - [ ] T4 Continuous tab recording for diarization — opus — specs/T4.md (after T1)
@@ -17,3 +17,4 @@
 - [ ] T6 Name speakers screen, display names, Settings switches — sonnet — specs/T6.md (after T5)
 
 ## Log
+- T1 done: types, DB v2 (asks/recordings/recordingMeta), settings v2, lib/llm chat()+transcriptLines; 102 tests pass
