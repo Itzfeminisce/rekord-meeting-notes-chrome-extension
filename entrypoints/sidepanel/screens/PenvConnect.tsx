@@ -5,7 +5,7 @@ import { checkKeys, connectErrorMessage, connectPenv, formatEnvPath, loadToken, 
 import { serviceLabel } from '@/lib/keyDetect';
 import { loadKeys } from '@/lib/keys';
 import { getSettings, updateSettings } from '@/lib/settings';
-import { connectKeyNames, connectPenvApp, loadPenvAppKeys, PenvAppError, penvAppAvailable, wasDisconnected } from '@/lib/penvApp';
+import { connectKeyNames, connectPenvApp, disconnectPenvApp, loadPenvAppKeys, PenvAppError, penvAppAvailable, wasDisconnected } from '@/lib/penvApp';
 import { canStart, keyUse, neededKeys, startHint } from '@/lib/setup';
 import type { Settings } from '@/lib/types';
 import {
@@ -96,6 +96,7 @@ export default function PenvConnect() {
   const path = s.keySource === 'penv-app' && s.penvApp ? `${s.penvApp.org} / ${s.penvApp.project} / ${s.penvApp.env}` : formatEnvPath(s.penv).split('/').join(' / ');
 
   async function pickPaste() {
+    if (s?.penvApp) await disconnectPenvApp().catch(() => false);
     try {
       await updateSettings({ keySource: 'paste' });
     } catch {
@@ -143,6 +144,7 @@ export default function PenvConnect() {
     if (!token.trim()) return setError('Enter your read-only machine token.');
     setBusy(true);
     try {
+      if (s.penvApp) await disconnectPenvApp().catch(() => false);
       await connectPenv(token.trim(), target);
       const next = await updateSettings({ penv: target, keySource: 'penv', penvApp: undefined });
       setS(next);

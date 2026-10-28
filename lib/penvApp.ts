@@ -55,7 +55,8 @@ export async function penvAppAvailable(fetchImpl: typeof fetch = fetch, timeoutM
       credentials: 'omit',
       signal: ctrl.signal,
     });
-    live = res.status !== 404;
+    // Live: 2xx, or a 4xx other than 403/404 (400/401/405/422 mean the route exists). 403, 404, 5xx: not live.
+    live = (res.status >= 200 && res.status < 300) || (res.status >= 400 && res.status < 500 && res.status !== 403 && res.status !== 404);
   } catch {
     live = false;
   } finally {
@@ -185,8 +186,8 @@ export async function connectPenvApp(opts: {
   }
   if (!back) throw new PenvAppError('not-connected', 'The window was closed.');
   const params = new URL(back).searchParams;
-  if (params.get('state') !== state) throw new PenvAppError('state-mismatch', 'Penv Cloud sent back an unexpected answer.');
   if (params.get('error')) throw new PenvAppError('not-connected', 'Access was not allowed.');
+  if (params.get('state') !== state) throw new PenvAppError('state-mismatch', 'Penv Cloud sent back an unexpected answer.');
   const code = params.get('code');
   if (!code) throw new PenvAppError('not-connected', 'No code came back.');
 
@@ -214,15 +215,38 @@ export async function connectPenvApp(opts: {
  * the keys in memory. Returns the key names, or null without a grant. Throws PenvAppError('disconnected') on
  * invalid_grant (grant and keys are cleared first).
  */
-export async function loadPenvAppKeys(target: PenvTarget, fetchImpl: typeof fetch = fetch): Promise<string[] | null> {
-  const grant = await loadGrant();
+export function loadPenvAppKeys(target: PenvTarget, fetchImpl: typeof fetch = fetch): Promise<string[] | null> {
+  // The grant rotates on every use, so overlapping callers must share one exchange.
+  if (inflightKeys) return inflightKeys;
+  const run = loadPenvAppKeysOnce(target, fetchImpl).finally(() => {
+    if (inflightKeys === run) inflightKeys = null;
+  });
+  inflightKeys = run;
+  return run;
+}
+
+let inflightKeys: Promise<string[] | null> | null = null;
+
+async function loadPenvAppKeysOnce(target: PenvTarget, fetchImpl: typeof fetch): Promise<string[] | null> {
+  let grant = await loadGrant();
   if (!grant) return null;
   let data: Record<string, unknown>;
-  try {
-    data = await postJson(PENV_APP_URL, { client_id: PENV_APP_CLIENT_ID }, fetchImpl, grant);
-  } catch (err) {
-    if (err instanceof PenvAppError && err.code === 'disconnected') await markDisconnected();
-    throw err;
+  for (let retried = false; ; retried = true) {
+    try {
+      data = await postJson(PENV_APP_URL, { client_id: PENV_APP_CLIENT_ID }, fetchImpl, grant);
+      break;
+    } catch (err) {
+      if (err instanceof PenvAppError && err.code === 'disconnected') {
+        // A newer grant may have been stored meanwhile (another path rotated it): retry once with that one.
+        const current = await loadGrant();
+        if (!retried && current && current !== grant) {
+          grant = current;
+          continue;
+        }
+        if (current === grant) await markDisconnected();
+      }
+      throw err;
+    }
   }
   const token = str(data.token) || str(data.access_token);
   const rotated = str(data.grant) || str(data.refresh_token);
@@ -233,20 +257,27 @@ export async function loadPenvAppKeys(target: PenvTarget, fetchImpl: typeof fetc
   return Object.keys(keys).sort();
 }
 
-/** Revokes the grant on Penv Cloud (best effort) and forgets it and the keys. */
-export async function disconnectPenvApp(fetchImpl: typeof fetch = fetch): Promise<void> {
+/**
+ * Revokes the grant on Penv Cloud first, then forgets it and the keys (even if the revoke failed).
+ * Resolves to true when the server confirmed the revoke (or there was no grant), false otherwise.
+ */
+export async function disconnectPenvApp(fetchImpl: typeof fetch = fetch): Promise<boolean> {
   const grant = await loadGrant();
+  let revoked = true;
+  if (grant) {
+    try {
+      const res = await fetchImpl(PENV_REVOKE_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', Authorization: `Bearer ${grant}` },
+        body: JSON.stringify({ client_id: PENV_APP_CLIENT_ID }),
+        credentials: 'omit',
+      });
+      revoked = res.ok;
+    } catch {
+      revoked = false; // Offline: still forgotten here; it can also be removed on Penv Cloud.
+    }
+  }
   await browser.storage.session.remove([GRANT_KEY, DISCONNECTED_KEY]);
   await clearKeys();
-  if (!grant) return;
-  try {
-    await fetchImpl(PENV_REVOKE_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', Authorization: `Bearer ${grant}` },
-      body: JSON.stringify({ client_id: PENV_APP_CLIENT_ID }),
-      credentials: 'omit',
-    });
-  } catch {
-    // Offline: the grant is already forgotten here; it can also be removed on Penv Cloud.
-  }
+  return revoked;
 }

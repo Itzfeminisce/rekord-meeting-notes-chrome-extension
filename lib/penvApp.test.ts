@@ -133,13 +133,71 @@ describe('penvApp', () => {
     await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
     await saveKeys({ GROQ_API_KEY: 'gsk_test' });
     const fetchImpl = fakePenv();
-    await disconnectPenvApp(fetchImpl);
+    expect(await disconnectPenvApp(fetchImpl)).toBe(true);
     const [url, init] = fetchImpl.mock.calls[0]!;
     expect(String(url)).toBe('https://penv.cloud/api/v1/auth/revoke');
     expect(init?.method).toBe('POST');
     expect((init?.headers as Record<string, string>).Authorization).toBe('Bearer pca_one');
     expect(await loadGrant()).toBeUndefined();
     expect(await loadKeys()).toEqual({});
+  });
+
+  it('disconnect still clears locally when the revoke fails, and says so', async () => {
+    await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
+    await saveKeys({ GROQ_API_KEY: 'gsk_test' });
+    expect(await disconnectPenvApp(vi.fn(async () => { throw new TypeError('offline'); }))).toBe(false);
+    expect(await loadGrant()).toBeUndefined();
+    expect(await loadKeys()).toEqual({});
+    await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
+    expect(await disconnectPenvApp(vi.fn(async () => new Response(null, { status: 500 })))).toBe(false);
+    expect(await loadGrant()).toBeUndefined();
+  });
+
+  it('revokes before clearing the grant', async () => {
+    await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
+    let during: string | undefined;
+    await disconnectPenvApp(vi.fn(async () => { during = await loadGrant(); return new Response(null, { status: 204 }); }));
+    expect(during).toBe('pca_one');
+    expect(await loadGrant()).toBeUndefined();
+  });
+
+  it('concurrent key loads share one exchange', async () => {
+    await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
+    const fetchImpl = fakePenv();
+    const [a, b, c] = await Promise.all([
+      loadPenvAppKeys(TARGET, fetchImpl), loadPenvAppKeys(TARGET, fetchImpl), loadPenvAppKeys(TARGET, fetchImpl),
+    ]);
+    expect(a).toEqual(['GROQ_API_KEY']);
+    expect(b).toEqual(a);
+    expect(c).toEqual(a);
+    expect(fetchImpl.mock.calls.filter(([u]) => String(u).endsWith('/auth/app'))).toHaveLength(1);
+    expect(await loadGrant()).toBe('pca_two');
+  });
+
+  it('a refused stale grant retries once with the newer stored grant instead of disconnecting', async () => {
+    await fakeBrowser.storage.session.set({ penvGrant: 'pca_old' });
+    const base = fakePenv();
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const auth = (init?.headers as Record<string, string> | undefined)?.Authorization;
+      if (String(url).endsWith('/auth/app') && auth === 'Bearer pca_old') {
+        await fakeBrowser.storage.session.set({ penvGrant: 'pca_new' }); // rotated by someone else meanwhile
+        return json({ error: 'invalid_grant' }, 400);
+      }
+      return base(url, init);
+    });
+    expect(await loadPenvAppKeys(TARGET, fetchImpl)).toEqual(['GROQ_API_KEY']);
+    expect(await wasDisconnected()).toBe(false);
+    expect(await loadGrant()).toBe('pca_two');
+  });
+
+  it('access_denied is reported before the state is checked, and a code never needs exchanging', async () => {
+    const fetchImpl = fakePenv();
+    const err = await connectPenvApp({ keys: [], launch: allow({ error: 'access_denied' }, 'other'), fetchImpl, redirect: REDIRECT }).catch((e) => e);
+    expect(err.code).toBe('not-connected');
+    expect(fetchImpl).not.toHaveBeenCalled();
+    const bad = await connectPenvApp({ keys: [], launch: allow({ code: 'c' }, 'other'), fetchImpl, redirect: REDIRECT }).catch((e) => e);
+    expect(bad.code).toBe('state-mismatch');
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('detects whether app connections are live', async () => {
@@ -149,6 +207,9 @@ describe('penvApp', () => {
     expect(url).toBe('https://penv.cloud/api/v1/auth/app/token');
     expect(init).toMatchObject({ method: 'POST', body: '{}', credentials: 'omit' });
     expect(await penvAppAvailable(vi.fn(async () => { throw new TypeError('offline'); }))).toBe(false);
+    for (const status of [403, 500, 404]) {
+      expect(await penvAppAvailable(vi.fn(async () => new Response(null, { status })))).toBe(false);
+    }
     expect(await penvAppAvailable(vi.fn(async () => json({ error: 'invalid_request' }, 400)))).toBe(true);
     // true is kept for the session
     const again = vi.fn(async () => new Response(null, { status: 404 }));
