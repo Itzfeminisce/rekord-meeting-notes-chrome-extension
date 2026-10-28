@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { BrandMark, Button, Spinner } from '../components';
+import { CalendarCard } from '../components/CalendarCard';
+import { attachEvent } from '@/lib/calendar';
 import { useRouter } from '../router';
 import type { RecordingReply } from '../../background';
 import { ensureKeys, reconnect, transcriptionKeyRejected } from '@/lib/connect';
@@ -9,7 +11,7 @@ import { needsTabGrant, TAB_GRANT_HINT } from '@/lib/capture';
 import { onMessage, send } from '@/lib/messages';
 import { DEFAULT_SOURCES, isLastSource, toggleSource } from '@/lib/sources';
 import { formatDuration } from '@/lib/time';
-import type { Meeting, RecordingState } from '@/lib/types';
+import type { CalendarEvent, Meeting, RecordingState } from '@/lib/types';
 
 interface TabInfo { id: number; title: string; url?: string; favIconUrl?: string }
 
@@ -34,6 +36,7 @@ export default function Start() {
   const [keyRejected, setKeyRejected] = useState(false);
   const [stateChecked, setStateChecked] = useState(false);
   const autoName = useRef(''); // the tab title we filled in; replaced when the active tab changes, unless edited
+  const calEvent = useRef<CalendarEvent | undefined>(undefined); // T6: event happening now, attached on start
 
   useEffect(() => {
     let alive = true;
@@ -112,6 +115,7 @@ export default function Start() {
           if (m && m.title !== title) await putMeeting({ ...m, title });
         } catch { /* keep the default title */ }
       }
+      if (calEvent.current) await attachEvent(reply.meetingId, calEvent.current).catch(() => undefined);
       replace('live', { meetingId: reply.meetingId });
       return;
     }
@@ -135,6 +139,8 @@ export default function Start() {
           </button>
         </div>
       </header>
+
+      <CalendarCard onEvent={(ev) => { calEvent.current = ev; if (ev) setName((n) => (n === autoName.current ? ev.title : n)); }} />
 
       <section className="start-card" aria-label="New recording">
         {tab === undefined ? (
