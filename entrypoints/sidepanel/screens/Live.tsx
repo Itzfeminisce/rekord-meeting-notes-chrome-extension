@@ -4,6 +4,7 @@ import { ConnectionBanner } from '../components/ConnectionBanner';
 import { LevelMeter } from '../components/LevelMeter';
 import { Timeline } from '../components/Timeline';
 import { useRouter } from '../router';
+import { AskPanel, useAskEnabled } from './Ask';
 import { getMeeting, listMarkers, listNotes, listSegments, putMarker, putNote } from '@/lib/db';
 import { buildTimeline, elapsedMs, mergeSegment, nearBottom, newMarker, newNote } from '@/lib/live';
 import { onMessage, send } from '@/lib/messages';
@@ -18,7 +19,8 @@ const MARKERS: { kind: MarkerKind; label: string }[] = [
 ];
 
 export default function Live() {
-  const { route, replace } = useRouter();
+  const { route, replace, navigate } = useRouter();
+  const askOn = useAskEnabled() !== false;
   const [rec, setRec] = useState<RecordingState | undefined>(undefined);
   const meetingId = route.params.meetingId ?? (rec && rec.status !== 'idle' ? rec.meetingId : undefined);
   const [title, setTitle] = useState('');
@@ -27,7 +29,7 @@ export default function Live() {
   const [markers, setMarkers] = useState<Marker[]>([]);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saveFailed, setSaveFailed] = useState(false);
-  const [view, setView] = useState<'transcript' | 'notes'>('transcript');
+  const [view, setView] = useState<'transcript' | 'notes' | 'ask'>('transcript');
   const [draft, setDraft] = useState('');
   const [now, setNow] = useState(() => Date.now());
   const [stopping, setStopping] = useState(false);
@@ -146,11 +148,15 @@ export default function Live() {
       {saveFailed && <p className="live-msg" role="alert">Rekord couldn’t save your last note or marker. Try again.</p>}
       {active?.micUnavailable && <p className="live-msg" role="status">Your microphone isn’t available, so only the meeting audio is being recorded.</p>}
 
-      <nav aria-label="View" className="live-tabs">
+      <nav aria-label="View" className="live-tabs" style={askOn ? { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' } : undefined}>
         <button type="button" aria-pressed={view === 'transcript'} onClick={() => setView('transcript')}>Transcript</button>
         <button type="button" aria-pressed={view === 'notes'} onClick={() => setView('notes')}>Notes · {notes.length}</button>
+        {askOn && <button type="button" aria-pressed={view === 'ask'} onClick={() => setView('ask')}>Ask</button>}
       </nav>
 
+      {view === 'ask' && askOn && meetingId ? (
+        <AskPanel meetingId={meetingId} nowMs={ms} onOpenMoment={(atMs) => navigate('transcript', { meetingId, atMs })} />
+      ) : (<>
       <section
         ref={scroller}
         className="live-scroll"
@@ -206,6 +212,7 @@ export default function Live() {
           </button>
         </form>
       </footer>
+      </>)}
     </main>
   );
 }

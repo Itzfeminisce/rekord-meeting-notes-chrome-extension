@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Spinner, Tag } from '../components';
 import { useRouter } from '../router';
+import { useAskEnabled } from './Ask';
 import { getMeeting, listMarkers, listNotes } from '@/lib/db';
 import { summarize } from '@/lib/summarize';
 import { formatClock, formatDuration } from '@/lib/time';
@@ -15,6 +16,7 @@ function when(ms: number): string {
 
 export default function Summary() {
   const { route, replace, navigate } = useRouter();
+  const askOn = useAskEnabled();
   const meetingId = route.params.meetingId;
   const [meeting, setMeeting] = useState<Meeting | undefined>(undefined);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -151,6 +153,7 @@ export default function Summary() {
       </div>
 
       <footer className="sum-foot">
+        {askOn && <Button block variant="secondary" onClick={() => navigate('ask', { meetingId })}>Ask about it</Button>}
         <Button block variant="secondary" onClick={() => navigate('transcript', { meetingId })}>Transcript</Button>
         <Button block onClick={home}>New meeting</Button>
       </footer>
