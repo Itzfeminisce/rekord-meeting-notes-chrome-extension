@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Spinner, Tag } from '../components';
 import { useRouter } from '../router';
 import { useAskEnabled } from './Ask';
@@ -65,6 +65,14 @@ export default function Summary() {
     setVoices('idle');
   }, [meetingId, replace]);
 
+  const resumed = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const step = meeting?.speakerStep;
+    if (!meetingId || (step !== 'pending' && step !== 'running') || resumed.current === meetingId) return;
+    resumed.current = meetingId;
+    void retrySpeakers();
+  }, [meeting, meetingId, retrySpeakers]);
+
   const home = () => replace('start');
   if (state === 'loading') return <main className="screen screen-center"><Spinner label="Loading summary" /></main>;
   if (state === 'missing' || !meeting) {
@@ -97,6 +105,9 @@ export default function Summary() {
 
       <div className="sum-cards">
         {error && <p className="perm-error sum-error" role="alert">{error}</p>}
+        {voices === 'working' && meeting.speakerStep !== 'failed' && (
+          <p className="sum-sub" role="status">Telling voices apart…</p>
+        )}
         {meeting.speakerStep === 'failed' && (
           <p className="perm-error sum-error" role="alert">
             Couldn’t tell voices apart.{' '}
