@@ -4,6 +4,7 @@
  */
 import { deleteRecording, getMeeting, listSegments, putMeeting, putSegment } from './db';
 import { diarize } from './diarize';
+import { liveLabels } from './transcribe/stream';
 import { chat, transcriptLines, type FetchLike } from './llm';
 import { loadKeys } from './keys';
 import { send } from './messages';
@@ -143,7 +144,8 @@ async function runOnce(
     if (!settings.features.speakerNames || !(await loadKeys())[settings.diarization.keyName]?.trim()) return await skip(meetingId, settings.keepAudio);
     if (!(await listSegments(meetingId)).some((s) => s.speaker === 'others')) return await skip(meetingId, settings.keepAudio);
     await setStep(meetingId, 'running');
-    const labels = await diarize(meetingId, fetchFn?.deepgram);
+    // v3: transcribed in real time → the live labels stand; no Deepgram pass after the meeting.
+    const labels = meeting.realtime ? await liveLabels(meetingId) : await diarize(meetingId, fetchFn?.deepgram);
     if (!labels.length) throw new Error('No voices could be told apart.');
     // Name suggestions are optional: labels are saved, so the user can name speakers by hand.
     await suggestNames(meetingId, fetchFn?.llm).catch(() => undefined);

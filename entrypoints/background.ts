@@ -5,6 +5,7 @@ import { loadKeys } from '@/lib/keys';
 import { onMessage, send, type MessageOf } from '@/lib/messages';
 import { getSettings } from '@/lib/settings';
 import { handleInstalled } from '@/lib/whatsNew';
+import { isStreamRequest, tokenReply } from '@/lib/transcribe/stream';
 import type { Meeting, RecordingState, TranscriberConfig } from '@/lib/types';
 import type { OffscreenReply } from './offscreen/main';
 
@@ -83,6 +84,8 @@ export default defineBackground(() => {
   browser.runtime.onStartup.addListener(() => void openForCatchUp());
 
   onMessage((msg) => {
+    // v3 real time: a fresh short-lived Deepgram token per socket; the key itself never leaves the background.
+    if (isStreamRequest(msg, 'stream/token')) return tokenReply(loadKeys);
     switch (msg.type) {
       case 'recording/get-state':
         return ready.then(() => state);
@@ -188,8 +191,10 @@ async function stopRecording(): Promise<RecordingReply> {
   const stopped = await send<OffscreenReply>({ type: 'offscreen/stop' });
   const meeting = await getMeeting(meetingId);
   // v2: a saved tab recording means speaker names can run after the meeting.
-  const speakerStep = stopped?.ok && stopped.recorded ? ({ speakerStep: 'pending' } as const) : {};
-  if (meeting) await putMeeting({ ...meeting, status: 'processing', endedAt: Date.now(), ...speakerStep });
+  // v3: a realtime meeting already has live speaker labels; the names step uses those.
+  const realtime = stopped?.ok === true && stopped.realtime === true;
+  const speakerStep = stopped?.ok && (stopped.recorded || realtime) ? ({ speakerStep: 'pending' } as const) : {};
+  if (meeting) await putMeeting({ ...meeting, status: 'processing', endedAt: Date.now(), ...speakerStep, ...(realtime && { realtime: true }) });
   if (drainedWhileStopping === meetingId) {
     drainedWhileStopping = null; // already drained: nothing left to wait for
   } else {
