@@ -23,6 +23,7 @@ import Settings from './screens/Settings';
 import ErrorScreen from './screens/Error';
 import WhatsNew from './screens/WhatsNew';
 import Connections from './screens/Connections';
+import Share from './screens/Share';
 import GoogleConnect from './screens/GoogleConnect';
 import { shouldShowWhatsNew } from '@/lib/whatsNew';
 
@@ -49,6 +50,7 @@ export const SCREENS: Record<ScreenName, ComponentType> = {
   whatsnew: WhatsNew,
   connections: Connections,
   googleConnect: GoogleConnect,
+  share: Share,
 };
 
 /** First screen: onboarding until the user has finished it, then Start. */
