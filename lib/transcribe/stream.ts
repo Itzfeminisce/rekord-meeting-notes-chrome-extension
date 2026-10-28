@@ -27,11 +27,8 @@ export class StreamError extends Error {
   }
 }
 
-/**
- * Side panel / offscreen ↔ background requests that `Message` (lib/types.ts) does not list yet:
- * `stream/token` (offscreen → background, reply TokenReply) and `stream/get-state` (panel → offscreen, reply StreamState).
- */
-export type StreamRequest = { type: 'stream/token' } | { type: 'stream/get-state' };
+/** The `Message` variants for realtime requests: `stream/token` (reply TokenReply) and `stream/get-state` (reply StreamState). */
+export type StreamRequest = Extract<Message, { type: 'stream/token' | 'stream/get-state' }>;
 export type TokenReply = { ok: true; token: string } | { ok: false; reason: StreamErrorKind };
 
 export function isStreamRequest<T extends StreamRequest['type']>(msg: unknown, type: T): msg is Extract<StreamRequest, { type: T }> {

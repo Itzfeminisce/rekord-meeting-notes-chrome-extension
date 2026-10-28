@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Spinner, Tag } from '../components';
 import { ConnectionBanner } from '../components/ConnectionBanner';
 import { LevelMeter } from '../components/LevelMeter';
@@ -8,7 +8,7 @@ import { AskPanel, useAskEnabled } from './Ask';
 import { SuggestionCard } from '../components/SuggestionCard';
 import { AppAudioWatch } from './NoSound';
 import { appLabel } from '@/lib/audio/appAudio';
-import { displayName } from '@/lib/llm';
+import { inviteCandidates, liveLineName, type Invitee } from '@/lib/speakers';
 import { LIVE_CHUNK_ID, liveSpeakerCount, supersede, type StreamRequest, type StreamState } from '@/lib/transcribe/stream';
 import { getMeeting, pendingChunks, listMarkers, listNotes, listSegments, putMarker, putNote } from '@/lib/db';
 import { buildTimeline, elapsedMs, waitingSpan, mergeSegment, nearBottom, newMarker, newNote } from '@/lib/live';
@@ -27,9 +27,9 @@ const MARKERS: { kind: MarkerKind; label: string }[] = [
 ];
 
 /** One transcript line, named "You", the matched name or "Speaker A" (v2 chunks: "Others"); interim: greyed with a caret. */
-function Line({ segment, speakers, now }: { segment: Segment; speakers?: Meeting['speakers']; now?: boolean }) {
+function Line({ segment, speakers, invitees, now }: { segment: Segment; speakers?: Meeting['speakers']; invitees: Invitee[]; now?: boolean }) {
   const you = segment.speaker === 'you';
-  const name = displayName(segment, speakers);
+  const name = liveLineName(segment, speakers, invitees);
   const initial = !you && segment.speakerLabel && name === `Speaker ${segment.speakerLabel}` ? segment.speakerLabel[0] : name[0];
   return (
     <div className="tl-row">
@@ -93,6 +93,7 @@ export default function Live() {
   const meetingId = route.params.meetingId ?? (rec && rec.status !== 'idle' ? rec.meetingId : undefined);
   const [title, setTitle] = useState('');
   const [meeting, setMeeting] = useState<Meeting | undefined>(undefined);
+  const invitees = useMemo(() => inviteCandidates(meeting?.event), [meeting?.event]);
   const [stream, setStream] = useState<StreamState>('off');
   const [interim, setInterim] = useState<Partial<Record<Speaker, Segment>>>({});
   const [segments, setSegments] = useState<Segment[]>([]);
@@ -325,10 +326,10 @@ export default function Live() {
                     onDismiss={() => decide(it.marker, 'dismissed')}
                   />
                 ) : it.kind === 'segment' ? (
-                  <Line key={it.id} segment={it.segment} speakers={meeting?.speakers} />
+                  <Line key={it.id} segment={it.segment} speakers={meeting?.speakers} invitees={invitees} />
                 ) : <Timeline key={it.id} items={[it]} />,
               )}
-              {interimLines.map((seg) => <Line key={seg.id} segment={seg} speakers={meeting?.speakers} now />)}
+              {interimLines.map((seg) => <Line key={seg.id} segment={seg} speakers={meeting?.speakers} invitees={invitees} now />)}
               {waiting && (
                 <div className="tl-waiting">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>

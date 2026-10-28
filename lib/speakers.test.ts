@@ -5,7 +5,7 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { closeDB, getMeeting, listRecordingParts, listSegments, putMeeting, putRecordingPart, putSegment } from './db';
 import { saveKeys } from './keys';
 import { DEFAULT_SETTINGS, updateSettings } from './settings';
-import { chipsFor, displayName, inviteCandidates, matchInvitee, parseSuggestions, unnamedInvitees, runSpeakerStep, saveSpeakerNames, skipSpeakers, speakerStats, suggestNames, toRecordingMs } from './speakers';
+import { chipsFor, displayName, inviteCandidates, liveLineName, matchInvitee, parseSuggestions, unnamedInvitees, runSpeakerStep, saveSpeakerNames, skipSpeakers, speakerStats, suggestNames, toRecordingMs } from './speakers';
 
 const llm = (content: unknown) => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }), { status: 200 });
 const dg = () => new Response(JSON.stringify({ results: { utterances: [{ start: 0, end: 4, speaker: 0 }, { start: 5, end: 9, speaker: 1 }] } }));
@@ -210,5 +210,17 @@ describe('invite matching', () => {
   });
   it('lists invitees nobody was named as', () => {
     expect(unnamedInvitees(cands, { A: 'Priya Shah', B: 'Leo' }).map((c) => c.name)).toEqual(['sam']);
+  });
+});
+
+describe('liveLineName', () => {
+  const cands = [{ name: 'Priya Rao', email: 'p@x.com' }];
+  const seg = { speaker: 'others' as const, speakerLabel: 'A' };
+  it('prefers saved names, then the matched invitee, then Speaker X', () => {
+    expect(liveLineName(seg, { A: { name: 'Sam' } }, cands)).toBe('Sam');
+    expect(liveLineName(seg, { A: { suggested: 'Priya' } }, cands)).toBe('Priya Rao');
+    expect(liveLineName(seg, { A: { suggested: 'Zed' } }, cands)).toBe('Speaker A');
+    expect(liveLineName(seg, undefined, cands)).toBe('Speaker A');
+    expect(liveLineName({ speaker: 'you' }, undefined, cands)).toBe('You');
   });
 });

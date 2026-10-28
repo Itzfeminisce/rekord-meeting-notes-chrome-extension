@@ -126,6 +126,8 @@ export type Message =
   | { type: 'tab/granted'; tabId: number }               // background → side panel: the icon click granted this tab
   | { type: 'transcriber/config' }                       // offscreen → background only; reply: TranscriberConfig
   | { type: 'stream/state'; state: 'live' | 'backup' | 'off' } // realtime streaming: Deepgram live, Groq backup, or off
+  | { type: 'stream/token' }                            // offscreen → background; reply: TokenReply (lib/transcribe/stream.ts)
+  | { type: 'stream/get-state' }                        // panel → offscreen; reply: 'live' | 'backup' | 'off'
   | { type: 'app-audio/silent' }                         // desktop-app capture hears nothing
   | { type: 'app-audio/ended' };                         // desktop-app capture stopped
 

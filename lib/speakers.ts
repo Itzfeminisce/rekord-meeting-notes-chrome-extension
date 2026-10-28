@@ -174,7 +174,15 @@ export function runSpeakerStep(
   return run;
 }
 
-export { displayName } from './llm';
+import { displayName } from './llm';
+export { displayName };
+
+/** Live line name: "You", a saved name, else the invitee a suggested name matches (calendar event), else "Speaker A". */
+export function liveLineName(s: Pick<Segment, 'speaker' | 'speakerLabel'>, speakers: Meeting['speakers'], candidates: Invitee[]): string {
+  const base = displayName(s, speakers);
+  if (s.speaker === 'you' || !s.speakerLabel || speakers?.[s.speakerLabel]?.name?.trim()) return base;
+  return matchInvitee(speakers?.[s.speakerLabel]?.suggested, candidates)?.name ?? base;
+}
 
 export interface SpeakerStats { label: string; talkMs: number; lines: number; quote: Segment | undefined }
 
