@@ -28,6 +28,9 @@ describe('parseSummary', () => {
     expect(() => parseSummary('nope')).toThrow();
     expect(() => parseSummary('{}')).toThrow();
   });
+  it('accepts a summary where only some fields are empty', () => {
+    expect(parseSummary('{"overview":"","decisions":[],"actions":[],"questions":["q"]}').questions).toEqual(['q']);
+  });
 });
 
 describe('prompt', () => {
@@ -50,6 +53,17 @@ describe('summarize', () => {
     const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('https://api.groq.com/openai/v1/chat/completions');
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer gsk_test');
+  });
+  it('skips the LLM when there is nothing to summarize', async () => {
+    await closeDB();
+    globalThis.indexedDB = new IDBFactory();
+    await putMeeting({ id: 'e', title: 'Empty', startedAt: 0, status: 'processing', language: 'en' });
+    const f = vi.fn();
+    await summarize('e', f);
+    expect(f).not.toHaveBeenCalled();
+    const m = await getMeeting('e');
+    expect(m?.status).toBe('done');
+    expect(m?.summary).toMatchObject({ overview: '', decisions: [], actions: [], questions: [] });
   });
   it('still marks done and throws on failure', async () => {
     await expect(summarize('m', async () => reply('x', 500))).rejects.toThrow(/error/);

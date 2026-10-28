@@ -4,9 +4,13 @@ import { useRouter } from '../router';
 import { getMeeting, listNotes, listSegments, pendingChunks } from '@/lib/db';
 import { onMessage, send } from '@/lib/messages';
 import { summarize } from '@/lib/summarize';
-import { formatDuration } from '@/lib/time';
 
 type Phase = 'transcribing' | 'summarizing' | 'failed' | 'missing';
+
+function minutesText(ms: number): string {
+  const n = ms > 0 ? Math.max(1, Math.round(ms / 60000)) : 0;
+  return `${n} ${n === 1 ? 'minute' : 'minutes'}`;
+}
 
 function Step({ state, children, note }: { state: 'done' | 'active' | 'todo'; children: ReactNode; note?: string }) {
   return (
@@ -30,9 +34,12 @@ export default function Processing() {
   const [error, setError] = useState('');
   const [facts, setFacts] = useState<{ ms: number; notes: number } | undefined>(undefined);
   const started = useRef(false);
+  const failed = useRef(false);
 
-  const run = useCallback(async () => {
+  const run = useCallback(async (manual = false) => {
     if (!meetingId || started.current) return;
+    if (failed.current && !manual) return; // after a failure only Retry re-runs
+    failed.current = false;
     started.current = true;
     setError('');
     setPhase('summarizing');
@@ -41,6 +48,7 @@ export default function Processing() {
       replace('summary', { meetingId });
     } catch (e) {
       started.current = false;
+      failed.current = true;
       setError(e instanceof Error ? e.message : 'Something went wrong while writing the summary.');
       setPhase('failed');
     }
@@ -91,7 +99,7 @@ export default function Processing() {
             <p>This meeting is no longer on this computer.</p>
           ) : (
             <p>
-              {facts ? `${formatDuration(facts.ms)} of conversation and ${facts.notes} of your notes. ` : ''}
+              {facts ? `${minutesText(facts.ms)} of conversation and ${facts.notes} of your ${facts.notes === 1 ? 'note' : 'notes'}. ` : ''}
               This usually takes under a minute.
             </p>
           )}
@@ -107,9 +115,9 @@ export default function Processing() {
         )}
       </div>
       <div className="proc-foot">
-        {phase === 'failed' && <Button block onClick={() => void run()}>Retry</Button>}
+        {phase === 'failed' && <Button block onClick={() => void run(true)}>Retry</Button>}
         {waiting && (
-          <Button block variant="secondary" onClick={() => void run()}>Summarize what exists</Button>
+          <Button block variant="secondary" onClick={() => void run(true)}>Summarize what exists</Button>
         )}
         {phase === 'missing' ? (
           <Button block variant="secondary" onClick={() => replace('start')}>Back to home</Button>

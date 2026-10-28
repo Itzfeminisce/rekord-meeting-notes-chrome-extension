@@ -62,7 +62,7 @@ export function parseSummary(raw: string): Omit<Summary, 'generatedAt' | 'model'
     return [];
   });
   const overview = typeof o.overview === 'string' ? o.overview.trim() : '';
-  if (!overview && !actions.length && !strings(o.decisions).length) {
+  if (!overview && !actions.length && !strings(o.decisions).length && !strings(o.questions).length) {
     throw new SummarizeError('The summary came back empty.');
   }
   return { overview, decisions: strings(o.decisions), actions, questions: strings(o.questions) };
@@ -81,6 +81,12 @@ export async function summarize(meetingId: string, fetchFn: FetchLike = (u, i) =
       getSettings(), loadKeys(), listSegments(meetingId), listNotes(meetingId), listMarkers(meetingId),
     ]);
     const { provider, model } = settings.summary;
+    if (!segments.some((s) => s.text.trim()) && !notes.length) {
+      done.summary = { overview: '', decisions: [], actions: [], questions: [], generatedAt: Date.now(), model };
+      await putMeeting(done);
+      return done;
+    }
+
     const cfg = PROVIDERS[provider];
     const baseUrl = (settings.summary.baseUrl || cfg.baseUrl).replace(/\/+$/, '');
     const key = cfg.keyName ? keys[cfg.keyName] : undefined;
