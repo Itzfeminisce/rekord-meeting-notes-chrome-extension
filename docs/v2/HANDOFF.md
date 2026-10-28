@@ -24,6 +24,7 @@
 - [x] T6 Name speakers screen, display names, Settings switches — sonnet — specs/T6.md (after T5)
 - [x] T7 Connect never blocks on a bad key — opus — specs/T7.md
 - [x] T8 Frame parity: build what the original frames show — sonnet — specs/T8.md
+- [ ] T9 Tab capture works after clicking the Rekord icon — opus — specs/T9.md
 
 ## Log
 - T1 done: types, DB v2 (asks/recordings/recordingMeta), settings v2, lib/llm chat()+transcriptLines; 102 tests pass
