@@ -28,7 +28,7 @@
 - [x] T6 Start + Live screens: transcript, notes, markers — sonnet — specs/T6.md
 - [x] T7 Wrapping up + Summary: LLM summary — sonnet — specs/T7.md
 - [x] T8 Library + Transcript screens — sonnet — specs/T8.md
-- [ ] T9 Export: Markdown, PDF, email draft — sonnet — specs/T9.md
+- [x] T9 Export: Markdown, PDF, email draft — sonnet — specs/T9.md
 - [x] T10 Connection-lost state — sonnet — specs/T10.md
 
 ## Log
@@ -41,3 +41,4 @@
 - T7 done: Processing (drain/pending, summarize-anyway, retry) + Summary; lib/summarize chat/completions; 7 tests.
 - T8 done: Library (groups, search title+transcript, filter, delete confirm) + Transcript (find, copy, notes/markers); lib/library +6 tests.
 - T10 done: useConnection + Live ConnectionBanner (retry→catch-up) + Error connection-lost frame; 4 tests.
+- T9 done: Export sheet (copy, .md download, email draft), print.html PDF page, lib/export; 6 tests.
