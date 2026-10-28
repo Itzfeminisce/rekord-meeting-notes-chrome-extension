@@ -71,6 +71,8 @@ export default defineBackground(() => {
       ? browser.sidePanel.open({ tabId: tab.id })
       : browser.sidePanel.open({ windowId: tab.windowId });
     opening.catch((error) => console.error('Rekord: could not open the side panel', error));
+    // The click grants this tab (activeTab) but fires no tab event: tell an already-open panel to re-check.
+    if (tab.id != null) void send({ type: 'tab/granted', tabId: tab.id });
   });
 
   // After a browser restart, finish transcribing chunks left pending by an earlier meeting.

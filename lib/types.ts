@@ -101,6 +101,7 @@ export type Message =
   | { type: 'transcription/drained'; meetingId: string } // queue empty for that meeting
   | { type: 'transcription/catch-up' }                   // ask the transcriber to retry pending chunks
   | { type: 'speakers/progress'; meetingId: string; step: Meeting['speakerStep'] }
+  | { type: 'tab/granted'; tabId: number }               // background → side panel: the icon click granted this tab
   | { type: 'transcriber/config' };                      // offscreen → background only; reply: TranscriberConfig
 
 /** Reply to `transcriber/config` (the offscreen document has no storage API). Keys are never persisted by the caller. */
