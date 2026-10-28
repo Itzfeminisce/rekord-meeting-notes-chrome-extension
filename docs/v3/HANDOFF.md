@@ -38,3 +38,7 @@
 - T7 done: Share (Docs save/update, view-only link). Added pre-save 'Google Docs' row (not in frame). Blocked: OAuth client.
 - T8 done: Notion connect/page/share. Own wording for Notion saved/saving/error. Blocked: live test (NOTION_TOKEN).
 - T4 done: Deepgram stream (grant + ['bearer',jwt]) w/ Groq chunk backup, Live status. Blocked: live E2E (DG key 401).
+- Gate 1 parity: 4 reviewers → 3 fixes (94adbc9); re-review 0 open. Accepted: Penv hint w/ flag off; v1/v2 Library chips/pills kept.
+- Gate 2 flows: 72 FRAMES.md rows, all present except deferred T11 (Penv Cloud approval, not-connected, disconnected, revoke).
+- Gate 3: compile clean, 289/289 tests, build ok. E2E: OpenAI transcribe + Ask all pass; penv Groq/Deepgram keys rejected.
+- Blocked on owner: T4 live (Deepgram key), T6/T7 (Google OAuth client), T8 live (NOTION_TOKEN), T10 upload (CWS account, icons), T11.
