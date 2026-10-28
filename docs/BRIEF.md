@@ -3,7 +3,7 @@
 Personal AI meeting note taker. A Chrome extension (side panel) for Windows first; an iPhone app later.
 
 ## Design
-Canvas with 13 frames: https://claude.ai/artifact/Pwphr5xv9NLL2jd2c2HeSe
+Canvas with 15 frames (13 v1, 2 v2): https://claude.ai/artifact/Pwphr5xv9NLL2jd2c2HeSe
 Frame sources, one screen per file (`Main` = Welcome): `design/frames/*.dc.html`. Open only the frame you are building. The canvas is the source of truth; copy changes from it into the frames.
 Look: Geist / Geist Mono, grey ground `#F6F6F7`, ink `#111114`, accent indigo `#4F46E5`, recording red only on the record dot. Copy is the product speaking to the user.
 
@@ -15,15 +15,19 @@ Look: Geist / Geist Mono, grey ground `#F6F6F7`, ink `#111114`, accent indigo `#
 
 ## v1 scope
 In: onboarding (Welcome, Mic access, Connect AI), Start, Live transcript, notes and moment markers (Decision, Action, Question, Bookmark), Wrapping up, Summary, Library, Transcript, Export (Markdown, PDF, email draft), Settings, Connection-lost state.
-Next: Ask mid-meeting, live action-item suggestions, speaker names.
-Later: desktop-app audio (Windows system audio via `getDisplayMedia`), Expo iPhone app, Chrome Web Store (unlisted).
+
+## v2 scope (field test v1 and v2 together)
+Ask mid-meeting, live action-item suggestions, speaker names (Deepgram diarization after the meeting). Specs: `docs/v2/`.
+
+## Later
+Desktop-app audio (Windows system audio via `getDisplayMedia`), Expo iPhone app, Chrome Web Store (unlisted).
 
 ## Transcription
 - Groq free tier, `whisper-large-v3-turbo`. Mic and tab are separate streams.
 - About 10 s chunks (minimum billing is 10 s; 20 requests/min), skip silent chunks, so the transcript runs about 10 s behind.
 - Free limits: about 7,200 audio s/hour and 28,800/day. When a limit is hit, keep recording and catch up later.
 - Default language English, auto-detect as a setting.
-- Speakers: v1 labels "You" and "Others". Later, a pass after the meeting splits Others into Speaker A/B (Deepgram or AssemblyAI), the LLM suggests names, and the user confirms.
+- Speakers: live labels stay "You" and "Others". After the meeting, Deepgram (`nova-3`, `diarize=true`, key `DEEPGRAM_API_KEY`) splits Others into Speaker A/B from one continuous tab recording, the LLM suggests names, and the user confirms.
 
 ## Keys (penv)
 - Settings key source: "penv cloud" or "Paste here".
