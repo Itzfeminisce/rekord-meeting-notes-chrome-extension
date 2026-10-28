@@ -18,6 +18,8 @@ import Export from './screens/Export';
 import Settings from './screens/Settings';
 import ErrorScreen from './screens/Error';
 import WhatsNew from './screens/WhatsNew';
+import Connections from './screens/Connections';
+import GoogleConnect from './screens/GoogleConnect';
 import { shouldShowWhatsNew } from '@/lib/whatsNew';
 
 export const SCREENS: Record<ScreenName, ComponentType> = {
@@ -37,8 +39,8 @@ export const SCREENS: Record<ScreenName, ComponentType> = {
   settings: Settings,
   error: ErrorScreen,
   whatsnew: WhatsNew,
-  // Placeholder until the Connections screen (T6) lands; it replaces this entry.
-  connections: Start,
+  connections: Connections,
+  googleConnect: GoogleConnect,
 };
 
 /** First screen: onboarding until the user has finished it, then Start. */

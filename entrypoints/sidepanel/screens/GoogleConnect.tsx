@@ -3,8 +3,8 @@ import { connectGoogle, GoogleError, type GoogleDeps } from '@/lib/google';
 import { useRouter, type Router, type ScreenName } from '../router';
 
 /** Route names this task adds (router.tsx / App.tsx entries are wired by the orchestrator). */
-export const GOOGLE_CONNECT = 'googleConnect' as ScreenName;
-export const CONNECTIONS = 'connections' as ScreenName;
+export const GOOGLE_CONNECT: ScreenName = 'googleConnect';
+export const CONNECTIONS: ScreenName = 'connections';
 
 let returnTo: 'connections' | 'start' = 'connections';
 

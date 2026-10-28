@@ -30,6 +30,7 @@ export default defineConfig({
         'wss://api.deepgram.com/*',
         'https://www.googleapis.com/*',
         'https://docs.googleapis.com/*',
+        'https://oauth2.googleapis.com/*',
         'https://api.notion.com/*',
         'http://localhost:11434/*',
       ],
