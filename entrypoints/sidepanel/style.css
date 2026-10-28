@@ -104,3 +104,26 @@ a:hover { color: var(--accent-hover); }
 .empty { margin: auto 24px; padding: 32px 0; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
 .empty-title { margin: 0; font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
 .empty-body { margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); max-width: 300px; }
+
+/* Permissions (T4) */
+.perm-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 0; }
+.perm-back { width: 36px; height: 36px; margin-left: -8px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); display: grid; place-items: center; cursor: pointer; }
+.perm-back:hover { background: #ececef; }
+.perm-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.perm-progress { margin: 12px 24px 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.perm-progress span { height: 4px; border-radius: 2px; background: #dcdce0; }
+.perm-progress span.on { background: var(--ink); }
+.perm-intro { padding: 32px 24px 0; display: flex; flex-direction: column; gap: 10px; }
+.perm-intro h1 { margin: 0; font-size: 26px; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em; }
+.perm-intro p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--muted); }
+.perm-sources { list-style: none; margin: 24px 24px 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.perm-card { display: flex; gap: 14px; align-items: flex-start; padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(16, 16, 20, 0.04); }
+.perm-icon { width: 40px; height: 40px; border-radius: 12px; background: #eef0ff; display: grid; place-items: center; flex-shrink: 0; }
+.perm-text { flex-grow: 1; display: flex; flex-direction: column; gap: 4px; }
+.perm-title { font-size: 15px; font-weight: 600; }
+.perm-desc { font-size: 13px; line-height: 1.45; color: var(--muted); }
+.perm-pill { padding: 4px 8px; border-radius: 999px; background: #f1f1f3; color: var(--muted); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.perm-pill-needed { background: #fff4e5; color: #8a4b00; }
+.perm-note { margin: 16px 24px 0; padding: 14px 16px; border-radius: 14px; background: #ededf0; display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.5; color: #44464d; }
+.perm-note svg { flex-shrink: 0; margin-top: 2px; }
+.perm-error { margin: 12px 24px 0; padding: 12px 14px; border-radius: 12px; background: #fdecec; color: #a12327; font-size: 13px; line-height: 1.45; }
