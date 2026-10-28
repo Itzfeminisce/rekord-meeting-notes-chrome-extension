@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrandMark, Button, Spinner } from '../components';
 import { useRouter } from '../router';
 import type { RecordingReply } from '../../background';
-import { ensureKeys, reconnect } from '@/lib/connect';
+import { ensureKeys, reconnect, transcriptionKeyRejected } from '@/lib/connect';
 import { getMeeting, listMeetings, putMeeting } from '@/lib/db';
 import { dateTile, hostOf } from '@/lib/live';
 import { send } from '@/lib/messages';
@@ -28,6 +28,7 @@ export default function Start() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [reconnecting, setReconnecting] = useState(false);
+  const [keyRejected, setKeyRejected] = useState(false);
   const [stateChecked, setStateChecked] = useState(false);
 
   useEffect(() => {
@@ -49,6 +50,7 @@ export default function Start() {
       })
       .catch(() => setTab(null));
     ensureKeys().then(setKeys, () => setKeys('reconnect'));
+    transcriptionKeyRejected().then((r) => alive && setKeyRejected(r), () => {});
     listMeetings()
       .then((all) => setRecent(all.filter((m) => m.status !== 'recording').sort((a, b) => b.startedAt - a.startedAt).slice(0, 3)))
       .catch(() => setRecent([]));
@@ -133,6 +135,12 @@ export default function Start() {
           <div className="start-warn" role="alert">
             <span>Reconnect to your AI service to start recording.</span>
             <Button variant="secondary" onClick={tryReconnect} disabled={reconnecting}>{reconnecting ? 'Reconnecting…' : 'Reconnect'}</Button>
+          </div>
+        )}
+        {keys === 'ready' && keyRejected && (
+          <div className="start-warn" role="alert">
+            <span>Your transcription key was rejected. Fix it in Settings.</span>
+            <Button variant="secondary" onClick={() => navigate('settings')}>Settings</Button>
           </div>
         )}
         {error && <p className="start-warn" role="alert">{error}</p>}
