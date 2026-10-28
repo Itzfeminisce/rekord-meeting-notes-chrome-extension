@@ -23,7 +23,7 @@
 - [x] T6 Google connect and Calendar — opus — specs/T6.md (after T1)
 - [ ] T7 Share to Google Docs and view-only link — sonnet — specs/T7.md (after T6)
 - [ ] T8 Notion connect, page choice, share — sonnet — specs/T8.md (after T1)
-- [ ] T9 Name speakers from the invite — sonnet — specs/T9.md (after T6)
+- [x] T9 Name speakers from the invite — sonnet — specs/T9.md (after T6)
 - [x] T10 What's new and Chrome Web Store packaging — sonnet — specs/T10.md (after T1)
 - [ ] T11 Connect Penv Cloud with one click — opus — specs/T11.md (after T2 and Penv Cloud app connections)
 
@@ -34,3 +34,4 @@
 - T6 done: Google connect, Connections, Calendar card + Coming up. Blocked: real sign-in needs owner's OAuth client.
 - T2 done: Setup, SetupCustom, HowItWorks, SettingsAI, PenvConnect; Connect button behind WXT_PENV_APP_CONNECT.
 - T3 done: In an app capture (getDisplayMedia→WebRTC→offscreen), NoSound; sharing-stopped banner pending Live placement (T4).
+- T9 done: invite matching + V3SpeakersInvite. Open: live names on V3Live (after T4).
