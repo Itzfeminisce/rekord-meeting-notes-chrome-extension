@@ -1,3 +1,4 @@
+import { deleteRecording } from '../db';
 import type { RecordingMeta, RecordingPart, TranscriberConfig } from '../types';
 
 /** Each `dataavailable` slice becomes one RecordingPart; parts concatenate in seq order into one file. */
@@ -21,6 +22,8 @@ export interface ContinuousRecordingOptions {
   createRecorder: (onData: (blob: Blob) => void) => SliceRecorder;
   savePart: (part: RecordingPart) => Promise<void>;
   saveMeta: (meta: RecordingMeta) => Promise<void>;
+  /** Removes every saved part and the metadata of a meeting; defaults to db `deleteRecording`. */
+  deleteRecording?: (meetingId: string) => Promise<void>;
   now?: () => number;
   newId?: () => string;
   partMs?: number;
@@ -44,8 +47,8 @@ export function shouldRecord(config: TranscriberConfig | undefined, hasTabAudio:
  * error is logged and recording continues; stop() never throws.
  */
 export class ContinuousRecording {
-  private readonly o: Required<Omit<ContinuousRecordingOptions, 'now' | 'newId' | 'partMs'>> & {
-    now: () => number; newId: () => string; partMs: number;
+  private readonly o: Required<Omit<ContinuousRecordingOptions, 'now' | 'newId' | 'partMs' | 'deleteRecording'>> & {
+    now: () => number; newId: () => string; partMs: number; deleteRecording: (meetingId: string) => Promise<void>;
   };
   private recorder: SliceRecorder | null = null;
   private seq = 0;
@@ -53,6 +56,7 @@ export class ContinuousRecording {
   private meta: RecordingMeta;
   private pausedAt: number | null = null;
   private stopped = false;
+  private writeFailed = false;
 
   constructor(opts: ContinuousRecordingOptions) {
     this.o = {
@@ -60,6 +64,7 @@ export class ContinuousRecording {
       now: opts.now ?? Date.now,
       newId: opts.newId ?? (() => crypto.randomUUID()),
       partMs: opts.partMs ?? PART_MS,
+      deleteRecording: opts.deleteRecording ?? deleteRecording,
     };
     this.meta = { meetingId: opts.meetingId, pauses: [] };
   }
@@ -89,7 +94,7 @@ export class ContinuousRecording {
 
   /** Flushes the final part and waits for every write. Resolves true when at least one part was saved. */
   async stop(): Promise<boolean> {
-    if (this.stopped) { await this.writes; return this.seq > 0; }
+    if (this.stopped) { await this.writes; return this.ok(); }
     this.stopped = true;
     if (this.pausedAt !== null) this.closePause();
     try {
@@ -98,6 +103,15 @@ export class ContinuousRecording {
       console.error('Rekord: continuous recording failed to stop', error);
     }
     await this.writes;
+    return this.ok();
+  }
+
+  /** True when parts were saved with no gap; otherwise drops what was saved so no speaker step runs on a broken file. */
+  private async ok(): Promise<boolean> {
+    if (this.writeFailed) {
+      try { await this.o.deleteRecording(this.o.meetingId); } catch (error) { console.error('Rekord: could not delete failed recording', error); }
+      return false;
+    }
     return this.seq > 0;
   }
 
@@ -111,7 +125,7 @@ export class ContinuousRecording {
   }
 
   private onData(blob: Blob): void {
-    if (blob.size === 0) return;
+    if (blob.size === 0 || this.writeFailed) return;
     const part: RecordingPart = {
       id: this.o.newId(),
       meetingId: this.o.meetingId,
@@ -119,7 +133,10 @@ export class ContinuousRecording {
       blob,
       mimeType: this.recorder?.mimeType || blob.type,
     };
-    this.queue(() => this.o.savePart(part), 'part');
+    this.queue(async () => {
+      if (this.writeFailed) return;
+      try { await this.o.savePart(part); } catch (error) { this.writeFailed = true; throw error; }
+    }, 'part');
   }
 
   private writeMeta(): void {

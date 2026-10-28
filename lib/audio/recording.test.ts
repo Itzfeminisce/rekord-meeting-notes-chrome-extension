@@ -8,6 +8,7 @@ function setup(opts: { failPart?: boolean } = {}) {
   const parts: RecordingPart[] = [];
   const metas: RecordingMeta[] = [];
   const calls: string[] = [];
+  const deleted: string[] = [];
   let emit: (b: Blob) => void = () => undefined;
   const rec = new ContinuousRecording({
     meetingId: 'm1', startedAt: 1_000,
@@ -25,8 +26,9 @@ function setup(opts: { failPart?: boolean } = {}) {
     },
     savePart: async (p) => { if (opts.failPart && p.seq === 0) throw new Error('disk'); parts.push(p); },
     saveMeta: async (m) => { metas.push(m); },
+    deleteRecording: async (id) => { deleted.push(id); },
   });
-  return { rec, parts, metas, calls, emit: (s: string) => emit(new Blob([s])), at: (ms: number) => (t = 1_000 + ms) };
+  return { rec, parts, metas, calls, deleted, emit: (s: string) => emit(new Blob([s])), at: (ms: number) => (t = 1_000 + ms) };
 }
 
 const settings = (speakerNames: boolean) =>
@@ -74,12 +76,13 @@ describe('ContinuousRecording', () => {
     expect(metas.at(-1)).toEqual({ meetingId: 'm1', pauses: [{ atMs: 10_000, durationMs: 5_000 }, { atMs: 20_000, durationMs: 3_000 }] });
   });
 
-  it('keeps going when a part fails to save, and reports nothing recorded without parts', async () => {
+  it('drops the recording when a part fails to save, and reports nothing recorded without parts', async () => {
     const a = setup({ failPart: true });
     a.rec.start();
     a.emit('x');
-    expect(await a.rec.stop()).toBe(true);
-    expect(a.parts.map((p) => p.seq)).toEqual([1]);
+    expect(await a.rec.stop()).toBe(false);
+    expect(a.parts).toEqual([]);
+    expect(a.deleted).toEqual(['m1']);
 
     const b = new ContinuousRecording({
       meetingId: 'm2', startedAt: 0, savePart: async () => undefined, saveMeta: async () => undefined,
