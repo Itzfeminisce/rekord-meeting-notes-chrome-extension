@@ -1,8 +1,8 @@
-// Writes public/icon/{16,32,48,128}.png: the TopBar brand mark (white sound bars) on a rounded accent square. No dependencies.
+// Writes public/icon/{16,32,48,128}.png: the TopBar brand mark (white sound bars) on a rounded ink square. No dependencies.
 import { deflateSync } from 'node:zlib';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
-const ACCENT = [0x4f, 0x46, 0xe5];
+const INK = [0x11, 0x11, 0x14];
 // The mark's bars in its 24-unit viewBox: [x, y1, y2], stroke 2.2 with round caps.
 const BARS = [[5, 9, 15], [9, 6, 18], [13, 9, 15], [17, 11, 13]];
 const STROKE = 2.2;
@@ -60,7 +60,7 @@ const png = (size) => {
       const a = coverage(x, y, square);
       const w = coverage(x, y, bars);
       const o = 1 + x * 4;
-      for (let i = 0; i < 3; i++) row[o + i] = Math.round(ACCENT[i] * (1 - w) + 255 * w);
+      for (let i = 0; i < 3; i++) row[o + i] = Math.round(INK[i] * (1 - w) + 255 * w);
       row[o + 3] = Math.round(a * 255);
     }
     rows.push(row);

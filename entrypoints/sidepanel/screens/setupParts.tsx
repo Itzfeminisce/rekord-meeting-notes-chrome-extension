@@ -180,8 +180,8 @@ export interface KeyState {
   status: Record<string, RowStatus | undefined>;
   ready: boolean;
   reload: () => Promise<void>;
-  /** Saves a key for a service, checks it, and updates the status. */
-  add: (name: KeyName, value: string) => Promise<RowStatus>;
+  /** Saves a key for a service, checks it, and updates the status. `ask` false skips the host prompt (no gesture, e.g. blur). */
+  add: (name: KeyName, value: string, ask?: boolean) => Promise<RowStatus>;
 }
 
 /** Keys in memory and their last check. Checks any key that has not been checked yet. Never holds a value. */
@@ -214,13 +214,13 @@ export function useKeyState(): KeyState {
     void reload();
   }, [reload]);
 
-  const add = useCallback(async (name: KeyName, value: string): Promise<RowStatus> => {
+  const add = useCallback(async (name: KeyName, value: string, ask = true): Promise<RowStatus> => {
     setLoaded((l) => (l.includes(name) ? l : [...l, name]));
     setStatus((s) => ({ ...s, [name]: 'checking' }));
     let result: RowStatus;
     try {
       // Pasting or pressing Enter is the gesture Chrome wants; ask before any other await.
-      await requestHosts(hostsForKeys([name]));
+      if (ask) await requestHosts(hostsForKeys([name]));
       result = await addKey(name, value);
     } catch {
       result = 'unreachable';

@@ -74,7 +74,7 @@ export default function Settings() {
 
   const header = (
     <header className="set-head">
-      <button type="button" className="perm-back" aria-label="Back to Settings" onClick={() => (canGoBack ? back() : replace('settings'))}>
+      <button type="button" className="perm-back" aria-label="Back to settings" onClick={() => (canGoBack ? back() : replace('settings'))}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M15 6l-6 6 6 6" />
         </svg>
