@@ -92,15 +92,18 @@ export async function createPkce(): Promise<{ verifier: string; challenge: strin
   return { verifier, challenge: await pkceChallenge(verifier) };
 }
 
+/** Key names Penv Cloud accepts on /connect (at most 100). */
+const KEY_NAME = /^[A-Za-z0-9_][A-Za-z0-9_./-]{0,254}$/;
+
 export function buildConnectUrl(p: { redirectUri: string; state: string; challenge: string; keys: string[] }): string {
+  const keys = [...new Set(p.keys)].filter((k) => KEY_NAME.test(k)).slice(0, 100);
   const q = new URLSearchParams({
-    response_type: 'code',
     client_id: PENV_APP_CLIENT_ID,
     redirect_uri: p.redirectUri,
     code_challenge: p.challenge,
     code_challenge_method: 'S256',
     state: p.state,
-    keys: p.keys.join(','),
+    keys: keys.join(','),
   });
   return `${PENV_CONNECT_URL}?${q.toString()}`;
 }
@@ -216,6 +219,9 @@ async function postJson(
       throw new PenvError('http', 'penv could not be reached.');
     }
     const data = ((await res.json().catch(() => null)) ?? {}) as Record<string, unknown>;
+    // Rekord's registration (client_id or redirect) is refused: a setup problem, not a lost connection.
+    if (data.error === 'invalid_client' || data.error === 'invalid_redirect_uri') throw new PenvAppError('not-connected', 'Rekord is not set up on Penv Cloud.');
+    if (data.error === 'rate_limited' || res.status === 429) throw new PenvError('http', 'penv is busy; try again shortly.', 429);
     if (data.error === 'invalid_grant' || res.status === 401) throw new PenvAppError('disconnected', 'Penv Cloud no longer accepts this connection.');
     if (!res.ok) throw new PenvError('http', `penv returned HTTP ${res.status}.`, res.status);
     return data;
@@ -226,7 +232,7 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 
 function readConnection(d: Record<string, unknown>, fallbackKeys: string[]): PenvAppConnection | null {
   const c = (d.connection && typeof d.connection === 'object' ? d.connection : d) as Record<string, unknown>;
-  const org = str(c.org), project = str(c.project), env = str(c.env);
+  const org = str(c.org), project = str(c.project), env = str(c.environment) || str(c.env);
   if (!org || !project || !env) return null;
   const keys = Array.isArray(c.keys) ? c.keys.filter((k): k is string => typeof k === 'string') : fallbackKeys;
   return { connectionId: str(c.id) || str(c.connection_id) || str(c.connectionId), org, project, env, keys };
@@ -266,7 +272,7 @@ export async function connectPenvApp(opts: {
   try {
     data = await postJson(
       PENV_APP_TOKEN_URL,
-      { grant_type: 'authorization_code', code, code_verifier: verifier, client_id: PENV_APP_CLIENT_ID, redirect_uri: redirect },
+      { client_id: PENV_APP_CLIENT_ID, code, code_verifier: verifier, redirect_uri: redirect },
       fetchImpl,
       undefined,
       opts.timeoutMs,
@@ -276,7 +282,7 @@ export async function connectPenvApp(opts: {
     if (err instanceof PenvAppError && err.code === 'disconnected') throw new PenvAppError('not-connected', 'The code was not accepted.');
     throw err;
   }
-  const grant = str(data.grant) || str(data.refresh_token);
+  const grant = str(data.grant);
   const conn = readConnection(data, opts.keys);
   if (!grant.startsWith('pca_') || !conn) throw new PenvError('bad-response', 'penv sent a response Rekord does not understand.');
   bumpGrantEpoch(); // loads still running with the previous grant must not overwrite this one
@@ -345,8 +351,7 @@ async function revokeGrant(grant: string, fetchImpl: typeof fetch, timeoutMs = R
   try {
     const res = await fetchImpl(PENV_REVOKE_URL, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', Authorization: `Bearer ${grant}` },
-      body: JSON.stringify({ client_id: PENV_APP_CLIENT_ID }),
+      headers: { Authorization: `Bearer ${grant}` }, // no body
       credentials: 'omit',
       signal: ctrl.signal,
     });
@@ -366,7 +371,7 @@ async function loadPenvAppKeysOnce(target: PenvTarget, fetchImpl: typeof fetch, 
   let data: Record<string, unknown>;
   for (let retried = false; ; retried = true) {
     try {
-      data = await postJson(PENV_APP_URL, { client_id: PENV_APP_CLIENT_ID }, fetchImpl, grant, timeoutMs);
+      data = await postJson(PENV_APP_URL, { grant }, fetchImpl, undefined, timeoutMs); // grant in the body, no bearer
       break;
     } catch (err) {
       if (err instanceof PenvAppError && err.code === 'disconnected' && at.load === loadEpoch) {
@@ -384,8 +389,8 @@ async function loadPenvAppKeysOnce(target: PenvTarget, fetchImpl: typeof fetch, 
       throw err;
     }
   }
-  const token = str(data.token) || str(data.access_token);
-  const rotated = str(data.grant) || str(data.refresh_token);
+  const token = str(data.credential);
+  const rotated = str(data.grant);
   const rotatedOk = rotated.startsWith('pca_');
   // The used grant is spent now. Keep the rotated one unless the grant was replaced or forgotten meanwhile, in
   // which case revoke it. Check and write share this tick.
@@ -404,7 +409,7 @@ async function loadPenvAppKeysOnce(target: PenvTarget, fetchImpl: typeof fetch, 
     throw err;
   }
   if (!token.startsWith('pck_')) throw new PenvError('bad-response', 'penv sent a response Rekord does not understand.');
-  const keys = await withTimeout(fetchImpl, timeoutMs, (f) => fetchPenvKeys(token, target, f));
+  const keys = await withTimeout(fetchImpl, timeoutMs, (f) => fetchPenvKeys(token, target, f, { skipRedacted: true }));
   if (at.load !== loadEpoch) return null;
   await saveKeys(keys); // issued in the same tick as the check
   return Object.keys(keys).sort();
