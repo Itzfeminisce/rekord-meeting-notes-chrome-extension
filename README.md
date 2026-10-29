@@ -4,7 +4,7 @@ Rekord is a Chrome side-panel extension that records your meetings, transcribes 
 
 ## What it does
 
-- Records a meeting in a Chrome tab or in a desktop app such as Zoom or Teams. Your microphone is used when no meeting audio is shared.
+- Records a meeting in a Chrome tab or in a desktop app such as Zoom or Teams, with your microphone if you choose.
 - Shows a live transcript while people talk. With a Deepgram key it appears as people speak and labels each voice.
 - Lets you type notes and add markers during the meeting.
 - Writes a summary and action items.
@@ -38,7 +38,7 @@ To work on Rekord, run `npm run dev` instead of `npm run build`.
    - **Choose my own**: pick the service for transcription and for the assistant.
 3. Add your keys in one of two ways:
    - Paste a key. Rekord recognises Groq, OpenAI, Anthropic, OpenRouter, Deepgram and Notion keys.
-   - Connect [Penv Cloud](https://penv.cloud) with one click, or choose **Use a token instead**.
+   - Connect [Penv Cloud](https://penv.cloud). In a build from source, choose **Use a token instead** and paste a Penv Cloud token. One-click connect works only in the published extension.
 
 You can get a free Groq key at https://console.groq.com/keys.
 
