@@ -35,41 +35,6 @@ export type LaunchWebAuthFlow = (url: string) => Promise<string | undefined>;
 export const defaultLaunch: LaunchWebAuthFlow = (url) => browser.identity.launchWebAuthFlow({ url, interactive: true });
 export const redirectUri = (): string => browser.identity.getRedirectURL('penv');
 
-// ---- Availability ----
-
-let live = false;
-
-/**
- * True once Penv Cloud app connections are live. A POST `{}` to the token route is live on a 2xx or a 4xx other
- * than 403/404 (e.g. 400 invalid_request); 403, 404, 5xx and network failures are not live. True is kept for the session.
- */
-export async function penvAppAvailable(fetchImpl: typeof fetch = fetch, timeoutMs = 2500): Promise<boolean> {
-  if (live) return true;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const res = await fetchImpl(PENV_APP_TOKEN_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: '{}',
-      credentials: 'omit',
-      signal: ctrl.signal,
-    });
-    // Live: 2xx, or a 4xx other than 403/404 (400/401/405/422 mean the route exists). 403, 404, 5xx: not live.
-    live = (res.status >= 200 && res.status < 300) || (res.status >= 400 && res.status < 500 && res.status !== 403 && res.status !== 404);
-  } catch {
-    live = false;
-  } finally {
-    clearTimeout(timer);
-  }
-  return live;
-}
-
-/** Test hook: forget a cached "live". */
-export function resetPenvAppAvailable(): void {
-  live = false;
-}
-
 // ---- PKCE ----
 
 function base64url(bytes: Uint8Array): string {
