@@ -4,6 +4,7 @@
  */
 import { clearKeys, loadKeys, mergeKeys, saveKeys } from './keys';
 import { fetchPenvKeys, PenvError, type PenvTarget } from './penv';
+import { GRANT_KEY, loadPenvAppKeys } from './penvApp';
 import { getSettings, PROVIDERS } from './settings';
 import type { ProviderId, Settings, TranscriptionProvider } from './types';
 
@@ -30,7 +31,7 @@ export async function loadTokenTarget(): Promise<PenvTarget | undefined> {
 
 /** Forgets the token, its environment and every key held in memory. */
 export async function forgetAll(): Promise<void> {
-  await browser.storage.session.remove([TOKEN_KEY, TARGET_KEY, STATUS_KEY]);
+  await browser.storage.session.remove([TOKEN_KEY, TARGET_KEY, STATUS_KEY, GRANT_KEY]);
   await clearKeys();
 }
 
@@ -305,6 +306,8 @@ export async function ensureKeys(fetchImpl: typeof fetch = fetch): Promise<'read
   const keys = await loadKeys();
   if (Object.keys(keys).length > 0) return 'ready';
   try {
+    const s = await getSettings();
+    if (s.keySource === 'penv-app' && s.penvApp) return (await loadPenvAppKeys(s.penvApp, fetchImpl)) ? 'ready' : 'reconnect';
     return (await reconnect(fetchImpl)) ? 'ready' : 'reconnect';
   } catch {
     return 'reconnect';

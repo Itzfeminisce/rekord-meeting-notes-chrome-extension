@@ -25,7 +25,7 @@
 - [x] T8 Notion connect, page choice, share — sonnet — specs/T8.md (after T1)
 - [x] T9 Name speakers from the invite — sonnet — specs/T9.md (after T6)
 - [x] T10 What's new and Chrome Web Store packaging — sonnet — specs/T10.md (after T1)
-- [ ] T11 Connect Penv Cloud with one click — opus — specs/T11.md (after T2 and Penv Cloud app connections)
+- [x] T11 Connect Penv Cloud with one click — opus — specs/T11.md (after T2 and Penv Cloud app connections)
 
 ## Log
 - T1 done: v3 types, settings merge, keyDetect, manifest identity/oauth2/key; deepgram chunk fallback to Groq.
@@ -42,3 +42,4 @@
 - Gate 2 flows: 72 FRAMES.md rows, all present except deferred T11 (Penv Cloud approval, not-connected, disconnected, revoke).
 - Gate 3: compile clean, 289/289 tests, build ok. E2E: OpenAI transcribe + Ask all pass; penv Groq/Deepgram keys rejected.
 - Blocked on owner: T4 live (Deepgram key), T6/T7 (Google OAuth client), T8 live (NOTION_TOKEN), T10 upload (CWS account, icons), T11.
+- T11 done: one-click Penv Cloud (PKCE), live-detected (no flag); epoch-guarded grant rotation. Server shapes assumed.

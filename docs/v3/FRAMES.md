@@ -15,7 +15,7 @@ Notion "Allow more pages" → Notion help on adding connections; provider "creat
 
 ## V3PenvConnect.dc.html / V3PenvConnected.dc.html (T2 layout, T11 behaviour)
 - Shown when "Use Penv Cloud" is chosen in V3Setup. Chosen-setup row + Change → V3Setup.
-- "Connect Penv Cloud" → Penv Cloud approval window → V3PenvConnected (T11; button hidden until `WXT_PENV_APP_CONNECT`).
+- "Connect Penv Cloud" → Penv Cloud approval window → V3PenvConnected (T11; shown only when a runtime probe of `POST /api/v1/auth/app/token` isn't 404).
 - "See how it works" → `https://penv.cloud`. "Use a token instead" → environment + token fields (v1 penv path).
 - "Start using Rekord" disabled until a key source works, with its hint line.
 - Connected: account path, one row per shared key with its job and status, "Change which keys" → reconnect.
