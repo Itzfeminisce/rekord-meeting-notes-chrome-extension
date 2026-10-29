@@ -23,7 +23,8 @@ export class PenvError extends Error {
 
 interface PenvKey {
   name: string;
-  value: string;
+  value?: string;
+  redacted?: boolean;
 }
 
 /** Fetches every key in the environment as a name → value map. Never logs values. */
@@ -31,6 +32,7 @@ export async function fetchPenvKeys(
   token: string,
   target: PenvTarget,
   fetchImpl: typeof fetch = fetch,
+  opts: { skipRedacted?: boolean } = {},
 ): Promise<Record<string, string>> {
   const path = [target.org, target.project, target.env].map(encodeURIComponent).join('/');
   const response = await fetchImpl(`${PENV_BASE_URL}/envs/${path}`, {
@@ -53,18 +55,20 @@ export async function fetchPenvKeys(
     throw new PenvError('bad-response', 'penv sent a response Rekord does not understand.');
   }
 
-  const redacted = keys.filter((key) => key.value === 'redacted').map((key) => key.name);
-  if (redacted.length > 0) {
+  const isRedacted = (key: PenvKey) => key.redacted === true || key.value === 'redacted';
+  const redacted = keys.filter(isRedacted).map((key) => key.name);
+  if (redacted.length > 0 && !opts.skipRedacted) {
     throw new PenvError(
       'write-only',
       `This penv environment is write-only, so ${redacted.join(', ')} came back redacted.`,
     );
   }
 
-  return Object.fromEntries(keys.map((key) => [key.name, key.value]));
+  // Redacted entries carry no value: skipped when allowed (app connections share only the approved keys).
+  return Object.fromEntries(keys.filter((key) => !isRedacted(key)).map((key) => [key.name, key.value as string]));
 }
 
 function isPenvKey(value: unknown): value is PenvKey {
   const key = value as PenvKey | null;
-  return typeof key?.name === 'string' && typeof key?.value === 'string';
+  return typeof key?.name === 'string' && (typeof key.value === 'string' || key.redacted === true);
 }

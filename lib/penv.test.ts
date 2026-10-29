@@ -42,6 +42,11 @@ describe('fetchPenvKeys', () => {
     expect(error.code).toBe('write-only');
   });
 
+  it('treats the server redacted: true entries (no value) as write-only too', async () => {
+    const { fetchImpl } = stubFetch(200, { keys: [{ path: 'GROQ_API_KEY', name: 'GROQ_API_KEY', kind: 'secret', redacted: true }] });
+    await expect(fetchPenvKeys('pck_test', target, fetchImpl)).rejects.toMatchObject({ code: 'write-only' });
+  });
+
   it('rejects a body without a keys array', async () => {
     const { fetchImpl } = stubFetch(200, { data: [] });
     await expect(fetchPenvKeys('pck_test', target, fetchImpl)).rejects.toMatchObject({
