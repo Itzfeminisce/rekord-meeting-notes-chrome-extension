@@ -20,6 +20,20 @@ Rekord records your meetings, transcribes them and writes the notes for you.
 - You can share a meeting to Google Docs or Notion.
 - Google Calendar names your meetings.
 
+## Screenshots
+
+<p>
+<img src="docs/screenshots/start.png" width="200" alt="Start: choose where the meeting is.">
+<img src="docs/screenshots/live.png" width="200" alt="Live: the transcript updates as people speak.">
+<img src="docs/screenshots/ask-all.png" width="200" alt="Ask all meetings: ask a question across every meeting.">
+<img src="docs/screenshots/share.png" width="200" alt="Share: save a meeting to Google Docs or Notion.">
+</p>
+
+- Start: choose where the meeting is.
+- Live: the transcript updates as people speak.
+- Ask all meetings: ask a question across every meeting.
+- Share: save a meeting to Google Docs or Notion.
+
 ## Install from source
 
 You need Node.js and npm.
