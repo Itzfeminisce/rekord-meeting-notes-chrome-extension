@@ -6,7 +6,7 @@ import { hostsForKeys, hostsForSettings, PENV_HOSTS, requestHosts } from '@/lib/
 import { serviceLabel } from '@/lib/keyDetect';
 import { clearKeys, loadKeys } from '@/lib/keys';
 import { getSettings, updateSettings } from '@/lib/settings';
-import { connectKeyNames, connectPenvApp, disconnectPenvApp, invalidateAppLoads, loadPenvAppKeys, PenvAppError, penvAppAvailable, wasDisconnected } from '@/lib/penvApp';
+import { connectKeyNames, connectPenvApp, disconnectPenvApp, invalidateAppLoads, loadPenvAppKeys, PenvAppError, wasDisconnected } from '@/lib/penvApp';
 import { canStart, keyUse, neededKeys, startHint } from '@/lib/setup';
 import type { Settings } from '@/lib/types';
 import {
@@ -45,7 +45,6 @@ export function DisconnectedPanel({ onConnect }: { onConnect: () => void }) {
 
 export default function PenvConnect() {
   const { replace, back, canGoBack } = useRouter();
-  const [flag, setFlag] = useState(false);
   const [s, setS] = useState<Settings | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [hasToken, setHasToken] = useState(false);
@@ -61,13 +60,11 @@ export default function PenvConnect() {
   const keys = useKeyState();
 
   useEffect(() => {
-    // Penv Cloud app connections are detected at runtime; until they are live, only the token path shows.
-    Promise.all([getSettings(), loadToken(), penvAppAvailable(), wasDisconnected().catch(() => false)])
-      .then(([settings, tok, live, gone]) => {
+    Promise.all([getSettings(), loadToken(), wasDisconnected().catch(() => false)])
+      .then(([settings, tok, gone]) => {
         setS(settings);
         setHasToken(!!tok);
         setEnvPath(formatEnvPath(settings.penv));
-        setFlag(live);
         setDisconnected(gone);
       })
       .catch(() => setLoadFailed(true));
@@ -201,7 +198,7 @@ export default function PenvConnect() {
           type="button"
           onClick={() => {
             setNoUsable(false);
-            if (flag && s?.keySource === 'penv-app') return void connectApp();
+            if (s?.keySource === 'penv-app') return void connectApp();
             setEditing(true);
             setShowToken(true);
           }}
@@ -270,7 +267,7 @@ export default function PenvConnect() {
           </div>
           <span style={{ fontSize: 12, lineHeight: 1.45, color: '#6E7079' }}>
             Rekord asks Penv Cloud for these keys each time it starts and never saves them.{' '}
-            <button type="button" onClick={() => (flag && s.keySource === 'penv-app' ? void connectApp() : setEditing(true))} style={{ ...LINK, padding: 0, border: 'none', background: 'transparent', font: 'inherit', fontSize: 12, color: '#4F46E5', cursor: 'pointer' }}>Change which keys</button>
+            <button type="button" onClick={() => (s.keySource === 'penv-app' ? void connectApp() : setEditing(true))} style={{ ...LINK, padding: 0, border: 'none', background: 'transparent', font: 'inherit', fontSize: 12, color: '#4F46E5', cursor: 'pointer' }}>Change which keys</button>
           </span>
         </div>
       ) : (
@@ -286,36 +283,31 @@ export default function PenvConnect() {
             </span>
           </div>
 
-          {flag && (
-            <>
-              <button
-                type="button"
-                onClick={() => void connectApp()}
-                disabled={busy}
-                style={{ height: 48, border: 'none', borderRadius: 12, background: '#111114', color: '#FFFFFF', font: 'inherit', fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer' }}
-              >
-                {busy && !showToken && <Spinner label="Connecting" size={16} />}
-                Connect Penv Cloud
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
-              </button>
-              <ul style={{ listStyle: 'none', margin: 0, padding: 12, borderRadius: 12, background: '#F6F6F7', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12, lineHeight: 1.45, color: '#44464D' }}>
-                <li>Penv Cloud opens in a new window. Sign in and choose which keys Rekord can read.</li>
-                <li>Rekord can only read the keys you choose. It can’t change anything.</li>
-                <li>Disconnect any time, here or on <ExternalLink href="https://penv.cloud">penv.cloud</ExternalLink>.</li>
-              </ul>
-            </>
-          )}
+          <button
+            type="button"
+            onClick={() => void connectApp()}
+            disabled={busy}
+            style={{ height: 48, border: 'none', borderRadius: 12, background: '#111114', color: '#FFFFFF', font: 'inherit', fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer' }}
+          >
+            {busy && !showToken && <Spinner label="Connecting" size={16} />}
+            Connect Penv Cloud
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
+          </button>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 12, borderRadius: 12, background: '#F6F6F7', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12, lineHeight: 1.45, color: '#44464D' }}>
+            <li>Penv Cloud opens in a new window. Sign in and choose which keys Rekord can read.</li>
+            <li>Rekord can only read the keys you choose. It can’t change anything.</li>
+            <li>Disconnect any time, here or on <ExternalLink href="https://penv.cloud">penv.cloud</ExternalLink>.</li>
+          </ul>
 
-          {(flag ? showToken : true) && (
+          {showToken && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {!flag && <span style={{ fontSize: 13, fontWeight: 600 }}>Use a token instead</span>}
               {tokenFields}
             </div>
           )}
 
           <span style={{ fontSize: 12, color: '#6E7079' }}>
             New to Penv Cloud? <ExternalLink href="https://penv.cloud">See how it works</ExternalLink>
-            {flag && !showToken && (
+            {!showToken && (
               <>
                 {' · '}
                 <button type="button" onClick={() => setShowToken(true)} style={{ ...LINK, padding: 0, border: 'none', background: 'transparent', font: 'inherit', fontSize: 12, color: '#4F46E5', cursor: 'pointer' }}>Use a token instead</button>
@@ -337,7 +329,7 @@ export default function PenvConnect() {
       <StartFooter
         disabled={!ready}
         busy={busy}
-        hint={keys.loaded.length === 0 || !connected ? (flag ? 'Connect Penv Cloud or paste a key to continue.' : 'Add your token or paste a key to continue.') : startHint(needed, keys.loaded, keys.status)}
+        hint={keys.loaded.length === 0 || !connected ? 'Connect Penv Cloud or paste a key to continue.' : startHint(needed, keys.loaded, keys.status)}
         onStart={() => void start()}
       />
     </main>

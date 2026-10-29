@@ -13,9 +13,7 @@ import {
   loadGrant,
   loadPenvAppKeys,
   PenvAppError,
-  penvAppAvailable,
   pkceChallenge,
-  resetPenvAppAvailable,
   wasDisconnected,
 } from './penvApp';
 import { missingKeys } from './setup';
@@ -89,7 +87,6 @@ describe('penvApp', () => {
   beforeEach(() => {
     vi.restoreAllMocks(); // slowStorage spies
     fakeBrowser.reset();
-    resetPenvAppAvailable();
   });
 
   it('makes a PKCE S256 pair and the connect URL', async () => {
@@ -532,22 +529,5 @@ describe('penvApp', () => {
     await expect(loadPenvAppKeys(TARGET, limited)).rejects.toMatchObject({ code: 'http', status: 429 });
     expect(await loadGrant()).toBe('pca_one'); // a busy server is not a lost connection
     expect(await wasDisconnected()).toBe(false);
-  });
-
-  it('detects whether app connections are live', async () => {
-    const f404 = vi.fn(async () => new Response(null, { status: 404 }));
-    expect(await penvAppAvailable(f404)).toBe(false);
-    const [url, init] = f404.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toBe('https://penv.cloud/api/v1/auth/app/token');
-    expect(init).toMatchObject({ method: 'POST', body: '{}', credentials: 'omit' });
-    expect(await penvAppAvailable(vi.fn(async () => { throw new TypeError('offline'); }))).toBe(false);
-    for (const status of [403, 500, 404]) {
-      expect(await penvAppAvailable(vi.fn(async () => new Response(null, { status })))).toBe(false);
-    }
-    expect(await penvAppAvailable(vi.fn(async () => json({ error: 'invalid_request' }, 400)))).toBe(true);
-    // true is kept for the session
-    const again = vi.fn(async () => new Response(null, { status: 404 }));
-    expect(await penvAppAvailable(again)).toBe(true);
-    expect(again).not.toHaveBeenCalled();
   });
 });
