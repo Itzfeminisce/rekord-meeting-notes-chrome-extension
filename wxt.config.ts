@@ -1,6 +1,6 @@
 import { defineConfig } from 'wxt';
 
-// Google sign-in (chrome.identity) needs an OAuth client ID tied to a stable extension ID. See docs/v3/GOOGLE.md.
+// Google sign-in (chrome.identity) needs an OAuth client ID tied to a stable extension ID. See docs/GOOGLE.md.
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: ({ mode }) => {
@@ -12,7 +12,7 @@ export default defineConfig({
     const release = mode === 'release' || process.argv.includes('zip');
     if (release && (!clientId || !extensionKey)) {
       throw new Error(
-        'Release build needs WXT_GOOGLE_CLIENT_ID and WXT_EXTENSION_KEY (see docs/v3/GOOGLE.md). ' +
+        'Release build needs WXT_GOOGLE_CLIENT_ID and WXT_EXTENSION_KEY (see docs/GOOGLE.md). ' +
           'Set them in .env.local or the environment.',
       );
     }

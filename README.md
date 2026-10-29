@@ -91,7 +91,7 @@ Everything else in Rekord still works without Google sign-in.
 4. Reload the extension.
 5. Open Settings and connect Google.
 
-The full steps are in [docs/v3/GOOGLE.md](docs/v3/GOOGLE.md).
+The full steps are in [docs/GOOGLE.md](docs/GOOGLE.md).
 `npm run zip` makes a release build.
 `npm run zip` fails unless `WXT_EXTENSION_KEY` and `WXT_GOOGLE_CLIENT_ID` are both set.
 
@@ -110,6 +110,7 @@ npm run compile
 
 - `npm test` runs the unit tests.
 - `npm run compile` type-checks the code.
+- Plans, specs and design frames live in the [specs repo](https://github.com/Itzfeminisce/productivity-apps-engineering-specs/tree/main/apps/rekord).
 
 ## Privacy
 
