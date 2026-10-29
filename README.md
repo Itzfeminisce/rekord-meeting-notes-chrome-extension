@@ -100,8 +100,9 @@ npm run compile
 ## Privacy
 
 - Your meetings, transcripts and settings stay in your browser (IndexedDB).
-- Your data leaves your computer only to reach the services you chose.
-- Your data also leaves your computer when you share a meeting.
+- Your data leaves your computer in two cases only:
+  - Rekord sends audio and text to the AI services you chose.
+  - You share a meeting.
 - Your API keys are kept in session storage.
 - Session storage is cleared when you close the browser.
 - Rekord has no tracking or analytics.
