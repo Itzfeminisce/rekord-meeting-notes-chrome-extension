@@ -8,6 +8,7 @@ import { GoogleError, type GoogleDeps } from '@/lib/google';
 import { gdocsShare, shareLink, shareToDocs } from '@/lib/share/gdocs';
 import { toHtml } from '@/lib/share/render';
 import { loadKeys } from '@/lib/keys';
+import { NOTION_HOSTS, requestHosts } from '@/lib/hosts';
 import { buildBlocks, NotionError, notionShare, shareToNotion } from '@/lib/share/notion';
 import { notionDeps } from './NotionConnect';
 import type { Marker, Meeting, Note, Segment } from '@/lib/types';
@@ -232,7 +233,7 @@ export default function Share() {
               <a href={notion.url} target="_blank" rel="noreferrer" style={s.open}>Open</a>
             </div>
           ) : (
-            <button type="button" style={s.row} data-share="notion" disabled={busy} onClick={() => void run('notion', meeting, data, opts)}>
+            <button type="button" style={s.row} data-share="notion" disabled={busy} onClick={() => void requestHosts(NOTION_HOSTS).then(() => run('notion', meeting, data, opts))}>
               <span style={{ ...s.ico, background: '#F1F1F3', fontFamily: "'Geist Mono', monospace", fontSize: 13, fontWeight: 600 }}>N</span>
               <span style={s.text}><span style={s.name}>Notion</span><span style={s.sub}>Connect Notion to add meetings as pages</span></span>
             </button>

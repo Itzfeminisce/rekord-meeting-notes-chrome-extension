@@ -31,7 +31,7 @@ function fakeDrive(opts: { folder?: boolean; failUpdate?: boolean; failAll?: boo
   }) as unknown as typeof fetch;
   const deps: GoogleDeps = {
     fetch: f, clientId: 'test-client',
-    identity: { getAuthToken: async () => ({ token: 'tok_test' }), removeCachedAuthToken: async () => undefined },
+    identity: { getRedirectURL: () => 'https://test.chromiumapp.org/', launchWebAuthFlow: async ({ url }: { url: string }) => `https://test.chromiumapp.org/#access_token=tok_test&state=${new URL(url).searchParams.get('state')}` },
   };
   return { calls, deps };
 }

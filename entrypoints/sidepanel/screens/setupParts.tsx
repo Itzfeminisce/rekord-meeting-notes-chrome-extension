@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { checkKeys, loadKeyStatus, saveKeyStatus } from '@/lib/connect';
 import { serviceLabel, type KeyName } from '@/lib/keyDetect';
+import { hostsForKeys, requestHosts } from '@/lib/hosts';
 import { loadKeys } from '@/lib/keys';
 import { addKey, STATUS_WORD, type RowStatus } from '@/lib/setup';
 
@@ -218,6 +219,8 @@ export function useKeyState(): KeyState {
     setStatus((s) => ({ ...s, [name]: 'checking' }));
     let result: RowStatus;
     try {
+      // Pasting or pressing Enter is the gesture Chrome wants; ask before any other await.
+      await requestHosts(hostsForKeys([name]));
       result = await addKey(name, value);
     } catch {
       result = 'unreachable';

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Button, Spinner } from '../components';
 import { useRouter } from '../router';
 import { deleteMeeting, listMeetings } from '@/lib/db';
+import { DEEPGRAM_HOSTS, requestHosts } from '@/lib/hosts';
 import { loadKeys } from '@/lib/keys';
 import { onMessage, send } from '@/lib/messages';
 import { getSettings, updateSettings } from '@/lib/settings';
@@ -107,7 +108,7 @@ export default function Settings() {
     { id: 'suggest', title: 'Suggest action items live', sub: 'Flags likely tasks as people talk', on: s.features.liveSuggestions, set: (on) => setFeature('liveSuggestions', on) },
     {
       id: 'names', title: 'Speaker names', sub: 'Tells other voices apart and suggests names', on: s.features.speakerNames && hasDeepgram,
-      disabled: !hasDeepgram, set: (on) => setFeature('speakerNames', on),
+      disabled: !hasDeepgram, set: (on) => { if (on) void requestHosts(DEEPGRAM_HOSTS); setFeature('speakerNames', on); },
       hint: hasDeepgram ? undefined : 'Add a Deepgram key in Settings to turn this on.',
     },
     { id: 'keep', title: 'Keep audio files', sub: 'Off: audio is discarded once transcribed', on: s.keepAudio, set: (on) => save({ keepAudio: on }) },

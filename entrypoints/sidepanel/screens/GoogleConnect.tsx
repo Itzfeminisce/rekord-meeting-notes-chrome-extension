@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react';
 import { connectGoogle, GoogleError, type GoogleDeps } from '@/lib/google';
+import { Spinner } from '../components';
 import { useRouter, type Router, type ScreenName } from '../router';
 
 /** Route names this task adds (router.tsx / App.tsx entries are wired by the orchestrator). */
@@ -97,9 +98,10 @@ export default function GoogleConnect() {
           onClick={() => void go()}
           disabled={busy || (!calendar && !docs)}
           aria-busy={busy || undefined}
-          style={{ height: 48, border: 'none', borderRadius: 12, background: '#111114', color: '#FFFFFF', font: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer', opacity: busy || (!calendar && !docs) ? 0.5 : 1 }}
+          style={{ height: 48, border: 'none', borderRadius: 12, background: '#111114', color: '#FFFFFF', font: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.75 : !calendar && !docs ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
         >
-          Continue to Google
+          {busy && <Spinner label="Connecting to Google" size={16} />}
+          {busy ? 'Waiting for Google…' : 'Continue to Google'}
         </button>
         <button
           type="button"

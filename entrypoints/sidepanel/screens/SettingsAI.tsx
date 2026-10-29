@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Spinner } from '../components';
 import { useRouter } from '../router';
 import { connectErrorMessage, forgetAll, formatEnvPath, loadToken, reconnect, transcriptionKeyName } from '@/lib/connect';
+import { hostsForSettings, PENV_HOSTS, requestHosts } from '@/lib/hosts';
 import { serviceLabel } from '@/lib/keyDetect';
 import { getSettings, PROVIDERS, updateSettings } from '@/lib/settings';
 import { disconnectPenvApp, loadPenvAppKeys, PenvAppError, wasDisconnected } from '@/lib/penvApp';
@@ -108,6 +109,7 @@ export default function SettingsAI() {
     const app = s?.keySource === 'penv-app' ? s.penvApp : undefined;
     if (!app && !hasToken) return navigate('penvConnect');
     setBusy(true);
+    await requestHosts([...PENV_HOSTS, ...hostsForSettings(s!)]);
     try {
       const names = app ? await loadPenvAppKeys(app) : await reconnect();
       if (!names) return navigate('penvConnect');
@@ -224,8 +226,9 @@ export default function SettingsAI() {
                   type="button"
                   onClick={() => void refresh()}
                   disabled={busy}
-                  style={{ height: 30, padding: '0 10px', border: '1px solid #E8E8EB', borderRadius: 8, background: '#FFFFFF', font: 'inherit', fontSize: 12, fontWeight: 600, color: '#111114', cursor: 'pointer' }}
+                  style={{ height: 30, padding: '0 10px', border: '1px solid #E8E8EB', borderRadius: 8, background: '#FFFFFF', font: 'inherit', fontSize: 12, fontWeight: 600, color: '#111114', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
                 >
+                  {busy && <Spinner label="Refreshing keys" size={12} />}
                   {busy ? 'Refreshing…' : 'Refresh'}
                 </button>
               )}

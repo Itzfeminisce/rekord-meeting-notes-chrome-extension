@@ -2,6 +2,7 @@ import { useEffect, useState, type ClipboardEvent, type ReactNode } from 'react'
 import { Spinner } from '../components';
 import { useRouter } from '../router';
 import { summaryFor, transcriptionFor, transcriptionKeyName } from '@/lib/connect';
+import { hostsForSettings, requestHosts } from '@/lib/hosts';
 import { serviceLabel, type KeyName } from '@/lib/keyDetect';
 import { getSettings, PROVIDERS, updateSettings } from '@/lib/settings';
 import { canStart, neededKeys, startHint } from '@/lib/setup';
@@ -119,6 +120,8 @@ export default function SetupCustom() {
 
   async function save(partial: Partial<Settings>) {
     setError('');
+    // Choosing a provider (Ollama has no key to paste) is the click Chrome's host prompt needs.
+    await requestHosts(hostsForSettings({ ...s!, ...partial }));
     try {
       setS(await updateSettings({ setup: 'custom', ...partial }));
     } catch {
@@ -138,6 +141,7 @@ export default function SetupCustom() {
   async function start() {
     setBusy(true);
     setError('');
+    await requestHosts(hostsForSettings(s!));
     try {
       await updateSettings({ onboarded: true });
       replace('start');

@@ -5,6 +5,7 @@ import { attachEvent } from '@/lib/calendar';
 import { useRouter } from '../router';
 import type { RecordingReply } from '../../background';
 import { ensureKeys, reconnect, transcriptionKeyRejected } from '@/lib/connect';
+import { PENV_HOSTS, requestHosts } from '@/lib/hosts';
 import { getSettings } from '@/lib/settings';
 import { wasDisconnected } from '@/lib/penvApp';
 import { DisconnectedPanel } from './PenvConnect';
@@ -103,6 +104,7 @@ export default function Start() {
   async function tryReconnect() {
     setReconnecting(true);
     setError('');
+    await requestHosts(PENV_HOSTS);
     try {
       const ok = await reconnect();
       if (ok) setKeys('ready');

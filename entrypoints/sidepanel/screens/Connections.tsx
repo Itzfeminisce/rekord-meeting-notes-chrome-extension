@@ -3,6 +3,7 @@ import { listCalendars, type CalendarInfo } from '@/lib/calendar';
 import { disconnectGoogle, GoogleError, type GoogleDeps, type GoogleSettings } from '@/lib/google';
 import { getSettings, onSettingsChanged, updateSettings } from '@/lib/settings';
 import { loadKeys } from '@/lib/keys';
+import { NOTION_HOSTS, requestHosts } from '@/lib/hosts';
 import { Spinner } from '../components';
 import { useRouter } from '../router';
 import { openGoogleConnect } from './GoogleConnect';
@@ -23,7 +24,7 @@ const s = {
   uses: { listStyle: 'none', margin: 0, padding: '10px 12px', borderRadius: 10, background: '#F6F6F7', display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, lineHeight: 1.4, color: '#44464D' },
   note: { fontSize: 12, lineHeight: 1.4, color: '#44464D' },
   select: { height: 34, padding: '0 8px', border: '1px solid #DCDCE0', borderRadius: 9, background: '#F9F9FA', font: 'inherit', fontSize: 13, color: '#111114', maxWidth: '60%' },
-  disconnect: { alignSelf: 'flex-start', height: 32, padding: '0 12px', border: '1px solid #E8E8EB', borderRadius: 9, background: '#FFFFFF', font: 'inherit', fontSize: 12, fontWeight: 600, color: '#111114', cursor: 'pointer' },
+  disconnect: { alignSelf: 'flex-start', height: 32, padding: '0 12px', border: '1px solid #E8E8EB', borderRadius: 9, background: '#FFFFFF', font: 'inherit', fontSize: 12, fontWeight: 600, color: '#111114', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 },
   alert: { margin: 0, padding: '10px 12px', borderRadius: 10, background: '#FFF8EC', border: '1px solid #F5DDB0', fontSize: 12, lineHeight: 1.45, color: '#5C3200' },
 } satisfies Record<string, CSSProperties>;
 
@@ -100,7 +101,7 @@ export default function Connections() {
   }
 
   const disconnectButton = (
-    <button type="button" style={s.disconnect} onClick={() => void disconnect()} disabled={busy} aria-busy={busy || undefined}>Disconnect</button>
+    <button type="button" style={s.disconnect} onClick={() => void disconnect()} disabled={busy} aria-busy={busy || undefined}>{busy && <Spinner label="Disconnecting" size={12} />}{busy ? 'Disconnecting…' : 'Disconnect'}</button>
   );
   const selected = google?.calendarId ?? calendars.find((c) => c.primary)?.id ?? 'primary';
 
@@ -176,7 +177,7 @@ export default function Connections() {
             {notionToken && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <span style={{ flexGrow: 1, minWidth: 0, fontSize: 13, fontWeight: 500, overflowWrap: 'anywhere' }}>{notion?.pageTitle ?? 'No page chosen yet'}</span>
-                <button type="button" style={{ ...s.disconnect, alignSelf: 'center' }} onClick={() => router.navigate('notionPage')}>{notion?.pageId ? 'Change' : 'Choose a page'}</button>
+                <button type="button" style={{ ...s.disconnect, alignSelf: 'center' }} onClick={() => void requestHosts(NOTION_HOSTS).then(() => router.navigate('notionPage'))}>{notion?.pageId ? 'Change' : 'Choose a page'}</button>
               </div>
             )}
           </Row>

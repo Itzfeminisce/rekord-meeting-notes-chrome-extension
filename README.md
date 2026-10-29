@@ -77,23 +77,14 @@ You can get a free Groq key at https://console.groq.com/keys.
 
 ## Optional: Google Calendar and Docs
 
-Google sign-in is off until you build Rekord with your own Google OAuth client.
-Everything else in Rekord still works without Google sign-in.
+Google sign-in works in every build: Rekord ships a fixed extension ID and a public Google OAuth client
+(Web application, sign-in through `chrome.identity.launchWebAuthFlow`). Everything else works without Google.
 
-1. Set `WXT_EXTENSION_KEY` and `WXT_GOOGLE_CLIENT_ID` in `.env.local`.
-   - `WXT_EXTENSION_KEY` keeps the extension ID stable.
-   - `WXT_GOOGLE_CLIENT_ID` is an OAuth client of type "Chrome extension".
-2. In Google Cloud, create a project.
-   - Enable the Calendar and Drive APIs.
-   - Set up the consent screen with yourself as a test user.
-   - Create the OAuth client for your extension ID.
-3. Run `npm run build`.
-4. Reload the extension.
-5. Open Settings and connect Google.
+1. Open Settings, then Connected apps, and connect Google.
+2. Chrome asks to let Rekord reach Google; Google then asks which parts to allow.
 
-The full steps are in [docs/GOOGLE.md](docs/GOOGLE.md).
-`npm run zip` makes a release build.
-`npm run zip` fails unless `WXT_EXTENSION_KEY` and `WXT_GOOGLE_CLIENT_ID` are both set.
+The owner's one-time Google Cloud steps, and how to use your own client (`WXT_GOOGLE_CLIENT_ID`,
+`WXT_EXTENSION_KEY`), are in [docs/GOOGLE.md](docs/GOOGLE.md).
 
 ## Optional: Notion
 
