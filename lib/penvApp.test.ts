@@ -46,8 +46,42 @@ function fakePenv(opts: { appStatus?: number; appBody?: unknown; keys?: { name: 
   });
 }
 
+const ticks = async (n: number) => { for (let i = 0; i < n; i++) await new Promise((r) => setTimeout(r, 0)); };
+
+/**
+ * Storage that applies each call in call order (like chrome.storage) but resolves it a few ticks later, so
+ * other writers can run in between. Returns the real set for test setup.
+ */
+function slowStorage() {
+  const session = fakeBrowser.storage.session;
+  const real = { get: session.get.bind(session), set: session.set.bind(session), remove: session.remove.bind(session) };
+  const later = <T>(p: Promise<T>) => p.then(async (v) => { await ticks(3); return v; });
+  vi.spyOn(session, 'get').mockImplementation(((k: never) => later(real.get(k))) as typeof session.get);
+  vi.spyOn(session, 'set').mockImplementation(((v: never) => later(real.set(v))) as typeof session.set);
+  vi.spyOn(session, 'remove').mockImplementation(((k: never) => later(real.remove(k))) as typeof session.remove);
+  return real.set;
+}
+
+/** Fake Penv Cloud: code → pca_B; any grant G → pck_ + G2 (or invalid_grant for `refused`); env read. */
+function rotatingPenv(refused: string[] = []) {
+  const base = fakePenv();
+  return vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+    const u = String(url);
+    if (u.endsWith('/auth/app/token')) return json({ grant: 'pca_B', connection: { id: 'c1', ...TARGET, keys: ['GROQ_API_KEY'] } });
+    if (u.endsWith('/auth/app')) {
+      const g = ((init?.headers as Record<string, string> | undefined)?.Authorization ?? '').slice('Bearer '.length);
+      return refused.includes(g) ? json({ error: 'invalid_grant' }, 400) : json({ token: 'pck_test', grant: `${g}2` });
+    }
+    return base(url, init);
+  });
+}
+
+const bearers = (f: ReturnType<typeof vi.fn>, path: string) =>
+  f.mock.calls.filter(([u]) => String(u).endsWith(path)).map(([, i]) => (i?.headers as Record<string, string>).Authorization);
+
 describe('penvApp', () => {
   beforeEach(() => {
+    vi.restoreAllMocks(); // slowStorage spies
     fakeBrowser.reset();
     resetPenvAppAvailable();
   });
@@ -199,22 +233,46 @@ describe('penvApp', () => {
     expect(revoked).toEqual(['Bearer pca_A2']);
   });
 
-  it('markDisconnected leaves a grant that changed after the invalid_grant alone', async () => {
-    await fakeBrowser.storage.session.set({ penvGrant: 'pca_A' });
-    await saveKeys({ GROQ_API_KEY: 'gsk_test' });
-    const session = fakeBrowser.storage.session;
-    const realGet = session.get.bind(session);
-    let grantReads = 0;
-    vi.spyOn(session, 'get').mockImplementation((async (k: unknown) => {
-      if (k === 'penvGrant' && ++grantReads === 3) await session.set({ penvGrant: 'pca_B' }); // between the check and the clear
-      return realGet(k as string);
-    }) as typeof session.get);
-    const fetchImpl = fakePenv({ appStatus: 400, appBody: { error: 'invalid_grant' } });
-    await expect(loadPenvAppKeys(TARGET, fetchImpl)).rejects.toMatchObject({ code: 'disconnected' });
-    vi.restoreAllMocks();
-    expect(await loadGrant()).toBe('pca_B');
-    expect(await wasDisconnected()).toBe(false);
-    expect(await loadKeys()).toEqual({ GROQ_API_KEY: 'gsk_test' });
+  it('connect during an in-flight load keeps the new grant, whatever the interleaving', async () => {
+    const realSet = slowStorage();
+    for (let d = 0; d < 30; d++) {
+      await realSet({ penvGrant: 'pca_A', penvAppDisconnected: false });
+      const fetchImpl = rotatingPenv();
+      const load = loadPenvAppKeys(TARGET, fetchImpl).catch(() => null); // its storage read returns pca_A
+      await ticks(d);
+      await connectPenvApp({ keys: ['GROQ_API_KEY'], launch: allow(), fetchImpl, redirect: REDIRECT });
+      await load;
+      await ticks(10);
+      expect(await loadGrant()).toBe('pca_B');
+      expect(await wasDisconnected()).toBe(false);
+      expect(bearers(fetchImpl, '/auth/app')[0]).toBe('Bearer pca_A');
+    }
+  });
+
+  it('markDisconnected racing a connect never deletes the new grant or flags a valid one', async () => {
+    const realSet = slowStorage();
+    for (let d = 0; d < 30; d++) {
+      await realSet({ penvGrant: 'pca_A', penvAppDisconnected: false });
+      const fetchImpl = rotatingPenv(['pca_A']); // pca_A is refused with invalid_grant
+      const load = loadPenvAppKeys(TARGET, fetchImpl).catch(() => null);
+      await ticks(d);
+      const connected = connectPenvApp({ keys: ['GROQ_API_KEY'], launch: allow(), fetchImpl, redirect: REDIRECT });
+      await Promise.all([load, connected]);
+      await ticks(10);
+      const grant = await loadGrant();
+      expect(grant).toBe('pca_B');
+      expect(await wasDisconnected()).toBe(false);
+    }
+  });
+
+  it('connect, load, and the next load uses the rotated grant', async () => {
+    slowStorage();
+    const fetchImpl = rotatingPenv();
+    await connectPenvApp({ keys: ['GROQ_API_KEY'], launch: allow(), fetchImpl, redirect: REDIRECT });
+    expect(await loadPenvAppKeys(TARGET, fetchImpl)).toEqual(['GROQ_API_KEY']);
+    expect(await loadPenvAppKeys(TARGET, fetchImpl)).toEqual(['GROQ_API_KEY']);
+    expect(bearers(fetchImpl, '/auth/app')).toEqual(['Bearer pca_B', 'Bearer pca_B2']);
+    expect(await loadGrant()).toBe('pca_B22');
   });
 
   it('a disconnect during an in-flight load returns without waiting, and the load saves nothing', async () => {
