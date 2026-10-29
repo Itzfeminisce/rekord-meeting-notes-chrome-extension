@@ -137,11 +137,14 @@ export function keyUse(name: string, s: Pick<Settings, 'transcription' | 'summar
   return roles.length === 0 ? 'not in use' : roles.join(' and ');
 }
 
-/** Saves a key the user pasted for a known service, checks it, and remembers the result. Returns the status. */
-export async function addKey(name: KeyName, value: string, fetchImpl: typeof fetch = fetch): Promise<KeyStatus> {
+/**
+ * Saves a key the user pasted for a known service, checks it, and remembers the result. Returns the status.
+ * The key is saved first; only the check waits for `reachable` (the host permission), and is 'unreachable' without it.
+ */
+export async function addKey(name: KeyName, value: string, fetchImpl: typeof fetch = fetch, reachable: Promise<boolean> = Promise.resolve(true)): Promise<KeyStatus> {
   const v = value.trim();
   await connectPaste({ [name]: v });
-  const status = (await checkKeys({ [name]: v }, fetchImpl))[name] ?? 'ok';
+  const status = (await reachable) ? (await checkKeys({ [name]: v }, fetchImpl))[name] ?? 'ok' : 'unreachable';
   await saveKeyStatus({ ...(await loadKeyStatus()), [name]: status });
   return status;
 }

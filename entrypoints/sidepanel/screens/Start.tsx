@@ -5,7 +5,9 @@ import { attachEvent } from '@/lib/calendar';
 import { useRouter } from '../router';
 import type { RecordingReply } from '../../background';
 import { ensureKeys, reconnect, transcriptionKeyRejected } from '@/lib/connect';
+import { hostsForSettings, PENV_HOSTS, requestHosts } from '@/lib/hosts';
 import { getSettings } from '@/lib/settings';
+import { loadKeys } from '@/lib/keys';
 import { wasDisconnected } from '@/lib/penvApp';
 import { DisconnectedPanel } from './PenvConnect';
 import { getMeeting, listMeetings, putMeeting } from '@/lib/db';
@@ -43,6 +45,8 @@ export default function Start() {
   const [stateChecked, setStateChecked] = useState(false);
   const autoName = useRef(''); // the tab title we filled in; replaced when the active tab changes, unless edited
   const calEvent = useRef<CalendarEvent | undefined>(undefined); // T6: event happening now, attached on start
+  const providerHosts = useRef<string[]>([]); // known before the click, so Start can ask for them synchronously
+  const [hostsReady, setHostsReady] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -86,7 +90,11 @@ export default function Start() {
         .then(([st, gone]) => alive && setPenvGone(gone && st.keySource === 'penv-app'))
         .catch(() => {});
     };
-    ensureKeys().then((k) => (k === 'reconnect' ? needReconnect() : setKeys(k)), needReconnect);
+    // After the keys load, so Deepgram is included when its key is there for speaker names.
+    const loadHosts = () => Promise.all([getSettings(), loadKeys()])
+      .then(([st, k]) => { providerHosts.current = hostsForSettings(st, Object.keys(k)); }, () => {})
+      .finally(() => alive && setHostsReady(true));
+    ensureKeys().then((k) => (k === 'reconnect' ? needReconnect() : setKeys(k)), needReconnect).finally(loadHosts);
     transcriptionKeyRejected().then((r) => alive && setKeyRejected(r), () => {});
     listMeetings()
       .then((all) => setRecent(all.filter((m) => m.status !== 'recording').sort((a, b) => b.startedAt - a.startedAt).slice(0, 3)))
@@ -101,8 +109,10 @@ export default function Start() {
   }, []);
 
   async function tryReconnect() {
+    const hosts = requestHosts([...PENV_HOSTS, ...providerHosts.current]);
     setReconnecting(true);
     setError('');
+    await hosts;
     try {
       const ok = await reconnect();
       if (ok) setKeys('ready');
@@ -128,11 +138,19 @@ export default function Start() {
 
   async function record() {
     if ((place === 'tab' && !tab) || busy) return;
+    // Started first, inside the click: hosts for the chosen providers. Chrome shows nothing once they are granted.
+    const hosts = requestHosts(providerHosts.current);
     setBusy(true);
     setError('');
-    // In an app: Chrome's share picker first (still inside the click), then the recording.
+    // In an app: Chrome's share picker too (still inside the click), then the recording.
     const app = place === 'app' ? appAudio() : null;
     const picked = app ? await app.pick() : 'audio';
+    if (!(await hosts)) {
+      if (app && picked !== 'cancelled' && picked !== 'error') app.end();
+      setBusy(false);
+      setError('Rekord needs your permission to reach your AI service. Try again and choose Allow.');
+      return;
+    }
     if (picked === 'cancelled' || picked === 'error') {
       setBusy(false);
       if (picked === 'error') setError("Rekord couldn’t start recording. Try again in a moment.");
@@ -167,7 +185,7 @@ export default function Start() {
   }
 
   const host = hostOf(tab?.url);
-  const canRecord = (place === 'app' || !!tab) && keys === 'ready' && stateChecked && !busy;
+  const canRecord = (place === 'app' || !!tab) && keys === 'ready' && stateChecked && hostsReady && !busy;
 
   return (
     <main className="screen">

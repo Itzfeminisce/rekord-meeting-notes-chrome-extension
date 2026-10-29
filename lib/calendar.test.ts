@@ -81,7 +81,7 @@ describe('toCalendarEvent', () => {
 
 describe('listEvents', () => {
   it('lists the chosen calendar and drops declined events', async () => {
-    const identity: IdentityApi = { getAuthToken: async () => ({ token: 'ya29.test' }), removeCachedAuthToken: async () => undefined };
+    const identity: IdentityApi = { getRedirectURL: () => 'https://test.chromiumapp.org/', launchWebAuthFlow: async ({ url }: { url: string }) => `https://test.chromiumapp.org/#access_token=ya29.test&state=${new URL(url).searchParams.get('state')}` };
     const fetch = vi.fn(async (_u: string, _i?: RequestInit) => new Response(JSON.stringify({ items: [
       { id: 'a', summary: 'A', start: { dateTime: '2026-10-28T10:00:00Z' }, end: { dateTime: '2026-10-28T11:00:00Z' } },
       { id: 'b', summary: 'B', start: { dateTime: '2026-10-28T12:00:00Z' }, end: { dateTime: '2026-10-28T13:00:00Z' },

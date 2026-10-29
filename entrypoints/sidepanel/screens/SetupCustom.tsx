@@ -2,6 +2,7 @@ import { useEffect, useState, type ClipboardEvent, type ReactNode } from 'react'
 import { Spinner } from '../components';
 import { useRouter } from '../router';
 import { summaryFor, transcriptionFor, transcriptionKeyName } from '@/lib/connect';
+import { hostsForSettings, requestHosts } from '@/lib/hosts';
 import { serviceLabel, type KeyName } from '@/lib/keyDetect';
 import { getSettings, PROVIDERS, updateSettings } from '@/lib/settings';
 import { canStart, neededKeys, startHint } from '@/lib/setup';
@@ -47,12 +48,12 @@ function KeyField({ id, name, keys, onChange }: { id: string; name: KeyName; key
   const has = keys.loaded.includes(name);
   const status = keys.status[name];
 
-  async function take(raw: string) {
+  async function take(raw: string, ask = true) {
     const v = raw.trim();
     if (!v) return;
     setValue('');
     // The field belongs to one service, so the key is checked as that service even if its prefix is different.
-    await keys.add(name, v);
+    await keys.add(name, v, ask);
     onChange?.();
   }
 
@@ -77,7 +78,7 @@ function KeyField({ id, name, keys, onChange }: { id: string; name: KeyName; key
         onChange={(e) => setValue(e.target.value)}
         onPaste={onPaste}
         onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), void take(value))}
-        onBlur={() => value.trim() && void take(value)}
+        onBlur={() => value.trim() && void take(value, false)}
         autoComplete="off"
         spellCheck={false}
         style={INPUT}
@@ -136,8 +137,10 @@ export default function SetupCustom() {
   const groqModels = s.summary.provider === 'groq';
 
   async function start() {
+    const hosts = requestHosts(hostsForSettings(s!, keys.loaded));
     setBusy(true);
     setError('');
+    await hosts;
     try {
       await updateSettings({ onboarded: true });
       replace('start');
@@ -162,7 +165,13 @@ export default function SetupCustom() {
                 type="button"
                 role="radio"
                 aria-checked={on}
-                onClick={() => !on && void save({ transcription: transcriptionFor(t.id, s.transcription) })}
+                onClick={() => {
+                  if (on) return;
+                  const transcription = transcriptionFor(t.id, s.transcription);
+                  // Choosing a provider is the click Chrome's host prompt needs; selects and blurs wait for Start.
+                  void requestHosts(hostsForSettings({ ...s, transcription }, keys.loaded));
+                  void save({ transcription });
+                }}
                 style={{ height: 34, border: 'none', borderRadius: 7, font: 'inherit', fontSize: 12, cursor: 'pointer', background: on ? '#FFFFFF' : 'transparent', fontWeight: on ? 600 : 500, color: on ? '#111114' : '#5F6168', boxShadow: on ? '0 1px 2px rgba(16,16,20,0.08)' : undefined }}
               >
                 {t.name}

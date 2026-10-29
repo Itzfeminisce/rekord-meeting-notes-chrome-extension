@@ -5,6 +5,7 @@ import { loadToken, transcriptionKeyName } from '@/lib/connect';
 import { serviceLabel, type KeyName } from '@/lib/keyDetect';
 import { getSettings, updateSettings } from '@/lib/settings';
 import { applyPreset, canStart, classifyPaste, KEY_PAGE, neededKeys, rowDetail, SERVICE_CHOICES, startHint } from '@/lib/setup';
+import { hostsForSettings, requestHosts } from '@/lib/hosts';
 import type { SetupPreset, Settings } from '@/lib/types';
 import {
   CARD, ExternalLink, INPUT, LABEL, LINK, PAGE, PenvCloudLink, SetupHead, SetupIntro, SourceToggle, StartFooter, StatusDot, useKeyState,
@@ -90,14 +91,14 @@ export default function Setup() {
     }
   }
 
-  async function take(raw: string) {
+  async function take(raw: string, ask = true) {
     setError('');
     const c = classifyPaste(raw);
     if (c.kind === 'empty') return;
     setValue('');
     if (c.kind === 'unknown') return setUnknown(raw.trim());
     setUnknown('');
-    await keys.add(c.name, raw);
+    await keys.add(c.name, raw, ask);
   }
 
   async function takeAs(name: KeyName) {
@@ -122,8 +123,11 @@ export default function Setup() {
 
   async function start() {
     if (!s) return;
+    // First call keeps the click's gesture: hosts for the chosen providers, also covering keys added on blur.
+    const hosts = requestHosts(hostsForSettings(s, keys.loaded));
     setBusy(true);
     setError('');
+    await hosts;
     try {
       await updateSettings({ keySource: source === 'paste' ? 'paste' : s.keySource === 'penv-app' ? 'penv-app' : 'penv', onboarded: true });
       replace('start');
@@ -200,7 +204,7 @@ export default function Setup() {
               onChange={(e) => setValue(e.target.value)}
               onPaste={onPaste}
               onKeyDown={onKey}
-              onBlur={() => value.trim() && void take(value)}
+              onBlur={() => value.trim() && void take(value, false)}
               autoComplete="off"
               spellCheck={false}
               style={INPUT}

@@ -1,7 +1,10 @@
 /**
- * Google sign-in through chrome.identity: get a token for the scopes the user allowed, call Google APIs with it,
- * and disconnect (forget the cached token, revoke it, clear settings.google). Tokens are never stored or logged.
+ * Google sign-in through chrome.identity.launchWebAuthFlow (Web application client, implicit flow): get a token for
+ * the scopes the user allowed, call Google APIs with it, and disconnect (revoke it, clear settings.google).
+ * The token lives only in storage.session with its expiry; it is never logged.
  */
+import { GOOGLE_CLIENT_ID, authUrl, parseTokenRedirect, tokenUsable, type GoogleToken } from './googleAuth';
+import { GOOGLE_HOSTS, requestHosts } from './hosts';
 import { getSettings, updateSettings } from './settings';
 import type { Settings } from './types';
 
@@ -15,17 +18,22 @@ export type GoogleSettings = Settings['google'];
 
 export const DISCONNECTED: GoogleSettings = { calendar: false, docs: false };
 
+const TOKEN_KEY = 'googleToken';
+let renewing: Promise<GoogleToken> | undefined;
+
 /** The part of chrome.identity Rekord uses; injected in tests. */
 export interface IdentityApi {
-  getAuthToken(details: { interactive: boolean; scopes: string[] }): Promise<{ token?: string; grantedScopes?: string[] } | string | undefined>;
-  removeCachedAuthToken(details: { token: string }): Promise<void>;
+  launchWebAuthFlow(details: { url: string; interactive: boolean; abortOnLoadForNonInteractive?: boolean; timeoutMsForNonInteractive?: number }): Promise<string | undefined>;
+  getRedirectURL(path?: string): string;
 }
 
 export interface GoogleDeps {
   identity?: IdentityApi;
   fetch?: typeof fetch;
-  /** OAuth client ID from the manifest; empty means this build can't sign in to Google. */
+  /** OAuth client ID; empty means this build can't sign in to Google. */
   clientId?: string;
+  /** Asks Chrome for Google's hosts; injected in tests. */
+  requestHosts?: (origins: string[]) => Promise<boolean>;
 }
 
 export type GoogleErrorCode = 'not-configured' | 'cancelled' | 'auth' | 'offline' | 'server';
@@ -49,37 +57,69 @@ function identityOf(deps: GoogleDeps): IdentityApi {
   return deps.identity ?? (browser.identity as unknown as IdentityApi);
 }
 
-function clientIdOf(deps: GoogleDeps): string {
-  if (deps.clientId !== undefined) return deps.clientId;
-  try {
-    const m = browser.runtime.getManifest() as { oauth2?: { client_id?: string } };
-    return m.oauth2?.client_id ?? '';
-  } catch {
-    return '';
-  }
+const clientIdOf = (deps: GoogleDeps): string => deps.clientId ?? GOOGLE_CLIENT_ID;
+
+async function storedToken(): Promise<GoogleToken | undefined> {
+  return (await browser.storage.session.get(TOKEN_KEY))[TOKEN_KEY] as GoogleToken | undefined;
 }
+
+const forgetToken = (): Promise<void> => browser.storage.session.remove(TOKEN_KEY);
 
 /** Scope URLs for the chosen parts. */
 export function scopesFor(choice: { calendar: boolean; docs: boolean }): string[] {
   return (Object.keys(SCOPES) as GoogleScope[]).filter((k) => choice[k]).map((k) => SCOPES[k]);
 }
 
-/** Gets an access token. Non-interactive calls fail with 'auth' when Google would need to ask the user. */
-export async function getToken(interactive: boolean, scopes: string[], deps: GoogleDeps = {}): Promise<string> {
-  if (!clientIdOf(deps)) throw new GoogleError('not-configured');
-  let result: Awaited<ReturnType<IdentityApi['getAuthToken']>>;
+/** Runs Google's consent page (or, silently, prompt=none) and keeps the token in storage.session. */
+async function authorize(interactive: boolean, scopes: string[], deps: GoogleDeps, loginHint?: string): Promise<GoogleToken> {
+  const clientId = clientIdOf(deps);
+  if (!clientId) throw new GoogleError('not-configured');
+  const fail = new GoogleError(interactive ? 'cancelled' : 'auth');
+  const identity = identityOf(deps);
+  const state = crypto.randomUUID();
+  let redirected: string | undefined;
   try {
-    result = await identityOf(deps).getAuthToken({ interactive, scopes });
+    redirected = await identity.launchWebAuthFlow({
+      url: authUrl(clientId, identity.getRedirectURL(), state, scopes, { silent: !interactive, loginHint }),
+      interactive,
+      // prompt=none answers through a redirect chain; give it a moment instead of stopping at the first page load.
+      ...(interactive ? {} : { abortOnLoadForNonInteractive: false, timeoutMsForNonInteractive: 5000 }),
+    });
   } catch {
-    throw new GoogleError(interactive ? 'cancelled' : 'auth');
+    throw fail;
   }
-  const token = typeof result === 'string' ? result : result?.token;
-  if (!token) throw new GoogleError(interactive ? 'cancelled' : 'auth');
-  return token;
+  if (!redirected) throw fail;
+  let t: GoogleToken;
+  try {
+    t = parseTokenRedirect(redirected, state, scopes, Date.now());
+  } catch {
+    throw fail;
+  }
+  await browser.storage.session.set({ [TOKEN_KEY]: t });
+  return t;
 }
 
 /**
- * Calls a Google API with a token for `scopes`. On 401 the cached token is dropped and one fresh token is tried;
+ * Gets an access token: the stored one while it lasts and covers `scopes`, otherwise a new one.
+ * Non-interactive calls renew silently and fail with 'auth' when Google would need to ask the user.
+ */
+export async function getToken(interactive: boolean, scopes: string[], deps: GoogleDeps = {}): Promise<string> {
+  if (!clientIdOf(deps)) throw new GoogleError('not-configured');
+  const stored = await storedToken();
+  if (tokenUsable(stored, Date.now()) && scopes.every((x) => stored.scopes.includes(x))) return stored.token;
+  if (interactive) return (await authorize(true, scopes, deps)).token;
+  // Calendar and Docs can ask at once; one silent renewal for every connected part serves both,
+  // unless it was started without a scope this caller needs.
+  const inFlight = renewing && (await renewing.catch(() => undefined));
+  if (inFlight && scopes.every((x) => inFlight.scopes.includes(x))) return inFlight.token;
+  renewing ??= getSettings()
+    .then((st) => authorize(false, [...new Set([...scopesFor(st.google), ...scopes])], deps, st.google.email))
+    .finally(() => { renewing = undefined; });
+  return (await renewing).token;
+}
+
+/**
+ * Calls a Google API with a token for `scopes`. On 401 the stored token is dropped and one fresh token is tried;
  * a second 401 (access revoked) throws GoogleError('auth').
  */
 export async function googleFetch(url: string, scopes: string[], deps: GoogleDeps = {}, init: RequestInit = {}): Promise<Response> {
@@ -97,7 +137,7 @@ export async function googleFetch(url: string, scopes: string[], deps: GoogleDep
       if (!res.ok) throw new GoogleError('server');
       return res;
     }
-    await identityOf(deps).removeCachedAuthToken({ token }).catch(() => undefined);
+    await forgetToken().catch(() => undefined);
   }
   throw new GoogleError('auth');
 }
@@ -121,21 +161,14 @@ export async function accountEmail(choice: { calendar: boolean; docs: boolean },
   return '';
 }
 
-/** Asks Google for consent (interactive), then saves which parts are connected. */
+/** Runs in a click: asks Chrome for Google's hosts, then Google for consent, then saves which parts are connected. */
 export async function connectGoogle(choice: { calendar: boolean; docs: boolean }, deps: GoogleDeps = {}): Promise<GoogleSettings> {
   const scopes = scopesFor(choice);
   if (scopes.length === 0) throw new GoogleError('cancelled');
-  const result = await (async () => {
-    if (!clientIdOf(deps)) throw new GoogleError('not-configured');
-    try {
-      return await identityOf(deps).getAuthToken({ interactive: true, scopes });
-    } catch {
-      throw new GoogleError('cancelled');
-    }
-  })();
-  const token = typeof result === 'string' ? result : result?.token;
-  if (!token) throw new GoogleError('cancelled');
-  const granted = typeof result === 'object' && result?.grantedScopes ? result.grantedScopes : scopes;
+  if (!clientIdOf(deps)) throw new GoogleError('not-configured');
+  // First await keeps the click's user gesture for Chrome's permission prompt.
+  if (!(await (deps.requestHosts ?? requestHosts)(GOOGLE_HOSTS))) throw new GoogleError('cancelled');
+  const { scopes: granted } = await authorize(true, scopes, deps);
   const connected = { calendar: choice.calendar && granted.includes(SCOPES.calendar), docs: choice.docs && granted.includes(SCOPES.docs) };
   if (!connected.calendar && !connected.docs) throw new GoogleError('cancelled');
   const prev = (await getSettings()).google;
@@ -149,16 +182,11 @@ export async function connectGoogle(choice: { calendar: boolean; docs: boolean }
   return google;
 }
 
-/** Forgets the token in Chrome, revokes it at Google (best effort) and clears settings.google. */
+/** Forgets the stored token, revokes it at Google (best effort) and clears settings.google. */
 export async function disconnectGoogle(deps: GoogleDeps = {}): Promise<void> {
-  const prev = (await getSettings()).google;
-  const scopes = scopesFor(prev);
-  let token = '';
-  if (scopes.length) {
-    try { token = await getToken(false, scopes, deps); } catch { /* nothing cached */ }
-  }
+  const token = (await storedToken().catch(() => undefined))?.token;
+  await forgetToken().catch(() => undefined);
   if (token) {
-    await identityOf(deps).removeCachedAuthToken({ token }).catch(() => undefined);
     const f = deps.fetch ?? fetch;
     await f('https://oauth2.googleapis.com/revoke', {
       method: 'POST',

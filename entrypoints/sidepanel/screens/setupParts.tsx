@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { checkKeys, loadKeyStatus, saveKeyStatus } from '@/lib/connect';
 import { serviceLabel, type KeyName } from '@/lib/keyDetect';
+import { hostsForKeys, requestHosts } from '@/lib/hosts';
 import { loadKeys } from '@/lib/keys';
 import { addKey, STATUS_WORD, type RowStatus } from '@/lib/setup';
 
@@ -179,9 +180,11 @@ export interface KeyState {
   status: Record<string, RowStatus | undefined>;
   ready: boolean;
   reload: () => Promise<void>;
-  /** Saves a key for a service, checks it, and updates the status. */
-  add: (name: KeyName, value: string) => Promise<RowStatus>;
+  /** Saves a key for a service, checks it, and updates the status. `ask` false skips the host prompt (no gesture, e.g. blur). */
+  add: (name: KeyName, value: string, ask?: boolean) => Promise<RowStatus>;
 }
+
+const PROMPT_WAIT_MS = 15_000;
 
 /** Keys in memory and their last check. Checks any key that has not been checked yet. Never holds a value. */
 export function useKeyState(): KeyState {
@@ -213,12 +216,16 @@ export function useKeyState(): KeyState {
     void reload();
   }, [reload]);
 
-  const add = useCallback(async (name: KeyName, value: string): Promise<RowStatus> => {
+  const add = useCallback(async (name: KeyName, value: string, ask = true): Promise<RowStatus> => {
     setLoaded((l) => (l.includes(name) ? l : [...l, name]));
     setStatus((s) => ({ ...s, [name]: 'checking' }));
+    // Pasting or pressing Enter is the gesture Chrome wants; ask before any other await, but save without waiting.
+    const granted = ask ? requestHosts(hostsForKeys([name])) : Promise.resolve(true);
+    // A prompt left open must not keep the row checking forever; after a while the check runs anyway.
+    const reachable = Promise.race([granted, new Promise<boolean>((r) => setTimeout(() => r(true), PROMPT_WAIT_MS))]);
     let result: RowStatus;
     try {
-      result = await addKey(name, value);
+      result = await addKey(name, value, fetch, reachable);
     } catch {
       result = 'unreachable';
     }

@@ -41,6 +41,7 @@ export default function Processing() {
   const conn = useConnection();
   const [lostSeen, setLostSeen] = useState(false);
   const speakersStarted = useRef(false);
+  const [found, setFound] = useState<{ decisions: number; actions: number } | undefined>(undefined);
 
   // After the summary: tell voices apart when the meeting has a recording. Never fails the summary.
   const finish = useCallback(async () => {
@@ -63,7 +64,8 @@ export default function Processing() {
     setError('');
     setPhase('summarizing');
     try {
-      await summarize(meetingId);
+      const m = await summarize(meetingId);
+      if (m.summary) setFound({ decisions: m.summary.decisions.length, actions: m.summary.actions.length });
     } catch (e) {
       started.current = false;
       failed.current = true;
@@ -83,7 +85,10 @@ export default function Processing() {
         if (!alive) return;
         if (!m) { setPhase('missing'); return; }
         if (m.status === 'done' && m.summary) {
-          if (m.speakerStep === 'pending' || speakersStarted.current) void finish();
+          if (m.speakerStep === 'pending' || speakersStarted.current) {
+            setFound({ decisions: m.summary.decisions.length, actions: m.summary.actions.length });
+            void finish();
+          }
           else replace('summary', { meetingId });
           return;
         }
@@ -140,8 +145,8 @@ export default function Processing() {
         {(phase === 'transcribing' || summarizing) && (
           <ol className="proc-steps" aria-label="Progress">
             <Step state={summarizing ? 'done' : 'active'} note={summarizing ? 'done' : waiting ? `${pending} left` : undefined}>Final transcript</Step>
-            <Step state={speakers ? 'done' : 'todo'}>Decisions</Step>
-            <Step state={speakers ? 'done' : 'todo'}>Action items and owners</Step>
+            <Step state={speakers ? 'done' : 'todo'} note={speakers && found ? `${found.decisions} found` : undefined}>Decisions</Step>
+            <Step state={speakers ? 'done' : 'todo'} note={speakers && found ? `${found.actions} found` : undefined}>Action items and owners</Step>
             <Step state={speakers ? 'done' : summarizing ? 'active' : 'todo'} note={speakers ? 'done' : undefined}>Summary</Step>
             {speakers && <Step state="active">Telling voices apart</Step>}
           </ol>

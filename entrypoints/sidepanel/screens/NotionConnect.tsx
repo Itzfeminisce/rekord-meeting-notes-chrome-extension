@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { NOTION_HOSTS, requestHosts } from '@/lib/hosts';
 import { loadKeys, mergeKeys } from '@/lib/keys';
 import { NOTION_INTEGRATIONS_URL, NotionError, validateSecret, type NotionDeps } from '@/lib/share/notion';
+import { Spinner } from '../components';
 import { useRouter } from '../router';
 import { BackIcon, ExternalLink, PenvCloudLink } from './setupParts';
 
@@ -24,11 +26,18 @@ export default function NotionConnect() {
     if (busy) return;
     setError('');
     let token = secret.trim();
+    // Asked before any other await, so the click still counts as the gesture Chrome wants.
+    const allowed = token ? requestHosts(NOTION_HOSTS) : undefined;
     if (!token) {
       try { token = (await loadKeys()).NOTION_TOKEN?.trim() ?? ''; } catch { token = ''; }
     }
     if (!token) { setError('Paste your Notion secret to continue.'); return; }
     setBusy(true);
+    if (!(await (allowed ?? requestHosts(NOTION_HOSTS)))) {
+      setError('Rekord needs your permission to reach Notion. Try again and choose Allow.');
+      setBusy(false);
+      return;
+    }
     try {
       await validateSecret(token, notionDeps.current);
       await mergeKeys({ NOTION_TOKEN: token });
@@ -87,9 +96,10 @@ export default function NotionConnect() {
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 8 }}>
         <button
           type="button" onClick={() => void go()} disabled={busy} aria-busy={busy || undefined}
-          style={{ height: 48, border: 'none', borderRadius: 12, background: '#111114', color: '#FFFFFF', font: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.5 : 1 }}
+          style={{ height: 48, border: 'none', borderRadius: 12, background: '#111114', color: '#FFFFFF', font: 'inherit', fontSize: 15, fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.75 : 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
         >
-          Connect
+          {busy && <Spinner label="Connecting to Notion" size={16} />}
+          {busy ? 'Connecting…' : 'Connect'}
         </button>
         <span style={{ textAlign: 'center', fontSize: 12, color: '#6E7079' }}>Rekord can only see the pages you add it to.</span>
       </div>
