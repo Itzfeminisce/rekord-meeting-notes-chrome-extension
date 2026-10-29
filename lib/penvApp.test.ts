@@ -270,20 +270,30 @@ describe('penvApp', () => {
     for (let d = 0; d < 30; d++) {
       await realSet({ penvGrant: 'pca_A', penvAppDisconnected: false });
       await saveKeys({});
-      const fetchImpl = rotatingPenv(['pca_A']);
-      let settled = false;
-      const load = loadPenvAppKeys(TARGET, fetchImpl).catch((e) => e as Error).finally(() => { settled = true; });
+      // The server replaced grant A when B was issued: A's exchange is held until the connect has stored B, then refused.
+      const inner = rotatingPenv(['pca_A']);
+      let release!: () => void;
+      const gate = new Promise<void>((r) => { release = r; });
+      const heldA: string[] = [];
+      const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+        const bearer = (init?.headers as Record<string, string> | undefined)?.Authorization;
+        if (String(url).endsWith('/auth/app') && bearer === 'Bearer pca_A') { heldA.push(bearer); await gate; }
+        return inner(url, init);
+      });
+      const load = loadPenvAppKeys(TARGET, fetchImpl).then((v) => ({ v }), (e) => ({ e: e as Error }));
       await ticks(d);
       await connectPenvApp({ keys: ['GROQ_API_KEY'], launch: allow(), fetchImpl, redirect: REDIRECT });
-      const stillRunning = !settled;
+      expect(await loadGrant()).toBe('pca_B'); // stored before the old exchange is answered
+      for (let i = 0; i < 20 && heldA.length === 0; i++) await ticks(1); // the old load has reached its exchange
+      expect(heldA).toHaveLength(1);
+      release();
       const result = await load;
       await ticks(10);
-      // A load that settled before the connect finished may report 'disconnected' (the connect lands after it); one
-      // still running when the connect finished is stale and must be re-run with grant B.
-      if (stillRunning) expect(result).toEqual(['GROQ_API_KEY']);
+      expect(result).toEqual({ v: ['GROQ_API_KEY'] }); // re-run with B, not null and no error
       expect(await wasDisconnected()).toBe(false);
       expect(await loadGrant()).toMatch(/^pca_B/);
-      if (Array.isArray(result)) expect(await loadKeys()).toEqual({ GROQ_API_KEY: 'gsk_test' });
+      expect(await loadKeys()).toEqual({ GROQ_API_KEY: 'gsk_test' });
+      expect(bearers(fetchImpl, '/auth/app')).toEqual(['Bearer pca_A', 'Bearer pca_B']);
     }
   });
 
