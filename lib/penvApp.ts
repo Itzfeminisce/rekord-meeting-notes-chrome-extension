@@ -134,22 +134,53 @@ async function markDisconnected(): Promise<void> {
 
 // ---- HTTP ----
 
-async function postJson(url: string, body: unknown, fetchImpl: typeof fetch, bearer?: string): Promise<Record<string, unknown>> {
-  let res: Response;
+const REQUEST_TIMEOUT_MS = 10_000;
+
+/**
+ * Runs `run` with a fetch that aborts after `timeoutMs`; a stalled request (or a fetch that ignores the signal)
+ * rejects with "penv could not be reached" instead of hanging.
+ */
+async function withTimeout<T>(fetchImpl: typeof fetch, timeoutMs: number, run: (f: typeof fetch) => Promise<T>): Promise<T> {
+  const ctrl = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<never>((_res, reject) => {
+    timer = setTimeout(() => {
+      ctrl.abort();
+      reject(new PenvError('http', 'penv could not be reached.'));
+    }, timeoutMs);
+  });
+  const f = ((input: RequestInfo | URL, init?: RequestInit) => fetchImpl(input, { ...init, signal: ctrl.signal })) as typeof fetch;
   try {
-    res = await fetchImpl(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}) },
-      body: JSON.stringify(body),
-      credentials: 'omit',
-    });
-  } catch {
-    throw new PenvError('http', 'penv could not be reached.');
+    return await Promise.race([run(f), timedOut]);
+  } finally {
+    clearTimeout(timer);
   }
-  const data = ((await res.json().catch(() => null)) ?? {}) as Record<string, unknown>;
-  if (data.error === 'invalid_grant' || res.status === 401) throw new PenvAppError('disconnected', 'Penv Cloud no longer accepts this connection.');
-  if (!res.ok) throw new PenvError('http', `penv returned HTTP ${res.status}.`, res.status);
-  return data;
+}
+
+async function postJson(
+  url: string,
+  body: unknown,
+  fetchImpl: typeof fetch,
+  bearer?: string,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): Promise<Record<string, unknown>> {
+  return withTimeout(fetchImpl, timeoutMs, async (f) => {
+    let res: Response;
+    try {
+      res = await f(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}) },
+        body: JSON.stringify(body),
+        credentials: 'omit',
+      });
+    } catch {
+      throw new PenvError('http', 'penv could not be reached.');
+    }
+    const data = ((await res.json().catch(() => null)) ?? {}) as Record<string, unknown>;
+    if (data.error === 'invalid_grant' || res.status === 401) throw new PenvAppError('disconnected', 'Penv Cloud no longer accepts this connection.');
+    if (!res.ok) throw new PenvError('http', `penv returned HTTP ${res.status}.`, res.status);
+    return data;
+  });
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
@@ -173,6 +204,7 @@ export async function connectPenvApp(opts: {
   launch?: LaunchWebAuthFlow;
   fetchImpl?: typeof fetch;
   redirect?: string;
+  timeoutMs?: number;
 }): Promise<PenvAppConnection> {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const redirect = opts.redirect ?? redirectUri();
@@ -197,6 +229,8 @@ export async function connectPenvApp(opts: {
       PENV_APP_TOKEN_URL,
       { grant_type: 'authorization_code', code, code_verifier: verifier, client_id: PENV_APP_CLIENT_ID, redirect_uri: redirect },
       fetchImpl,
+      undefined,
+      opts.timeoutMs,
     );
   } catch (err) {
     // A refused code (expired or used) means this attempt didn't connect; try again.
@@ -212,23 +246,39 @@ export async function connectPenvApp(opts: {
 
 /**
  * Trades the grant for a short-lived `pck_` token (keeping the rotated grant), reads the environment and keeps
- * the keys in memory. Returns the key names, or null without a grant. Throws PenvAppError('disconnected') on
- * invalid_grant (grant and keys are cleared first).
+ * the keys in memory. Returns the key names, or null without a grant (or when invalidated meanwhile). Throws
+ * PenvAppError('disconnected') on invalid_grant (grant and keys are cleared first).
  */
-export function loadPenvAppKeys(target: PenvTarget, fetchImpl: typeof fetch = fetch): Promise<string[] | null> {
-  // The grant rotates on every use, so overlapping callers must share one exchange.
-  if (inflightKeys) return inflightKeys;
-  const run = loadPenvAppKeysOnce(target, fetchImpl).finally(() => {
-    if (inflightKeys === run) inflightKeys = null;
-  });
-  inflightKeys = run;
+export function loadPenvAppKeys(target: PenvTarget, fetchImpl: typeof fetch = fetch, timeoutMs = REQUEST_TIMEOUT_MS): Promise<string[] | null> {
+  // The grant rotates on every use, so overlapping callers of one generation share one exchange; a newer
+  // generation waits for an invalidated exchange to settle (it is time-limited) and then starts its own.
+  if (inflight && inflight.gen === generation) return inflight.run;
+  const gen = generation;
+  const prev = inflight?.run;
+  const run = (prev ? prev.catch(() => null).then(() => loadPenvAppKeysOnce(target, fetchImpl, gen, timeoutMs)) : loadPenvAppKeysOnce(target, fetchImpl, gen, timeoutMs))
+    .finally(() => {
+      if (inflight?.run === run) inflight = null;
+    });
+  inflight = { gen, run };
   return run;
 }
 
-let inflightKeys: Promise<string[] | null> | null = null;
-/** Bumped by every disconnect; a load whose generation changed discards its result instead of saving it. */
+let inflight: { gen: number; run: Promise<string[] | null> } | null = null;
+/** Bumped by invalidateAppLoads; a load whose generation changed saves no keys. */
 let generation = 0;
+/** Bumped by every disconnect (the grant was forgotten); a load started before it never saves a grant. */
+let forgets = 0;
+/** The local forget of a running disconnect; a load waits for it so it can't read the grant being forgotten. */
+let forgetting: Promise<unknown> | null = null;
 const REVOKE_TIMEOUT_MS = 5000;
+
+/**
+ * Stops every in-flight app key load from saving keys (synchronous). Call it before saving keys from another
+ * source, or before forgetting the app connection.
+ */
+export function invalidateAppLoads(): void {
+  generation++;
+}
 
 /** Best-effort server revoke of a grant, with a timeout. True when the server confirmed it. */
 async function revokeGrant(grant: string, fetchImpl: typeof fetch, timeoutMs = REVOKE_TIMEOUT_MS): Promise<boolean> {
@@ -250,24 +300,38 @@ async function revokeGrant(grant: string, fetchImpl: typeof fetch, timeoutMs = R
   }
 }
 
-async function loadPenvAppKeysOnce(target: PenvTarget, fetchImpl: typeof fetch): Promise<string[] | null> {
-  const gen = generation;
+/**
+ * An invalidated load still holds the only working grant when nothing forgot the connection (e.g. a token
+ * connect that may yet fail): keep the rotated grant then, so the next load works. Otherwise revoke it.
+ */
+async function settleStaleGrant(used: string, rotated: string, startForgets: number, fetchImpl: typeof fetch): Promise<void> {
+  if (!rotated.startsWith('pca_')) return;
+  const stored = forgets === startForgets ? await loadGrant() : undefined;
+  // Checked again right before the write: a disconnect bumps `forgets` before it touches storage.
+  if (stored === used && forgets === startForgets) return saveGrant(rotated);
+  void revokeGrant(rotated, fetchImpl).catch(() => false);
+}
+
+async function loadPenvAppKeysOnce(target: PenvTarget, fetchImpl: typeof fetch, gen: number, timeoutMs: number): Promise<string[] | null> {
+  if (forgetting) await forgetting.catch(() => undefined);
+  if (gen !== generation) return null;
+  const startForgets = forgets;
   let grant = await loadGrant();
   if (!grant) return null;
   let data: Record<string, unknown>;
   for (let retried = false; ; retried = true) {
     try {
-      data = await postJson(PENV_APP_URL, { client_id: PENV_APP_CLIENT_ID }, fetchImpl, grant);
+      data = await postJson(PENV_APP_URL, { client_id: PENV_APP_CLIENT_ID }, fetchImpl, grant, timeoutMs);
       break;
     } catch (err) {
-      if (err instanceof PenvAppError && err.code === 'disconnected') {
+      if (err instanceof PenvAppError && err.code === 'disconnected' && gen === generation) {
         // A newer grant may have been stored meanwhile (another path rotated it): retry once with that one.
         const current = await loadGrant();
         if (!retried && current && current !== grant) {
           grant = current;
           continue;
         }
-        if (current === grant) await markDisconnected();
+        if (current === grant && gen === generation) await markDisconnected();
       }
       throw err;
     }
@@ -275,29 +339,38 @@ async function loadPenvAppKeysOnce(target: PenvTarget, fetchImpl: typeof fetch):
   const token = str(data.token) || str(data.access_token);
   const rotated = str(data.grant) || str(data.refresh_token);
   if (gen !== generation) {
-    // Disconnected while exchanging: don't restore anything, and drop the grant we were just handed.
-    if (rotated.startsWith('pca_')) await revokeGrant(rotated, fetchImpl);
+    await settleStaleGrant(grant, rotated, startForgets, fetchImpl);
     return null;
   }
   if (rotated.startsWith('pca_')) await saveGrant(rotated);
   if (!token.startsWith('pck_')) throw new PenvError('bad-response', 'penv sent a response Rekord does not understand.');
-  const keys = await fetchPenvKeys(token, target, fetchImpl);
+  const keys = await withTimeout(fetchImpl, timeoutMs, (f) => fetchPenvKeys(token, target, f));
   if (gen !== generation) return null;
   await saveKeys(keys);
   return Object.keys(keys).sort();
 }
 
 /**
- * Waits for any in-flight key load, revokes the grant on Penv Cloud, then forgets it and (unless `keepKeys`)
- * the keys, even if the revoke failed. `keepKeys` is for switching to another source that just saved its own keys.
- * Resolves to true when the server confirmed the revoke (or there was no grant), false otherwise.
+ * Invalidates in-flight key loads, forgets the grant and (unless `keepKeys`) the keys locally, then revokes the
+ * forgotten grant on Penv Cloud. Never waits for an in-flight load: one that later gets a rotated grant revokes it
+ * itself, and a load started after this finds no grant. `keepKeys` is for switching to another source that saves
+ * its own keys. Resolves to true when the server confirmed the revoke (or there was no grant), false otherwise.
  */
 export async function disconnectPenvApp(fetchImpl: typeof fetch = fetch, opts: { keepKeys?: boolean; timeoutMs?: number } = {}): Promise<boolean> {
-  generation++;
-  if (inflightKeys) await inflightKeys.catch(() => undefined);
-  const grant = await loadGrant();
-  const revoked = grant ? await revokeGrant(grant, fetchImpl, opts.timeoutMs) : true;
-  await browser.storage.session.remove([GRANT_KEY, DISCONNECTED_KEY]);
-  if (!opts.keepKeys) await clearKeys();
-  return revoked;
+  invalidateAppLoads();
+  forgets++;
+  const forget = (async () => {
+    const stored = await loadGrant();
+    await browser.storage.session.remove([GRANT_KEY, DISCONNECTED_KEY]);
+    if (!opts.keepKeys) await clearKeys();
+    return stored;
+  })();
+  forgetting = forget;
+  let grant: string | undefined;
+  try {
+    grant = await forget;
+  } finally {
+    if (forgetting === forget) forgetting = null;
+  }
+  return grant ? revokeGrant(grant, fetchImpl, opts.timeoutMs) : true;
 }

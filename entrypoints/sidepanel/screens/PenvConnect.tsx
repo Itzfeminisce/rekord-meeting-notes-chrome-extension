@@ -5,7 +5,7 @@ import { checkKeys, connectErrorMessage, connectPenv, formatEnvPath, loadToken, 
 import { serviceLabel } from '@/lib/keyDetect';
 import { clearKeys, loadKeys } from '@/lib/keys';
 import { getSettings, updateSettings } from '@/lib/settings';
-import { connectKeyNames, connectPenvApp, disconnectPenvApp, loadPenvAppKeys, PenvAppError, penvAppAvailable, wasDisconnected } from '@/lib/penvApp';
+import { connectKeyNames, connectPenvApp, disconnectPenvApp, invalidateAppLoads, loadPenvAppKeys, PenvAppError, penvAppAvailable, wasDisconnected } from '@/lib/penvApp';
 import { canStart, keyUse, neededKeys, startHint } from '@/lib/setup';
 import type { Settings } from '@/lib/types';
 import {
@@ -97,13 +97,16 @@ export default function PenvConnect() {
 
   async function pickPaste() {
     const hadApp = !!s?.penvApp;
+    if (hadApp) invalidateAppLoads(); // first, so a finishing app load can't save keys after they're cleared
     try {
       await updateSettings({ keySource: 'paste' });
     } catch {
       return setError('Rekord couldn’t save your choice. Try again.');
     }
-    if (hadApp) await clearKeys().catch(() => undefined); // local and quick; the app's keys go now
-    if (hadApp) void disconnectPenvApp(fetch, { keepKeys: true }).catch(() => false); // best effort, in the background
+    if (hadApp) {
+      await clearKeys().catch(() => undefined); // local and quick; the app's keys go now
+      void disconnectPenvApp(fetch, { keepKeys: true }).catch(() => false); // forgets now, revokes in the background
+    }
     goSetup();
   }
 
@@ -146,8 +149,10 @@ export default function PenvConnect() {
     if (!token.trim()) return setError('Enter your read-only machine token.');
     setBusy(true);
     try {
+      // App loads must not overwrite the keys saved next; the grant stays until this succeeds.
+      if (s.penvApp) invalidateAppLoads();
       await connectPenv(token.trim(), target);
-      if (s.penvApp) await disconnectPenvApp(fetch, { keepKeys: true }).catch(() => false);
+      if (s.penvApp) void disconnectPenvApp(fetch, { keepKeys: true }).catch(() => false); // forgets now, revokes in the background
       const next = await updateSettings({ penv: target, keySource: 'penv', penvApp: undefined });
       setS(next);
       setToken('');

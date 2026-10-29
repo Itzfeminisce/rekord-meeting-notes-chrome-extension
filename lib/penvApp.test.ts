@@ -8,6 +8,7 @@ import {
   connectPenvApp,
   createPkce,
   disconnectPenvApp,
+  invalidateAppLoads,
   loadGrant,
   loadPenvAppKeys,
   PenvAppError,
@@ -153,15 +154,20 @@ describe('penvApp', () => {
     expect(await loadGrant()).toBeUndefined();
   });
 
-  it('revokes before clearing the grant', async () => {
+  it('forgets the grant before revoking it', async () => {
     await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
-    let during: string | undefined;
-    await disconnectPenvApp(vi.fn(async () => { during = await loadGrant(); return new Response(null, { status: 204 }); }));
-    expect(during).toBe('pca_one');
-    expect(await loadGrant()).toBeUndefined();
+    let during: string | undefined = 'unset';
+    let auth: string | undefined;
+    await disconnectPenvApp(vi.fn(async (_u: unknown, init?: RequestInit) => {
+      during = await loadGrant();
+      auth = (init?.headers as Record<string, string>).Authorization;
+      return new Response(null, { status: 204 });
+    }) as unknown as typeof fetch);
+    expect(during).toBeUndefined();
+    expect(auth).toBe('Bearer pca_one');
   });
 
-  it('a disconnect during an in-flight load ends disconnected', async () => {
+  it('a disconnect during an in-flight load returns without waiting, and the load saves nothing', async () => {
     await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
     let release!: () => void;
     const gate = new Promise<void>((r) => { release = r; });
@@ -172,14 +178,94 @@ describe('penvApp', () => {
     });
     const load = loadPenvAppKeys(TARGET, fetchImpl);
     await new Promise((r) => setTimeout(r, 0));
+    expect(await disconnectPenvApp(fetchImpl)).toBe(true); // the load is still stalled
+    expect(await loadGrant()).toBeUndefined();
+    release();
+    expect(await load).toBeNull();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(await loadGrant()).toBeUndefined();
+    expect(await loadKeys()).toEqual({});
+    const revoked = fetchImpl.mock.calls.filter(([u]) => String(u).endsWith('/auth/revoke'))
+      .map(([, i]) => (i?.headers as Record<string, string>).Authorization);
+    expect(revoked).toEqual(['Bearer pca_one', 'Bearer pca_two']);
+  });
+
+  it('a load started during the revoke finds no grant', async () => {
+    await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const base = fakePenv();
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).endsWith('/auth/revoke')) await gate;
+      return base(url, init);
+    });
     const disc = disconnectPenvApp(fetchImpl);
+    const early = loadPenvAppKeys(TARGET, fetchImpl); // started before the local forget finished
+    await new Promise((r) => setTimeout(r, 0));
+    expect(await early).toBeNull();
+    expect(await loadPenvAppKeys(TARGET, fetchImpl)).toBeNull();
+    release();
+    await disc;
+    expect(fetchImpl.mock.calls.filter(([u]) => String(u).endsWith('/auth/app'))).toHaveLength(0);
+    expect(await loadGrant()).toBeUndefined();
+    expect(await loadKeys()).toEqual({});
+  });
+
+  it('a stalled grant exchange or env read times out', async () => {
+    const stall = (match: string) => {
+      const base = fakePenv();
+      return vi.fn((url: string | URL | Request, init?: RequestInit) =>
+        String(url).includes(match) ? new Promise<Response>(() => undefined) : base(url, init)) as unknown as typeof fetch;
+    };
+    await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
+    await expect(loadPenvAppKeys(TARGET, stall('/auth/app'), 20)).rejects.toMatchObject({ code: 'http' });
+    expect(await loadGrant()).toBe('pca_one');
+    await expect(loadPenvAppKeys(TARGET, stall('/envs/'), 20)).rejects.toMatchObject({ code: 'http' });
+    expect(await loadKeys()).toEqual({});
+  });
+
+  it('token path: invalidating first keeps the new keys, and the grant still works if the connect fails', async () => {
+    await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const base = fakePenv();
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).endsWith('/auth/app')) await gate;
+      return base(url, init);
+    });
+    const load = loadPenvAppKeys(TARGET, fetchImpl);
+    await new Promise((r) => setTimeout(r, 0));
+    invalidateAppLoads();
+    await saveKeys({ OPENAI_API_KEY: 'sk_test' }); // what connectPenv saves
+    release();
+    expect(await load).toBeNull();
+    expect(await loadKeys()).toEqual({ OPENAI_API_KEY: 'sk_test' });
+    // Not forgotten (the connect might still fail): the rotated grant is kept, and a new load works.
+    expect(await loadGrant()).toBe('pca_two');
+    expect(await wasDisconnected()).toBe(false);
+    expect(await loadPenvAppKeys(TARGET, fakePenv())).toEqual(['GROQ_API_KEY']);
+  });
+
+  it('pickPaste: invalidate, clear keys, then a keepKeys disconnect leaves nothing behind', async () => {
+    await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const base = fakePenv();
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).endsWith('/auth/app')) await gate;
+      return base(url, init);
+    });
+    const load = loadPenvAppKeys(TARGET, fetchImpl);
+    await new Promise((r) => setTimeout(r, 0));
+    invalidateAppLoads();
+    await saveKeys({});
+    const disc = disconnectPenvApp(fetchImpl, { keepKeys: true });
     release();
     expect(await load).toBeNull();
     await disc;
-    expect(await loadGrant()).toBeUndefined();
+    await new Promise((r) => setTimeout(r, 0));
     expect(await loadKeys()).toEqual({});
-    const revoked = fetchImpl.mock.calls.filter(([u]) => String(u).endsWith('/auth/revoke'));
-    expect(revoked.length).toBeGreaterThan(0);
+    expect(await loadGrant()).toBeUndefined();
   });
 
   it('keepKeys revokes and forgets the grant but leaves the keys', async () => {
