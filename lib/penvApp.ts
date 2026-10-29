@@ -126,7 +126,9 @@ export async function wasDisconnected(): Promise<boolean> {
   return (await browser.storage.session.get(DISCONNECTED_KEY))[DISCONNECTED_KEY] === true;
 }
 
-async function markDisconnected(): Promise<void> {
+async function markDisconnected(badGrant: string): Promise<void> {
+  // Only the grant that got invalid_grant is cleared; a newer one (reconnect) is left alone. Re-checked right before the write.
+  if ((await loadGrant()) !== badGrant) return;
   await browser.storage.session.remove(GRANT_KEY);
   await browser.storage.session.set({ [DISCONNECTED_KEY]: true });
   await clearKeys();
@@ -240,6 +242,7 @@ export async function connectPenvApp(opts: {
   const grant = str(data.grant) || str(data.refresh_token);
   const conn = readConnection(data, opts.keys);
   if (!grant.startsWith('pca_') || !conn) throw new PenvError('bad-response', 'penv sent a response Rekord does not understand.');
+  invalidateAppLoads(); // loads still running with the previous grant must not overwrite this one
   await saveGrant(grant);
   return conn;
 }
@@ -331,7 +334,7 @@ async function loadPenvAppKeysOnce(target: PenvTarget, fetchImpl: typeof fetch, 
           grant = current;
           continue;
         }
-        if (current === grant && gen === generation) await markDisconnected();
+        if (current === grant && gen === generation) await markDisconnected(grant);
       }
       throw err;
     }
@@ -342,7 +345,8 @@ async function loadPenvAppKeysOnce(target: PenvTarget, fetchImpl: typeof fetch, 
     await settleStaleGrant(grant, rotated, startForgets, fetchImpl);
     return null;
   }
-  if (rotated.startsWith('pca_')) await saveGrant(rotated);
+  // Compare-and-set: save the rotated grant only if the stored one is still the one this load used.
+  await settleStaleGrant(grant, rotated, startForgets, fetchImpl);
   if (!token.startsWith('pck_')) throw new PenvError('bad-response', 'penv sent a response Rekord does not understand.');
   const keys = await withTimeout(fetchImpl, timeoutMs, (f) => fetchPenvKeys(token, target, f));
   if (gen !== generation) return null;
