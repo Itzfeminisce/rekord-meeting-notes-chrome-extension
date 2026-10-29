@@ -3,7 +3,7 @@ import { Spinner } from '../components';
 import { useRouter } from '../router';
 import { checkKeys, connectErrorMessage, connectPenv, formatEnvPath, loadToken, parseEnvPath, saveKeyStatus } from '@/lib/connect';
 import { serviceLabel } from '@/lib/keyDetect';
-import { loadKeys } from '@/lib/keys';
+import { clearKeys, loadKeys } from '@/lib/keys';
 import { getSettings, updateSettings } from '@/lib/settings';
 import { connectKeyNames, connectPenvApp, disconnectPenvApp, loadPenvAppKeys, PenvAppError, penvAppAvailable, wasDisconnected } from '@/lib/penvApp';
 import { canStart, keyUse, neededKeys, startHint } from '@/lib/setup';
@@ -96,12 +96,14 @@ export default function PenvConnect() {
   const path = s.keySource === 'penv-app' && s.penvApp ? `${s.penvApp.org} / ${s.penvApp.project} / ${s.penvApp.env}` : formatEnvPath(s.penv).split('/').join(' / ');
 
   async function pickPaste() {
-    if (s?.penvApp) await disconnectPenvApp().catch(() => false);
+    const hadApp = !!s?.penvApp;
     try {
       await updateSettings({ keySource: 'paste' });
     } catch {
       return setError('Rekord couldn’t save your choice. Try again.');
     }
+    if (hadApp) await clearKeys().catch(() => undefined); // local and quick; the app's keys go now
+    if (hadApp) void disconnectPenvApp(fetch, { keepKeys: true }).catch(() => false); // best effort, in the background
     goSetup();
   }
 
@@ -144,8 +146,8 @@ export default function PenvConnect() {
     if (!token.trim()) return setError('Enter your read-only machine token.');
     setBusy(true);
     try {
-      if (s.penvApp) await disconnectPenvApp().catch(() => false);
       await connectPenv(token.trim(), target);
+      if (s.penvApp) await disconnectPenvApp(fetch, { keepKeys: true }).catch(() => false);
       const next = await updateSettings({ penv: target, keySource: 'penv', penvApp: undefined });
       setS(next);
       setToken('');

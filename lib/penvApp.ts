@@ -40,8 +40,8 @@ export const redirectUri = (): string => browser.identity.getRedirectURL('penv')
 let live = false;
 
 /**
- * True once Penv Cloud app connections are live. A POST `{}` to the token route answers 404 until then
- * (or fails offline); any other status (e.g. 400 invalid_request) means it is live. True is kept for the session.
+ * True once Penv Cloud app connections are live. A POST `{}` to the token route is live on a 2xx or a 4xx other
+ * than 403/404 (e.g. 400 invalid_request); 403, 404, 5xx and network failures are not live. True is kept for the session.
  */
 export async function penvAppAvailable(fetchImpl: typeof fetch = fetch, timeoutMs = 2500): Promise<boolean> {
   if (live) return true;
@@ -226,8 +226,32 @@ export function loadPenvAppKeys(target: PenvTarget, fetchImpl: typeof fetch = fe
 }
 
 let inflightKeys: Promise<string[] | null> | null = null;
+/** Bumped by every disconnect; a load whose generation changed discards its result instead of saving it. */
+let generation = 0;
+const REVOKE_TIMEOUT_MS = 5000;
+
+/** Best-effort server revoke of a grant, with a timeout. True when the server confirmed it. */
+async function revokeGrant(grant: string, fetchImpl: typeof fetch, timeoutMs = REVOKE_TIMEOUT_MS): Promise<boolean> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetchImpl(PENV_REVOKE_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', Authorization: `Bearer ${grant}` },
+      body: JSON.stringify({ client_id: PENV_APP_CLIENT_ID }),
+      credentials: 'omit',
+      signal: ctrl.signal,
+    });
+    return res.ok;
+  } catch {
+    return false; // Offline or timed out: still forgotten here; it can also be removed on Penv Cloud.
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 async function loadPenvAppKeysOnce(target: PenvTarget, fetchImpl: typeof fetch): Promise<string[] | null> {
+  const gen = generation;
   let grant = await loadGrant();
   if (!grant) return null;
   let data: Record<string, unknown>;
@@ -250,34 +274,30 @@ async function loadPenvAppKeysOnce(target: PenvTarget, fetchImpl: typeof fetch):
   }
   const token = str(data.token) || str(data.access_token);
   const rotated = str(data.grant) || str(data.refresh_token);
+  if (gen !== generation) {
+    // Disconnected while exchanging: don't restore anything, and drop the grant we were just handed.
+    if (rotated.startsWith('pca_')) await revokeGrant(rotated, fetchImpl);
+    return null;
+  }
   if (rotated.startsWith('pca_')) await saveGrant(rotated);
   if (!token.startsWith('pck_')) throw new PenvError('bad-response', 'penv sent a response Rekord does not understand.');
   const keys = await fetchPenvKeys(token, target, fetchImpl);
+  if (gen !== generation) return null;
   await saveKeys(keys);
   return Object.keys(keys).sort();
 }
 
 /**
- * Revokes the grant on Penv Cloud first, then forgets it and the keys (even if the revoke failed).
+ * Waits for any in-flight key load, revokes the grant on Penv Cloud, then forgets it and (unless `keepKeys`)
+ * the keys, even if the revoke failed. `keepKeys` is for switching to another source that just saved its own keys.
  * Resolves to true when the server confirmed the revoke (or there was no grant), false otherwise.
  */
-export async function disconnectPenvApp(fetchImpl: typeof fetch = fetch): Promise<boolean> {
+export async function disconnectPenvApp(fetchImpl: typeof fetch = fetch, opts: { keepKeys?: boolean; timeoutMs?: number } = {}): Promise<boolean> {
+  generation++;
+  if (inflightKeys) await inflightKeys.catch(() => undefined);
   const grant = await loadGrant();
-  let revoked = true;
-  if (grant) {
-    try {
-      const res = await fetchImpl(PENV_REVOKE_URL, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', Authorization: `Bearer ${grant}` },
-        body: JSON.stringify({ client_id: PENV_APP_CLIENT_ID }),
-        credentials: 'omit',
-      });
-      revoked = res.ok;
-    } catch {
-      revoked = false; // Offline: still forgotten here; it can also be removed on Penv Cloud.
-    }
-  }
+  const revoked = grant ? await revokeGrant(grant, fetchImpl, opts.timeoutMs) : true;
   await browser.storage.session.remove([GRANT_KEY, DISCONNECTED_KEY]);
-  await clearKeys();
+  if (!opts.keepKeys) await clearKeys();
   return revoked;
 }

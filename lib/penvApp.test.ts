@@ -161,6 +161,43 @@ describe('penvApp', () => {
     expect(await loadGrant()).toBeUndefined();
   });
 
+  it('a disconnect during an in-flight load ends disconnected', async () => {
+    await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const base = fakePenv();
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).endsWith('/auth/app')) await gate;
+      return base(url, init);
+    });
+    const load = loadPenvAppKeys(TARGET, fetchImpl);
+    await new Promise((r) => setTimeout(r, 0));
+    const disc = disconnectPenvApp(fetchImpl);
+    release();
+    expect(await load).toBeNull();
+    await disc;
+    expect(await loadGrant()).toBeUndefined();
+    expect(await loadKeys()).toEqual({});
+    const revoked = fetchImpl.mock.calls.filter(([u]) => String(u).endsWith('/auth/revoke'));
+    expect(revoked.length).toBeGreaterThan(0);
+  });
+
+  it('keepKeys revokes and forgets the grant but leaves the keys', async () => {
+    await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
+    await saveKeys({ GROQ_API_KEY: 'gsk_test' });
+    await disconnectPenvApp(fakePenv(), { keepKeys: true });
+    expect(await loadGrant()).toBeUndefined();
+    expect(await loadKeys()).toEqual({ GROQ_API_KEY: 'gsk_test' });
+  });
+
+  it('the revoke times out instead of hanging', async () => {
+    await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
+    const fetchImpl = vi.fn((_u: unknown, init?: RequestInit) =>
+      new Promise<Response>((_res, rej) => init?.signal?.addEventListener('abort', () => rej(new DOMException('aborted', 'AbortError')))));
+    expect(await disconnectPenvApp(fetchImpl as unknown as typeof fetch, { timeoutMs: 20 })).toBe(false);
+    expect(await loadGrant()).toBeUndefined();
+  });
+
   it('concurrent key loads share one exchange', async () => {
     await fakeBrowser.storage.session.set({ penvGrant: 'pca_one' });
     const fetchImpl = fakePenv();
