@@ -119,7 +119,10 @@ export default function PenvConnect() {
     setNotConnected(false);
     setBusy(true);
     // First await keeps the click's user gesture for Chrome's permission prompt.
-    await requestHosts([...PENV_HOSTS, ...hostsForKeys(connectKeyNames(needed)), ...hostsForSettings(s)]);
+    if (!(await requestHosts([...PENV_HOSTS, ...hostsForKeys(connectKeyNames(needed)), ...hostsForSettings(s)]))) {
+      setBusy(false);
+      return setError('Rekord needs your permission to reach your AI service. Try again and choose Allow.');
+    }
     try {
       const conn = await connectPenvApp({ keys: connectKeyNames(needed) });
       const next = await updateSettings({ keySource: 'penv-app', penvApp: conn });
@@ -151,7 +154,10 @@ export default function PenvConnect() {
     if (!target) return setError('Enter the environment as org/project/environment.');
     if (!token.trim()) return setError('Enter your read-only machine token.');
     setBusy(true);
-    await requestHosts([...PENV_HOSTS, ...hostsForKeys(connectKeyNames(needed)), ...hostsForSettings(s)]);
+    if (!(await requestHosts([...PENV_HOSTS, ...hostsForKeys(connectKeyNames(needed)), ...hostsForSettings(s)]))) {
+      setBusy(false);
+      return setError('Rekord needs your permission to reach your AI service. Try again and choose Allow.');
+    }
     try {
       // App loads must not overwrite the keys saved next; the grant stays until this succeeds.
       if (s.penvApp) invalidateAppLoads();

@@ -137,7 +137,7 @@ export default function SetupCustom() {
   const groqModels = s.summary.provider === 'groq';
 
   async function start() {
-    const hosts = requestHosts(hostsForSettings(s!));
+    const hosts = requestHosts(hostsForSettings(s!, keys.loaded));
     setBusy(true);
     setError('');
     await hosts;
@@ -169,7 +169,7 @@ export default function SetupCustom() {
                   if (on) return;
                   const transcription = transcriptionFor(t.id, s.transcription);
                   // Choosing a provider is the click Chrome's host prompt needs; selects and blurs wait for Start.
-                  void requestHosts(hostsForSettings({ ...s, transcription }));
+                  void requestHosts(hostsForSettings({ ...s, transcription }, keys.loaded));
                   void save({ transcription });
                 }}
                 style={{ height: 34, border: 'none', borderRadius: 7, font: 'inherit', fontSize: 12, cursor: 'pointer', background: on ? '#FFFFFF' : 'transparent', fontWeight: on ? 600 : 500, color: on ? '#111114' : '#5F6168', boxShadow: on ? '0 1px 2px rgba(16,16,20,0.08)' : undefined }}

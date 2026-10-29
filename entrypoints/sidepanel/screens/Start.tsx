@@ -7,6 +7,7 @@ import type { RecordingReply } from '../../background';
 import { ensureKeys, reconnect, transcriptionKeyRejected } from '@/lib/connect';
 import { hostsForSettings, PENV_HOSTS, requestHosts } from '@/lib/hosts';
 import { getSettings } from '@/lib/settings';
+import { loadKeys } from '@/lib/keys';
 import { wasDisconnected } from '@/lib/penvApp';
 import { DisconnectedPanel } from './PenvConnect';
 import { getMeeting, listMeetings, putMeeting } from '@/lib/db';
@@ -45,6 +46,7 @@ export default function Start() {
   const autoName = useRef(''); // the tab title we filled in; replaced when the active tab changes, unless edited
   const calEvent = useRef<CalendarEvent | undefined>(undefined); // T6: event happening now, attached on start
   const providerHosts = useRef<string[]>([]); // known before the click, so Start can ask for them synchronously
+  const [hostsReady, setHostsReady] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -88,8 +90,11 @@ export default function Start() {
         .then(([st, gone]) => alive && setPenvGone(gone && st.keySource === 'penv-app'))
         .catch(() => {});
     };
-    getSettings().then((st) => { providerHosts.current = hostsForSettings(st); }, () => {});
-    ensureKeys().then((k) => (k === 'reconnect' ? needReconnect() : setKeys(k)), needReconnect);
+    // After the keys load, so Deepgram is included when its key is there for speaker names.
+    const loadHosts = () => Promise.all([getSettings(), loadKeys()])
+      .then(([st, k]) => { providerHosts.current = hostsForSettings(st, Object.keys(k)); }, () => {})
+      .finally(() => alive && setHostsReady(true));
+    ensureKeys().then((k) => (k === 'reconnect' ? needReconnect() : setKeys(k)), needReconnect).finally(loadHosts);
     transcriptionKeyRejected().then((r) => alive && setKeyRejected(r), () => {});
     listMeetings()
       .then((all) => setRecent(all.filter((m) => m.status !== 'recording').sort((a, b) => b.startedAt - a.startedAt).slice(0, 3)))
@@ -180,7 +185,7 @@ export default function Start() {
   }
 
   const host = hostOf(tab?.url);
-  const canRecord = (place === 'app' || !!tab) && keys === 'ready' && stateChecked && !busy;
+  const canRecord = (place === 'app' || !!tab) && keys === 'ready' && stateChecked && hostsReady && !busy;
 
   return (
     <main className="screen">

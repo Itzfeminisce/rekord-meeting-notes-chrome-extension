@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_SETTINGS } from './settings';
 import { DEEPGRAM_HOSTS, hostsForKeys, hostsForSettings, OLLAMA_HOSTS, requestHosts } from './hosts';
 
 describe('hosts', () => {
@@ -6,8 +7,17 @@ describe('hosts', () => {
 
   it('maps key names and providers to their hosts', () => {
     expect(hostsForKeys(['DEEPGRAM_API_KEY', 'UNKNOWN'])).toEqual(DEEPGRAM_HOSTS);
-    expect(hostsForSettings({ transcription: { provider: 'groq', model: 'm' }, summary: { provider: 'groq', model: 'm' } })).toEqual(['https://api.groq.com/*']);
-    expect(hostsForSettings({ transcription: { provider: 'deepgram', model: 'm' }, summary: { provider: 'ollama', model: 'm' } })).toEqual([...DEEPGRAM_HOSTS, ...OLLAMA_HOSTS]);
+    const base = { features: DEFAULT_SETTINGS.features, diarization: DEFAULT_SETTINGS.diarization };
+    const groq = { ...base, transcription: { provider: 'groq', model: 'm' }, summary: { provider: 'groq', model: 'm' } } as const;
+    expect(hostsForSettings(groq)).toEqual(['https://api.groq.com/*']);
+    expect(hostsForSettings({ ...base, transcription: { provider: 'deepgram', model: 'm' }, summary: { provider: 'ollama', model: 'm' } }, ['DEEPGRAM_API_KEY'])).toEqual([...DEEPGRAM_HOSTS, ...OLLAMA_HOSTS]);
+  });
+
+  it('adds Deepgram for speaker names only when that key is there and the feature is on', () => {
+    const base = { features: DEFAULT_SETTINGS.features, diarization: DEFAULT_SETTINGS.diarization };
+    const groq = { ...base, transcription: { provider: 'groq', model: 'm' }, summary: { provider: 'groq', model: 'm' } } as const;
+    expect(hostsForSettings(groq, ['GROQ_API_KEY', 'DEEPGRAM_API_KEY'])).toEqual(['https://api.groq.com/*', ...DEEPGRAM_HOSTS]);
+    expect(hostsForSettings({ ...groq, features: { ...base.features, speakerNames: false } }, ['DEEPGRAM_API_KEY'])).toEqual(['https://api.groq.com/*']);
   });
 
   it('asks only for hosts the manifest lists, and never throws', async () => {

@@ -108,7 +108,10 @@ export async function getToken(interactive: boolean, scopes: string[], deps: Goo
   const stored = await storedToken();
   if (tokenUsable(stored, Date.now()) && scopes.every((x) => stored.scopes.includes(x))) return stored.token;
   if (interactive) return (await authorize(true, scopes, deps)).token;
-  // Calendar and Docs can ask at once; one silent renewal for every connected part serves both.
+  // Calendar and Docs can ask at once; one silent renewal for every connected part serves both,
+  // unless it was started without a scope this caller needs.
+  const inFlight = renewing && (await renewing.catch(() => undefined));
+  if (inFlight && scopes.every((x) => inFlight.scopes.includes(x))) return inFlight.token;
   renewing ??= getSettings()
     .then((st) => authorize(false, [...new Set([...scopesFor(st.google), ...scopes])], deps, st.google.email))
     .finally(() => { renewing = undefined; });

@@ -25,9 +25,10 @@ export function hostsForKeys(names: string[]): string[] {
   return [...new Set(names.flatMap((n) => KEY_HOSTS[n] ?? []))];
 }
 
-/** Hosts the chosen transcription and summary providers talk to. */
-export function hostsForSettings(s: Pick<Settings, 'transcription' | 'summary'>): string[] {
+/** Hosts the chosen providers talk to, plus Deepgram for speaker names when its key is among `keyNames`. */
+export function hostsForSettings(s: Pick<Settings, 'transcription' | 'summary' | 'features' | 'diarization'>, keyNames: string[] = []): string[] {
   const names = [`${s.transcription.provider.toUpperCase()}_API_KEY`, `${s.summary.provider.toUpperCase()}_API_KEY`];
+  if (s.features.speakerNames && keyNames.includes(s.diarization.keyName)) names.push(s.diarization.keyName);
   return [...new Set([...hostsForKeys(names), ...(s.summary.provider === 'ollama' ? OLLAMA_HOSTS : [])])];
 }
 

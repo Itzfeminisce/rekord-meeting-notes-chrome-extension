@@ -184,6 +184,8 @@ export interface KeyState {
   add: (name: KeyName, value: string, ask?: boolean) => Promise<RowStatus>;
 }
 
+const PROMPT_WAIT_MS = 15_000;
+
 /** Keys in memory and their last check. Checks any key that has not been checked yet. Never holds a value. */
 export function useKeyState(): KeyState {
   const [loaded, setLoaded] = useState<string[]>([]);
@@ -217,11 +219,13 @@ export function useKeyState(): KeyState {
   const add = useCallback(async (name: KeyName, value: string, ask = true): Promise<RowStatus> => {
     setLoaded((l) => (l.includes(name) ? l : [...l, name]));
     setStatus((s) => ({ ...s, [name]: 'checking' }));
+    // Pasting or pressing Enter is the gesture Chrome wants; ask before any other await, but save without waiting.
+    const granted = ask ? requestHosts(hostsForKeys([name])) : Promise.resolve(true);
+    // A prompt left open must not keep the row checking forever; after a while the check runs anyway.
+    const reachable = Promise.race([granted, new Promise<boolean>((r) => setTimeout(() => r(true), PROMPT_WAIT_MS))]);
     let result: RowStatus;
     try {
-      // Pasting or pressing Enter is the gesture Chrome wants; ask before any other await.
-      if (ask) await requestHosts(hostsForKeys([name]));
-      result = await addKey(name, value);
+      result = await addKey(name, value, fetch, reachable);
     } catch {
       result = 'unreachable';
     }

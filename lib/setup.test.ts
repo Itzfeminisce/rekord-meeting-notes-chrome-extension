@@ -107,6 +107,16 @@ describe('addKey', () => {
     expect((await loadKeyStatus()).GROQ_API_KEY).toBe('rejected');
   });
 
+  it('saves the key before the host prompt answers, and skips the check when it is refused', async () => {
+    const fetchImpl = vi.fn(async () => new Response('{}', { status: 200 }));
+    let answer: (ok: boolean) => void = () => {};
+    const pending = addKey('GROQ_API_KEY', 'gsk_test', fetchImpl as unknown as typeof fetch, new Promise((r) => { answer = r; }));
+    await vi.waitFor(async () => expect((await loadKeys()).GROQ_API_KEY).toBe('gsk_test'));
+    answer(false);
+    expect(await pending).toBe('unreachable');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it('checks the key as the service the user picked', async () => {
     const fetchImpl = vi.fn(async () => new Response('{}', { status: 200 }));
     await addKey('DEEPGRAM_API_KEY', 'dg_test', fetchImpl as unknown as typeof fetch);

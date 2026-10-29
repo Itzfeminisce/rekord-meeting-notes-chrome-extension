@@ -124,7 +124,7 @@ export default function Setup() {
   async function start() {
     if (!s) return;
     // First call keeps the click's gesture: hosts for the chosen providers, also covering keys added on blur.
-    const hosts = requestHosts(hostsForSettings(s));
+    const hosts = requestHosts(hostsForSettings(s, keys.loaded));
     setBusy(true);
     setError('');
     await hosts;

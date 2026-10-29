@@ -109,7 +109,10 @@ export default function SettingsAI() {
     const app = s?.keySource === 'penv-app' ? s.penvApp : undefined;
     if (!app && !hasToken) return navigate('penvConnect');
     setBusy(true);
-    await requestHosts([...PENV_HOSTS, ...hostsForSettings(s!)]);
+    if (!(await requestHosts([...PENV_HOSTS, ...hostsForSettings(s!, keys.loaded)]))) {
+      setBusy(false);
+      return setMessage({ kind: 'error', text: 'Rekord needs your permission to reach your AI service. Try again and choose Allow.' });
+    }
     try {
       const names = app ? await loadPenvAppKeys(app) : await reconnect();
       if (!names) return navigate('penvConnect');
