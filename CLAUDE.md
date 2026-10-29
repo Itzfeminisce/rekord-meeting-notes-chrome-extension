@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-The project brief is in `docs/BRIEF.md`. Read only the section you need.
+Plans, specs, handoffs and design frames for Rekord live in the specs repo: https://github.com/Itzfeminisce/productivity-apps-engineering-specs/tree/main/apps/rekord
+Read its [RULES.md](https://github.com/Itzfeminisce/productivity-apps-engineering-specs/blob/main/RULES.md) first. It binds every implementer and takes priority over everything else.
+Then read only the section you need of `apps/rekord/BRIEF.md` and your version's `HANDOFF.md` there.
 
 ## Working rules (always take priority)
 - Match each subagent and its effort to the complexity of the task it is given.
