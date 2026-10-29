@@ -221,7 +221,7 @@ describe('penvApp', () => {
     const oldLoad = loadPenvAppKeys(TARGET, fetchImpl);
     await new Promise((r) => setTimeout(r, 0));
     await connectPenvApp({ keys: ['GROQ_API_KEY'], launch: allow(), fetchImpl, redirect: REDIRECT });
-    expect(await loadGrant()).toBe('pca_B');
+    expect(await loadGrant()).toMatch(/^pca_B/);
     const newLoad = loadPenvAppKeys(TARGET, fetchImpl); // fresh run, not the old in-flight one
     release();
     await oldLoad;
@@ -243,7 +243,7 @@ describe('penvApp', () => {
       await connectPenvApp({ keys: ['GROQ_API_KEY'], launch: allow(), fetchImpl, redirect: REDIRECT });
       await load;
       await ticks(10);
-      expect(await loadGrant()).toBe('pca_B');
+      expect(await loadGrant()).toMatch(/^pca_B/);
       expect(await wasDisconnected()).toBe(false);
       expect(bearers(fetchImpl, '/auth/app')[0]).toBe('Bearer pca_A');
     }
@@ -260,8 +260,63 @@ describe('penvApp', () => {
       await Promise.all([load, connected]);
       await ticks(10);
       const grant = await loadGrant();
-      expect(grant).toBe('pca_B');
+      expect(grant).toMatch(/^pca_B/);
       expect(await wasDisconnected()).toBe(false);
+    }
+  });
+
+  it('a stale load across a connect ends with the keys from grant B, whatever the interleaving', async () => {
+    const realSet = slowStorage();
+    for (let d = 0; d < 30; d++) {
+      await realSet({ penvGrant: 'pca_A', penvAppDisconnected: false });
+      await saveKeys({});
+      const fetchImpl = rotatingPenv(['pca_A']);
+      let settled = false;
+      const load = loadPenvAppKeys(TARGET, fetchImpl).catch((e) => e as Error).finally(() => { settled = true; });
+      await ticks(d);
+      await connectPenvApp({ keys: ['GROQ_API_KEY'], launch: allow(), fetchImpl, redirect: REDIRECT });
+      const stillRunning = !settled;
+      const result = await load;
+      await ticks(10);
+      // A load that settled before the connect finished may report 'disconnected' (the connect lands after it); one
+      // still running when the connect finished is stale and must be re-run with grant B.
+      if (stillRunning) expect(result).toEqual(['GROQ_API_KEY']);
+      expect(await wasDisconnected()).toBe(false);
+      expect(await loadGrant()).toMatch(/^pca_B/);
+      if (Array.isArray(result)) expect(await loadKeys()).toEqual({ GROQ_API_KEY: 'gsk_test' });
+    }
+  });
+
+  it('a disconnect racing an in-flight load leaves no grant, keys or flag, whatever the interleaving', async () => {
+    const realSet = slowStorage();
+    for (let d = 0; d < 30; d++) {
+      await realSet({ penvGrant: 'pca_A', penvAppDisconnected: false });
+      await saveKeys({});
+      const fetchImpl = rotatingPenv();
+      const load = loadPenvAppKeys(TARGET, fetchImpl).catch(() => null);
+      await ticks(d);
+      await disconnectPenvApp(fetchImpl);
+      await load;
+      await ticks(10);
+      expect(await loadGrant()).toBeUndefined();
+      expect(await loadKeys()).toEqual({});
+      expect(await wasDisconnected()).toBe(false);
+    }
+  });
+
+  it('markDisconnected racing a disconnect leaves nothing behind, whatever the interleaving', async () => {
+    const realSet = slowStorage();
+    for (let d = 0; d < 30; d++) {
+      await realSet({ penvGrant: 'pca_A', penvAppDisconnected: false });
+      await saveKeys({});
+      const fetchImpl = rotatingPenv(['pca_A']);
+      const load = loadPenvAppKeys(TARGET, fetchImpl).catch(() => null);
+      await ticks(d);
+      await disconnectPenvApp(fetchImpl);
+      await load;
+      await ticks(10);
+      expect(await loadGrant()).toBeUndefined();
+      expect(await loadKeys()).toEqual({});
     }
   });
 

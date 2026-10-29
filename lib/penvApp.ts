@@ -295,8 +295,8 @@ export function loadPenvAppKeys(target: PenvTarget, fetchImpl: typeof fetch = fe
   if (inflight && inflight.epoch === loadEpoch) return inflight.run;
   const at: Epochs = { grant: grantEpoch, load: loadEpoch };
   const prev = inflight?.run;
-  const start = () => loadPenvAppKeysOnce(target, fetchImpl, at, timeoutMs);
-  const run = (prev ? prev.catch(() => null).then(start) : start()).finally(() => {
+  const start = (): Promise<string[] | null> => loadWithRerun(target, fetchImpl, at, timeoutMs);
+  const run: Promise<string[] | null> = (prev ? prev.catch(() => null).then(start) : start()).finally(() => {
     if (inflight?.run === run) inflight = null;
   });
   inflight = { epoch: at.load, run };
@@ -304,6 +304,38 @@ export function loadPenvAppKeys(target: PenvTarget, fetchImpl: typeof fetch = fe
 }
 
 let inflight: { epoch: number; run: Promise<string[] | null> } | null = null;
+
+/** For a 'disconnected' error raised after this load itself cleared the grant: the grant epoch right after that. */
+const clearedAt = new WeakMap<object, number>();
+/** A 'disconnected' error is stale when the grant moved on after the grant it refused was forgotten (or replaced). */
+const staleDisconnected = (err: unknown, at: Epochs) =>
+  err instanceof PenvAppError && err.code === 'disconnected' && (clearedAt.get(err) ?? at.grant) !== grantEpoch;
+
+/**
+ * Runs a load. If it ends stale because the grant moved on meanwhile (a connect stored a newer grant), its own
+ * outcome (null, or 'disconnected' for the old grant) says nothing about the connection: re-run once with the
+ * current grant. A second stale run gives a neutral "could not be reached" error, which callers show as a retry
+ * and never as "disconnected".
+ */
+async function loadWithRerun(target: PenvTarget, fetchImpl: typeof fetch, at: Epochs, timeoutMs: number): Promise<string[] | null> {
+  let first: { keys: string[] | null } | { err: unknown };
+  try { first = { keys: await loadPenvAppKeysOnce(target, fetchImpl, at, timeoutMs) }; } catch (err) { first = { err }; }
+  const stale = at.grant !== grantEpoch && ('err' in first ? staleDisconnected(first.err, at) : first.keys === null);
+  if (!stale) {
+    if ('err' in first) throw first.err;
+    return first.keys;
+  }
+  // Loads are serialized (a newer one waits for this run), so nothing else exchanges the grant meanwhile.
+  const again: Epochs = { grant: grantEpoch, load: loadEpoch };
+  try {
+    const keys = await loadPenvAppKeysOnce(target, fetchImpl, again, timeoutMs);
+    if (keys === null && again.grant !== grantEpoch && (await loadGrant())) throw new PenvError('http', 'penv could not be reached.');
+    return keys;
+  } catch (err) {
+    if (staleDisconnected(err, again)) throw new PenvError('http', 'penv could not be reached.');
+    throw err;
+  }
+}
 const REVOKE_TIMEOUT_MS = 5000;
 
 /** Best-effort server revoke of a grant, with a timeout. True when the server confirmed it. */
@@ -344,7 +376,10 @@ async function loadPenvAppKeysOnce(target: PenvTarget, fetchImpl: typeof fetch, 
           grant = current;
           continue;
         }
-        await markDisconnected(at); // epoch-checked: a reconnect meanwhile is left alone
+        const acted = at.load === loadEpoch;
+        const marked = markDisconnected(at); // epoch-checked: a reconnect meanwhile is left alone
+        if (acted) clearedAt.set(err, grantEpoch);
+        await marked;
       }
       throw err;
     }
@@ -361,8 +396,12 @@ async function loadPenvAppKeysOnce(target: PenvTarget, fetchImpl: typeof fetch, 
   if (at.load !== loadEpoch) return null;
   if (!rotatedOk) {
     // An empty or invalid rotated grant leaves nothing usable: treat it as invalid_grant.
-    await markDisconnected(at);
-    throw new PenvAppError('disconnected', 'Penv Cloud no longer accepts this connection.');
+    const acted = at.load === loadEpoch;
+    const marked = markDisconnected(at);
+    const err = new PenvAppError('disconnected', 'Penv Cloud no longer accepts this connection.');
+    if (acted) clearedAt.set(err, grantEpoch);
+    await marked;
+    throw err;
   }
   if (!token.startsWith('pck_')) throw new PenvError('bad-response', 'penv sent a response Rekord does not understand.');
   const keys = await withTimeout(fetchImpl, timeoutMs, (f) => fetchPenvKeys(token, target, f));
