@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { saveKeys } from './keys';
+import { resetGroqModelsCache } from './groqModels';
 import { chat, LLMError, speakerName, transcriptLines } from './llm';
-import { DEFAULT_SETTINGS, updateSettings } from './settings';
+import { DEFAULT_SETTINGS, getSettings, updateSettings } from './settings';
 import type { Segment } from './types';
 
 const reply = (content: unknown, status = 200) =>
@@ -11,6 +12,7 @@ const msgs = [{ role: 'user' as const, content: 'hi' }];
 
 beforeEach(async () => {
   fakeBrowser.reset();
+  resetGroqModelsCache();
   await saveKeys({ GROQ_API_KEY: 'gsk_test' });
 });
 
@@ -61,6 +63,37 @@ describe('chat', () => {
   it('never puts the key in an error message', async () => {
     await updateSettings({ summary: { provider: 'groq', model: 'm' } });
     await expect(chat(msgs, {}, async () => reply('x', 401))).rejects.not.toThrow(/gsk_test/);
+  });
+
+  describe('when Groq has retired the model', () => {
+    const gone = () => new Response(JSON.stringify({ error: { code: 'model_not_found' } }), { status: 404 });
+    const models = (ids: string[]) => new Response(JSON.stringify({ data: ids.map((id) => ({ id })) }));
+    const groq = (byModel: Record<string, () => Response>, ids: string[]) => vi.fn(async (url: string, init?: RequestInit) =>
+      url.endsWith('/models') ? models(ids) : byModel[JSON.parse(String(init?.body)).model as string]!());
+
+    it('picks a listed model, saves it, and retries once', async () => {
+      await updateSettings({ summary: { provider: 'groq', model: 'old-model' } });
+      const f = groq({ 'old-model': gone, 'qwen/qwen3-32b': () => reply('healed') }, ['whisper-large-v3', 'qwen/qwen3-32b']);
+      expect(await chat(msgs, {}, f)).toBe('healed');
+      expect((await getSettings()).summary).toEqual({ provider: 'groq', model: 'qwen/qwen3-32b' });
+      expect(await chat(msgs, {}, f)).toBe('healed');
+      expect(f.mock.calls.filter(([u]) => u.endsWith('/models'))).toHaveLength(1);
+    });
+
+    it('does not loop when the picked model also fails, and leaves injected config unsaved', async () => {
+      const settings = { ...DEFAULT_SETTINGS, summary: { provider: 'groq' as const, model: 'old-model' } };
+      const f = groq({ 'old-model': gone, 'llama-3.1-8b-instant': gone }, ['llama-3.1-8b-instant']);
+      await expect(chat(msgs, { config: { settings, keys: { GROQ_API_KEY: 'gsk_test' } } }, f)).rejects.toMatchObject({ code: 'server' });
+      expect(f).toHaveBeenCalledTimes(3);
+      expect((await getSettings()).summary.model).toBe(DEFAULT_SETTINGS.summary.model);
+    });
+
+    it('keeps a plain 404 an error without listing models', async () => {
+      await updateSettings({ summary: { provider: 'groq', model: 'm' } });
+      const f = vi.fn(async () => reply('x', 404));
+      await expect(chat(msgs, {}, f)).rejects.toMatchObject({ code: 'server' });
+      expect(f).toHaveBeenCalledTimes(1);
+    });
   });
 });
 
