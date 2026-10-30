@@ -165,7 +165,7 @@ const TRANSCRIPTION_MODEL: Record<TranscriptionProvider, string> = {
   deepgram: 'nova-3',
 };
 const SUMMARY_MODEL: Record<ProviderId, string> = {
-  groq: 'llama-3.3-70b-versatile',
+  groq: 'openai/gpt-oss-120b',
   openrouter: 'openai/gpt-oss-120b',
   ollama: 'llama3.2',
   openai: 'gpt-4.1-mini',
