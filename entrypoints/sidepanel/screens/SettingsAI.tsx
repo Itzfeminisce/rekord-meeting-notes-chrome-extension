@@ -23,6 +23,7 @@ const TRANSCRIPTION_LINE: Record<TranscriptionProvider, string> = {
 function modelLabel(model: string): string {
   if (model.startsWith('llama-3.3')) return 'Llama 3.3';
   if (model === 'openai/gpt-oss-120b') return 'GPT-OSS 120B';
+  if (model === 'openai/gpt-oss-20b') return 'GPT-OSS 20B';
   return model;
 }
 

@@ -133,7 +133,7 @@ export async function googleFetch(url: string, scopes: string[], deps: GoogleDep
       throw new GoogleError('offline');
     }
     if (res.status !== 401) {
-      if (res.status === 403) throw new GoogleError('auth');
+      if (res.status === 403) throw new GoogleError((await apiDisabled(res)) ? 'server' : 'auth');
       if (!res.ok) throw new GoogleError('server');
       return res;
     }
@@ -142,22 +142,32 @@ export async function googleFetch(url: string, scopes: string[], deps: GoogleDep
   throw new GoogleError('auth');
 }
 
+/** A 403 because the API is turned off in the Google Cloud project, not because the user's access was lost. */
+async function apiDisabled(res: Response): Promise<boolean> {
+  const body = (await res.json().catch(() => ({}))) as { error?: { errors?: { reason?: string }[]; details?: { reason?: string }[] } };
+  const reasons = [...(body.error?.errors ?? []), ...(body.error?.details ?? [])].map((e) => e.reason);
+  return reasons.includes('accessNotConfigured') || reasons.includes('SERVICE_DISABLED');
+}
+
 /** The signed-in account's email: the primary calendar's ID, or Drive's account info. Empty if neither answers. */
 export async function accountEmail(choice: { calendar: boolean; docs: boolean }, deps: GoogleDeps = {}): Promise<string> {
   const scopes = scopesFor(choice);
-  try {
-    if (choice.calendar) {
+  // The email is only a label, so a failing API falls through to the next one.
+  if (choice.calendar) {
+    try {
       const res = await googleFetch('https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader', scopes, deps);
       const body = (await res.json()) as { items?: { id: string; primary?: boolean }[] };
       const primary = body.items?.find((c) => c.primary);
       if (primary?.id) return primary.id;
-    }
-    if (choice.docs) {
+    } catch { /* try Drive */ }
+  }
+  if (choice.docs) {
+    try {
       const res = await googleFetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)', scopes, deps);
       const body = (await res.json()) as { user?: { emailAddress?: string } };
       if (body.user?.emailAddress) return body.user.emailAddress;
-    }
-  } catch { /* the email is only a label */ }
+    } catch { /* no label */ }
+  }
   return '';
 }
 

@@ -68,6 +68,12 @@ describe('googleFetch', () => {
     await googleFetch('https://www.googleapis.com/x', [SCOPES.calendar], { identity: fakeIdentity(), fetch, clientId: 'x' });
     expect((fetch.mock.calls[0]![1]!.headers as Record<string, string>).Authorization).toBe(`Bearer ${TOKEN}`);
   });
+  it('reports a turned-off API as a server problem, not lost access', async () => {
+    const off = vi.fn(async () => json({ error: { errors: [{ reason: 'accessNotConfigured' }] } }, 403));
+    await expect(googleFetch('https://www.googleapis.com/x', [SCOPES.calendar], { identity: fakeIdentity(), fetch: off, clientId: 'x' })).rejects.toMatchObject({ code: 'server' });
+    const denied = vi.fn(async () => json({ error: { errors: [{ reason: 'forbidden' }] } }, 403));
+    await expect(googleFetch('https://www.googleapis.com/x', [SCOPES.calendar], { identity: fakeIdentity(), fetch: denied, clientId: 'x' })).rejects.toMatchObject({ code: 'auth' });
+  });
 });
 
 describe('connectGoogle', () => {

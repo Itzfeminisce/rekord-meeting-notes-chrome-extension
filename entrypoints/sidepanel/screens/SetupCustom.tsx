@@ -26,8 +26,8 @@ const ASSISTANTS: { id: ProviderId; label: string }[] = [
 ];
 
 const GROQ_MODELS = [
-  { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 (recommended)' },
-  { value: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B' },
+  { value: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B (recommended)' },
+  { value: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B' },
 ];
 
 function Section({ id, title, icon, children }: { id: string; title: string; icon: ReactNode; children: ReactNode }) {

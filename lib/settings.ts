@@ -4,7 +4,7 @@ const STORAGE_KEY = 'settings';
 
 export const DEFAULT_SETTINGS: Settings = {
   transcription: { provider: 'groq', model: 'whisper-large-v3-turbo' },
-  summary: { provider: 'groq', model: 'llama-3.3-70b-versatile' },
+  summary: { provider: 'groq', model: 'openai/gpt-oss-120b' },
   keySource: 'penv',
   penv: { org: 'penvhq', project: 'meeting-notes-taker', env: 'testing' },
   language: 'en',
