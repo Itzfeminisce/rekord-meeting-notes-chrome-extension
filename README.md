@@ -1,3 +1,5 @@
+> Moved to https://github.com/Itzfeminisce/appskord/tree/main/apps/rekord. This repository is archived.
+
 # Rekord
 
 Rekord is a Chrome side-panel extension for meetings.
